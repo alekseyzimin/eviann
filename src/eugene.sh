@@ -174,7 +174,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq $NUM_TISSUES ];then
     log "merging transcripts"
-    stringtie --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
+    stringtie --merge -c 50 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
   else
     error_exit "one or more Stringtie jobs failed"
   fi
