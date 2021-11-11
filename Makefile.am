@@ -13,4 +13,4 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 	$(V_YAGGO)$(YAGGO) -o $@ $<
 YAGGO_SOURCES = # Append all file to be built by yaggo
 
-dist_bin_SCRIPTS = src/eugene.sh
+dist_bin_SCRIPTS = src/eugene.sh src/my_maker_functional_fasta src/my_maker_functional_gff
