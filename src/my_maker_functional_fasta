@@ -107,9 +107,11 @@ sub parse_blast{
 		    $name = $5 || '';
 		}
 		else {
+                    chomp($_);
                     my @f=split(/\s+/,$_);
                     $id = substr($f[0],1);
-                    $name = join(" ",@f[1..$#f]);
+                    $name = substr($f[0],1);
+                    $desc = join(" ",@f[1..$#f]);
 		}
 
 		my $func = '';
