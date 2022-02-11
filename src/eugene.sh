@@ -108,7 +108,9 @@ for prog in $(echo "ufasta hisat2 stringtie maker gffread gff3_merge");do
   if [ $? -gt 0 ];then error_exit "$prog not found the the PATH";fi
 done
 
-export SNAP_PATH=`which maker`
+SNAP_PATH=`which maker`
+SNAP_PATH=`dirname $SNAP_PATH`
+export SNAP_PATH="$SNAP_PATH/../exe/snap"
 
 #checking inputs
 mkdir -p tttt && cd tttt
