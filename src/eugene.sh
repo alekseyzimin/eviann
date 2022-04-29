@@ -29,7 +29,7 @@ trap abort 1 2 15
 function abort {
 log "Aborted"
 rm -rf /dev/shm/tmp_$PID
-kill 0
+kill -9 0
 exit 1
 }
 
