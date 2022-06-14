@@ -15,7 +15,7 @@ PID=$$
 export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
-usage="Usage: annotate_maker.sh -t <number of threads> -g <MANDATORY:genome fasta file with full path> -p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of filenames per line> -u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one filename per line> -e <fasta files with transcripts from related species> -r <MANDATORY:fasta file of protein sequences> -s <MANDATORY:uniprot proteins> -d <add de novo gene finding pass with SNAP> -v <verbose flag>\nOne or more of the -p -u or -e must be supplied.\nDe novo gene finding pass will find more exons at the expense of many false positives."
+usage="Usage: eugene.sh -t <number of threads> -g <MANDATORY:genome fasta file with full path> -p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of filenames per line> -u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one filename per line> -e <fasta files with transcripts from related species> -r <MANDATORY:fasta file of protein sequences> -s <MANDATORY:uniprot proteins> -d <add de novo gene finding pass with SNAP> -v <verbose flag>\nOne or more of the -p -u or -e must be supplied.\nDe novo gene finding pass will find more exons at the expense of many false positives."
 GC=
 RC=
 NC=
@@ -176,7 +176,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq $NUM_TISSUES ];then
     log "merging transcripts"
-    stringtie --merge -c 50 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
+    stringtie --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
   else
     error_exit "one or more Stringtie jobs failed"
   fi
@@ -194,7 +194,7 @@ if [ ! -e split.success ];then
   for f in $(seq 1 $NUM_BATCHES);do
     mkdir -p $f.dir
     rm -rf $f.dir/$f.transcripts.fa*
-    ufasta extract -f batch.$f $GENOMEFILE |ufasta format > $f.dir/$f.fa
+    ufasta extract -f batch.$f $GENOMEFILE | ufasta format > $f.dir/$f.fa
     if [ -e $GENOME.gtf ];then
       perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $GENOME.gtf | gffread -g $f.dir/$f.fa -w $f.dir/$f.transcripts.fa.tmp /dev/stdin && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
     fi
