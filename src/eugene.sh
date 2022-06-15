@@ -15,7 +15,6 @@ PID=$$
 export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
-usage="Usage: eugene.sh -t <number of threads> -g <MANDATORY:genome fasta file with full path> -p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of filenames per line> -u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one filename per line> -e <fasta files with transcripts from related species> -r <MANDATORY:fasta file of protein sequences> -s <MANDATORY:uniprot proteins> -d <add de novo gene finding pass with SNAP> -v <verbose flag>\nOne or more of the -p -u or -e must be supplied.\nDe novo gene finding pass will find more exons at the expense of many false positives."
 GC=
 RC=
 NC=
@@ -33,6 +32,21 @@ kill -9 0
 exit 1
 }
 
+function usage {
+ echo "Usage: eugene.sh [options]"
+ echo "Options:"
+ echo "-t <number of threads, default:1>"
+ echo "-g <MANDATORY:genome fasta file with full path>"
+ echo "-p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
+ echo "-u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
+ echo "-e <fasta file with transcripts from related species>"
+ echo "-r <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
+ echo "-s <MANDATORY:fasta file of uniprot proteins>"
+ echo "-d <add de novo gene finding pass with SNAP>"
+ echo "-v <verbose flag>"
+ echo "One or more of the -p -u or -e must be supplied."
+ echo "De novo gene finding pass will find more exons at the expense of many false positives."
+}
 
 log () {
     dddd=$(date)
@@ -46,7 +60,8 @@ function error_exit {
     exit "${2:-1}"
 }
 if [ $# -lt 1 ];then
-  error_exit "$usage"
+  usage
+  error_exit ""
 fi
 
 #parsing arguments
@@ -90,7 +105,7 @@ do
             SNAP=1
             ;;
         -h|--help|-u|--usage)
-            echo $usage
+            usage
             exit 0
             ;;
         *)
