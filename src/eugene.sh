@@ -118,7 +118,7 @@ done
 
 GENOME=`basename $GENOMEFILE`
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 stringtie maker gffread gff3_merge");do
+for prog in $(echo "ufasta hisat2 stringtie2 maker gffread gff3_merge");do
   which $prog
   if [ $? -gt 0 ];then error_exit "$prog not found the the PATH";fi
 done
@@ -190,13 +190,13 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     log "assembling transcripts with Stringtie"
     for f in $(seq 1 $NUM_TISSUES);do
       if [ ! -s tissue$f.bam.sorted.bam.gtf ];then
-        stringtie -p $NUM_THREADS tissue$f.bam.sorted.bam -o tissue$f.bam.sorted.bam.gtf.tmp && mv tissue$f.bam.sorted.bam.gtf.tmp tissue$f.bam.sorted.bam.gtf
+        stringtie2 -p $NUM_THREADS tissue$f.bam.sorted.bam -o tissue$f.bam.sorted.bam.gtf.tmp && mv tissue$f.bam.sorted.bam.gtf.tmp tissue$f.bam.sorted.bam.gtf
       fi
     done
     OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
     if [ $OUTCOUNT -eq $NUM_TISSUES ];then
       log "merging transcripts"
-      stringtie --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
+      stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
     else
       error_exit "one or more Stringtie jobs failed"
     fi
