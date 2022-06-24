@@ -118,7 +118,7 @@ done
 
 GENOME=`basename $GENOMEFILE`
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 stringtie2 maker gffread gff3_merge");do
+for prog in $(echo "ufasta hisat2 stringtie2 maker gffread gff3_merge blastp makeblastdb");do
   which $prog
   if [ $? -gt 0 ];then error_exit "$prog not found the the PATH";fi
 done
@@ -158,30 +158,43 @@ if [ ! -e align.success ];then
     echo "if [ ! -s tissue0.bam ];then hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam;fi" >> hisat2.sh
   fi
   if [ -s $RNASEQ_PAIRED ];then
-    awk 'BEGIN{n=1}{if($3=="fasta"){print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else{print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_PAIRED >> hisat2.sh
+    awk 'BEGIN{n=1}{
+    if($NF == "fasta"){
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+    }else{
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+    }
+    }' $RNASEQ_PAIRED >> hisat2.sh
   fi
   if [ -s $RNASEQ_UNPAIRED ];then
     START=1;
     if [ -s $RNASEQ_PAIRED ];then
       START=`wc -l $RNASEQ_PAIRED | awk '{print int($1)+1}'`
     fi
-    awk 'BEGIN{n=int("'$START'");}{if($2=="fasta") {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}else {print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++}}' $RNASEQ_UNPAIRED >> hisat2.sh
+    awk 'BEGIN{n=int("'$START'");}{
+    if($NF == "fasta"){
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+    }else{
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+    }}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
   bash ./hisat2.sh && touch align.success && rm -f sort.success
 fi
 
 NUM_TISSUES=`ls tissue*.bam| grep -v sorted |wc -l`
-if [ -s tissue0.bam ];then
+if [ -e tissue0.bam ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
 if [ ! -e sort.success ];then
   log "sorting alignment files"
-  for f in $(seq 0 $NUM_TISSUES);do
-    if [ ! -s tissue$f.bam.sorted.bam ];then
-      samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam tissue$f.bam.sorted.tmp && mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
-    fi
-  done
+  if [ $NUM_TISSUES -gt 0 ];then
+    for f in $(seq 1 $NUM_TISSUES);do
+      if [ ! -s tissue$f.bam.sorted.bam ] && [ -s tissue$f.bam ];then
+        samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam tissue$f.bam.sorted.tmp && mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
+      fi
+    done
+  fi
   touch sort.success && rm -f stringtie.success
 fi
 
@@ -212,17 +225,13 @@ if [ ! -e split.success ];then
 #now we extract all batches from gtf files and set up directories
   for f in $(seq 1 $NUM_BATCHES);do
     mkdir -p $f.dir
-    rm -rf $f.dir/$f.transcripts.fa*
+    rm -rf $f.dir/$f.transcripts.fa* && touch $f.dir/$f.transcripts.fa
     ufasta extract -f batch.$f $GENOMEFILE | ufasta format > $f.dir/$f.fa
     if [ -e $GENOME.gtf ];then
       perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $GENOME.gtf | gffread -g $f.dir/$f.fa -w $f.dir/$f.transcripts.fa.tmp /dev/stdin && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
     fi
     if [ -s tissue0.bam ];then
-      if [ -s $f.dir/$f.transcripts.fa ];then
-        ufasta extract -f <(samtools view tissue0.bam  | perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line); $h{$line}=1}}{print $F[0],"\n" if(defined($h{$F[2]}));}' ) $ALT_EST | ufasta format >> $f.dir/$f.transcripts.fa
-      else
-        ufasta extract -f <(samtools view tissue0.bam  | perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line); $h{$line}=1}}{print $F[0],"\n" if(defined($h{$F[2]}));}' ) $ALT_EST | ufasta format > $f.dir/$f.transcripts.fa.tmp && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
-      fi
+      cat <(ufasta extract -f <(samtools view tissue0.bam  | perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line); $h{$line}=1}}{print $F[0],"\n" if(defined($h{$F[2]}));}' ) $ALT_EST | ufasta format) $f.dir/$f.transcripts.fa > $f.dir/$f.transcripts.fa.tmp && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
     fi
   done
   touch split.success && rm -f maker1.success
@@ -245,7 +254,7 @@ if [ ! -e maker1.success ] && [ -e split.success ];then
     sed s,^single_exon=0,single_exon=1, | \
     sed s,^single_length=250,single_length=200, | \
     sed s,^TMP=,TMP=/dev/shm/tmp_$PID, | \
-    sed s,^max_dna_len=100000,max_dna_len=1000000, | \
+    sed s,^max_dna_len=100000,max_dna_len=10000000, | \
     sed s,^cpus=1,cpus=4, | \
     sed s,^min_contig=1,min_contig=1000, |\
     sed s,^protein=,protein=$PROT, > $f.dir/maker_opts.ctl 
@@ -304,7 +313,7 @@ log "training SNAP for de novo gene finding"
       sed s,^single_exon=0,single_exon=1, | \
       sed s,^single_length=250,single_length=200, | \
       sed s,^TMP=,TMP=/dev/shm/tmp_$PID, | \
-      sed s,^max_dna_len=100000,max_dna_len=1000000, | \
+      sed s,^max_dna_len=100000,max_dna_len=10000000, | \
       sed s,^cpus=1,cpus=4, | \
       sed s,^min_contig=1,min_contig=1000, > $f.dir/maker_opts.ctl && \
       cp maker_exe.ctl $f.dir && \
