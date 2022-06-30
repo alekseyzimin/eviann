@@ -254,7 +254,7 @@ if [ ! -e maker1.success ] && [ -e split.success ];then
     sed s,^single_exon=0,single_exon=1, | \
     sed s,^single_length=250,single_length=200, | \
     sed s,^TMP=,TMP=/dev/shm/tmp_$PID, | \
-    sed s,^max_dna_len=100000,max_dna_len=10000000, | \
+    sed s,^max_dna_len=100000,max_dna_len=1000000, | \
     sed s,^cpus=1,cpus=4, | \
     sed s,^min_contig=1,min_contig=1000, |\
     sed s,^protein=,protein=$PROT, > $f.dir/maker_opts.ctl 
@@ -313,7 +313,7 @@ log "training SNAP for de novo gene finding"
       sed s,^single_exon=0,single_exon=1, | \
       sed s,^single_length=250,single_length=200, | \
       sed s,^TMP=,TMP=/dev/shm/tmp_$PID, | \
-      sed s,^max_dna_len=100000,max_dna_len=10000000, | \
+      sed s,^max_dna_len=100000,max_dna_len=1000000, | \
       sed s,^cpus=1,cpus=4, | \
       sed s,^min_contig=1,min_contig=1000, > $f.dir/maker_opts.ctl && \
       cp maker_exe.ctl $f.dir && \
