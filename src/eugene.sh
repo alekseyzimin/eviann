@@ -178,7 +178,7 @@ if [ ! -e align.success ];then
       print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
-  bash ./hisat2.sh && touch align.success && rm -f sort.success
+  bash ./hisat2.sh && touch align.success && rm -f sort.success || error_exit "Alignment with HISAT2 failed, please check if reads files exist"
 fi
 
 NUM_TISSUES=`ls tissue*.bam| grep -v sorted |wc -l`
@@ -228,10 +228,10 @@ if [ ! -e split.success ];then
     rm -rf $f.dir/$f.transcripts.fa* && touch $f.dir/$f.transcripts.fa
     ufasta extract -f batch.$f $GENOMEFILE | ufasta format > $f.dir/$f.fa
     if [ -e $GENOME.gtf ];then
-      perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $GENOME.gtf | gffread -g $f.dir/$f.fa -w $f.dir/$f.transcripts.fa.tmp /dev/stdin && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
+      perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line);$h{$line}=1;}}{print if defined($h{$F[0]})}' $GENOME.gtf | gffread -F >  $f.dir/$f.transcripts.gff.tmp && mv $f.dir/$f.transcripts.gff.tmp $f.dir/$f.transcripts.gff
     fi
     if [ -s tissue0.bam ];then
-      cat <(ufasta extract -f <(samtools view tissue0.bam  | perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line); $h{$line}=1}}{print $F[0],"\n" if(defined($h{$F[2]}));}' ) $ALT_EST | ufasta format) $f.dir/$f.transcripts.fa > $f.dir/$f.transcripts.fa.tmp && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
+      ufasta extract -f <(samtools view tissue0.bam  | perl -ane 'BEGIN{open(FILE,"batch.'$f'");while($line=<FILE>){chomp($line); $h{$line}=1}}{print $F[0],"\n" if(defined($h{$F[2]}));}' ) $ALT_EST | ufasta format > $f.dir/$f.transcripts.fa.tmp && mv $f.dir/$f.transcripts.fa.tmp $f.dir/$f.transcripts.fa
     fi
   done
   touch split.success && rm -f maker1.success
@@ -261,6 +261,11 @@ if [ ! -e maker1.success ] && [ -e split.success ];then
     if [ -s "$f.dir/$f.transcripts.fa" ];then
       mv $f.dir/maker_opts.ctl $f.dir/maker_opts.ctl.bak && \
       sed s,^est=,est=$PWD/$f.dir/$f.transcripts.fa, $f.dir/maker_opts.ctl.bak > $f.dir/maker_opts.ctl && \
+      rm $f.dir/maker_opts.ctl.bak
+    fi
+    if [ -s "$f.dir/$f.transcripts.gff" ];then
+      mv $f.dir/maker_opts.ctl $f.dir/maker_opts.ctl.bak && \
+      sed s,^est_gff=,est_gff=$PWD/$f.dir/$f.transcripts.gff, $f.dir/maker_opts.ctl.bak > $f.dir/maker_opts.ctl && \
       rm $f.dir/maker_opts.ctl.bak
     fi
     cp maker_exe.ctl $f.dir && cp maker_bopts.ctl $f.dir
