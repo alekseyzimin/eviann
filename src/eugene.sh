@@ -209,12 +209,12 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
     if [ $OUTCOUNT -eq $NUM_TISSUES ];then
       log "merging transcripts"
-      stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf && touch stringtie.success
+      stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     else
       error_exit "one or more Stringtie jobs failed"
     fi
   fi
-  rm -f split.success
+  touch stringtie.success && rm -f split.success
 fi
 
 if [ ! -e split.success ];then 
@@ -334,12 +334,12 @@ if [ ! -e functional.success ];then
   NUM_BATCHES=`ls batch.* |wc -l`
   for f in $(seq 1 $NUM_BATCHES);do
     if [ -e $f.dir/$GENOME.maker.output ];then
-      (cd $f.dir/$GENOME.maker.output && gff3_merge -g -d ${GENOME}_master_datastore_index.log -o ../$f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o ../$f.fasta )
+      (cd $f.dir/$GENOME.maker.output && gff3_merge -g -d ${GENOME}_master_datastore_index.log -o $f.gff && fasta_merge -d ${GENOME}_master_datastore_index.log -o $f.fasta )
     fi
   done
-  gff3_merge -o $GENOME.gff.tmp *.dir/*.gff && mv $GENOME.gff.tmp $GENOME.gff && \
-  cat *.dir/*.all.maker.proteins.fasta > $GENOME.proteins.fasta.tmp  && mv $GENOME.proteins.fasta.tmp $GENOME.proteins.fasta && \
-  cat *.dir/*.all.maker.transcripts.fasta > $GENOME.transcripts.fasta.tmp && mv $GENOME.transcripts.fasta.tmp $GENOME.transcripts.fasta && \
+  gff3_merge -o $GENOME.gff.tmp *.dir/$GENOME.maker.output/*.gff && mv $GENOME.gff.tmp $GENOME.gff && \
+  cat *.dir/$GENOME.maker.output/*.all.maker.proteins.fasta > $GENOME.proteins.fasta.tmp  && mv $GENOME.proteins.fasta.tmp $GENOME.proteins.fasta && \
+  cat *.dir/$GENOME.maker.output/*.all.maker.transcripts.fasta > $GENOME.transcripts.fasta.tmp && mv $GENOME.transcripts.fasta.tmp $GENOME.transcripts.fasta && \
   log "maker output is in $GENOME.gff $GENOME.proteins.fasta $GENOME.transcripts.fasta" && \
   log "performing functional annotation" && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot && \
