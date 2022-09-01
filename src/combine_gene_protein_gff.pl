@@ -127,7 +127,7 @@ for my $locus(keys %loci){
         #output 5'UTR
         for(my $j=0;$j<=$transcript_cds_start_index;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
-          if($j==$transcript_cds_start_index){
+          if($j==$transcript_cds_start_index && $start_cds>$gff_fields[3]){
             push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t$gff_fields[3]\t".($start_cds-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent-5UTR:$i;Parent=$parent");
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent-5UTR:$i;Parent=$parent");
@@ -145,7 +145,7 @@ for my $locus(keys %loci){
         $i=1;
         for(my $j=$transcript_cds_end_index;$j<=$#{$transcript_gff{$t}};$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
-          if($j==$transcript_cds_end_index){
+          if($j==$transcript_cds_end_index && $end_cds<$gff_fields[4]){
             push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".($end_cds+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent-3UTR:$i;Parent=$parent");
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent-3UTR:$i;Parent=$parent");
