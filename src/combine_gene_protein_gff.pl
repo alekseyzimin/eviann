@@ -84,38 +84,71 @@ for my $locus(keys %loci){
     $locus_end=$gff_fields_p[4] if($gff_fields_p[4]>$locus_end);
     if(defined($transripts_for_prot{$prot})){
       my @transcripts=split(/\s+/,$transripts_for_prot{$prot});
+      #here we have to be careful.  I do not want to output exons that are all UTR. So first we read the CDSs for each transcript
       for my $t(@transcripts){
         my @gff_fields_t=split(/\t/,$transcript{$t});
         my @attributes_t=split(";",$gff_fields_t[8]);
         my @gff_fields_p=split(/\t/,$protein{$prot});
         my @attributes_p=split(";",$gff_fields_p[8]);
         my $parent=substr($attributes_t[0],3);
-        $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
-        $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
+        my $start_cds=(split(/\t/,${$protein_cds{$prot}}[0]))[3];
+        my $end_cds=(split(/\t/,${$protein_cds{$prot}}[-1]))[4];
+        my $transcript_start=$gff_fields_t[3];
+        my $transcript_end=$gff_fields_t[4];
+        my $transcript_start_index=0;
+        my $transcript_end_index=$#{$transcript_gff{$t}};
+        #here we figure out if we need to remove any exons that are all UTR
+        for(my $i=0;$i<=$#{$transcript_gff{$t}};$i++){
+          my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$i]);
+          if($gff_fields[4]>$start_cds){
+            $transcript_start_index=$i;
+            last;
+          }
+        }
+        for(my $i=$#{$transcript_gff{$t}};$i>=0;$i--){
+          my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$i]);
+          if($gff_fields[3]<$end_cds){
+            $transcript_end_index=$i;
+            last;
+          }
+        }
+        $transcript_start=(split(/\t/,${$transcript_gff{$t}}[$transcript_start_index]))[3];
+        $transcript_end=(split(/\t/,${$transcript_gff{$t}}[$transcript_end_index]))[4];
+
+        $locus_start=$transcript_start if($transcript_start<$locus_start);
+        $locus_end=$transcript_end if($transcript_end>$locus_end);
         #output transcript
-        push(@output,$gff_fields[0]."\tEviAnn\ttranscript\t".join("\t",@gff_fields_t[3..7])."\tID=".substr($attributes_t[0],3).";Parent=$geneID;$attributes_p[2]");
+        push(@output,$gff_fields[0]."\tEviAnn\ttranscript\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=".substr($attributes_t[0],3).";Parent=$geneID;$attributes_p[2]");
         #output exons
-        for my $x(@{$transcript_gff{$t}}){
-          my @gff_fields=split(/\t/,$x);
-          push(@output,$gff_fields[0]."\tEviAnn\texon\t".join("\t",@gff_fields[3..7])."\tParent=$parent");
+        my $i=1;
+        for(my $j=$transcript_start_index;$j<=$transcript_end_index;$j++){
+          my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
+          push(@output,$gff_fields[0]."\tEviAnn\texon\t".join("\t",@gff_fields[3..7])."\tID=$parent-exon:$i;Parent=$parent");
+          $i++;
         }
         #output cds
+        $i=1;
         for my $x(@{$protein_cds{$prot}}){
           my @gff_fields=split(/\t/,$x);
-          push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tParent=$parent");
+          push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent-cds:$i;Parent=$parent");
+          $i++;
         }
       }
     }else{
       my @gff_fields=split(/\t/,$protein{$prot});
       my @attributes=split(";",$gff_fields[8]);
       push(@output,$gff_fields[0]."\tEviAnn\ttranscript\t".join("\t",@gff_fields[3..7])."\tID=$prot;Parent=$geneID;$attributes[2]");
+      my $i=1;
       for my $x(@{$protein_cds{$prot}}){ 
         my @gff_fields=split(/\t/,$x);
-        push(@output,$gff_fields[0]."\tEviAnn\texon\t".join("\t",@gff_fields[3..8]));
+        push(@output,$gff_fields[0]."\tEviAnn\texon\t".join("\t",@gff_fields[3..7])."\tID=".substr($gff_fields[8],7)."-exon:$i;$gff_fields[8]");
+        $i++;
       }
+      $i=1;
       for my $x(@{$protein_cds{$prot}}){
         my @gff_fields=split(/\t/,$x);
-        push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..8]));
+        push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=".substr($gff_fields[8],7)."-cds:$i;$gff_fields[8]");
+        $i++;
       }
     }
   }
@@ -139,9 +172,11 @@ for my $locus(keys %transcripts_only_loci){
     $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
     $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
     push(@output,join("\t",@gff_fields_t[0..7])."\t$attributes_t[0];Parent=$geneID;$attributes_t[3]");
+    my $i=1;
     for my $x(@{$transcript_gff_u{$t}}){
       my @gff_fields=split(/\t/,$x);
-      push(@output,join("\t",@gff_fields[0..7])."\tParent=$parent");
+      push(@output,join("\t",@gff_fields[0..7])."\tID=$parent-exon:$i;Parent=$parent");
+      $i++;
     }
   }
   $gene_record{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA\n".join("\n",@output)."\n";
