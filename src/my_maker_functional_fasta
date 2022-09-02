@@ -57,7 +57,12 @@ while (<$IN>) {
 	next LINE;
     }
 
-    my ($id, $mol_type, @attrbs) = split /\s+/, $_;
+    my (@attrbs_all) = split /\s+/, $_;
+    my $id = $attrbs_all[0];
+    my $mol_type = "";
+    $mol_type = $attrbs_all[1] if($#attrbs_all>0);
+    my @attrbs=();
+    @attrbs = @attrbs_all[2..$#attrbs_all] if($#attrbs_all>1);
     $id =~ s/^>//;
 
     my $func = $blast->{$id} || 'Name:"Protein of unknown function"';
