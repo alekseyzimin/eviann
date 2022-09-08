@@ -125,9 +125,8 @@ done
 GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 stringtie2 gffread blastp tblastn makeblastdb");do
-  which $prog
-  if [ $? -gt 0 ];then error_exit "$prog not found the the PATH";fi
+for prog in $(echo "ufasta hisat2 stringtie2 gffread blastp tblastn makeblastdb gffcompare");do
+  which $prog > /dev/null || error_exit "$prog not found the the PATH, please install the appropriate package";
 done
 
 #checking inputs
@@ -150,12 +149,12 @@ fi
 
 #first we align
 if [ ! -e align-build.success ];then
-  log "building HISAT2 index"
+  log "Building HISAT2 index"
   hisat2-build $GENOMEFILE $GENOME.hst 1>hisat2-build.out 2>&1 && touch align-build.success && rm -f align.success
 fi
 
 if [ ! -e align.success ];then
-  log "aligning RNAseq reads"
+  log "Aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $ALT_EST ];then
     echo "if [ ! -s tissue0.bam ];then hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam;fi" >> hisat2.sh
@@ -190,7 +189,7 @@ if [ -e tissue0.bam ];then
 fi
 
 if [ ! -e sort.success ];then
-  log "sorting alignment files"
+  log "Sorting alignment files"
   if [ $NUM_TISSUES -gt 0 ];then
     for f in $(seq 1 $NUM_TISSUES);do
       if [ ! -s tissue$f.bam.sorted.bam ] && [ -s tissue$f.bam ];then
@@ -203,7 +202,7 @@ fi
 
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
   if [ $NUM_TISSUES -gt 0 ];then
-    log "assembling transcripts with Stringtie"
+    log "Assembling transcripts with Stringtie"
     for f in $(seq 1 $NUM_TISSUES);do
       if [ ! -s tissue$f.bam.sorted.bam.gtf ];then
         stringtie2 -p $NUM_THREADS tissue$f.bam.sorted.bam -o tissue$f.bam.sorted.bam.gtf.tmp && mv tissue$f.bam.sorted.bam.gtf.tmp tissue$f.bam.sorted.bam.gtf
@@ -211,7 +210,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     done
     OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
     if [ $OUTCOUNT -eq $NUM_TISSUES ];then
-      log "merging transcripts"
+      log "Merging transcripts"
       stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     else
       error_exit "one or more Stringtie jobs failed"
@@ -221,6 +220,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
 fi
 
 if [ ! -e protein_align.success ];then
+  log "Aligning proteins"
   protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
   if [ -s $GENOME.$PROTEIN.palign.gff ];then
     touch protein_align.success
@@ -228,18 +228,18 @@ if [ ! -e protein_align.success ];then
 fi
 
 if [ ! -e merge.success ];then 
-  log "Merging protein and transcript alignments"
-  gffcompare -D -o $GENOME.palign.uniq $GENOME.$PROTEIN.palign.gff && \
-  gffcompare -o $GENOME.protref -r $GENOME.palign.uniq.combined.gtf $GENOME.gtf && \
+  log "Deriving gene models from protein and transcript alignments"
+  gffcompare -T -D -o $GENOME.palign.uniq $GENOME.$PROTEIN.palign.gff && \
+  gffcompare -T -o $GENOME.protref -r $GENOME.palign.uniq.combined.gtf $GENOME.gtf && \
   gffread -F $GENOME.palign.uniq.combined.gtf | \
   combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf ) > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff && \
-  gffread -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
+  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   touch merge.success && rm -f functional.success pseudo_detect.success 
 fi
 
 if [ ! -e functional.success ];then
-  log "performing functional annotation" && \
+  log "Performing functional annotation" && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
   blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
@@ -249,7 +249,7 @@ if [ ! -e functional.success ];then
 fi
 
 if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
-  log "detecting and annotating pseudogenes"
+  log "Detecting and annotating processed pseudogenes"
   ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
   ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb2.out 2>&1 && \

@@ -91,29 +91,21 @@ done
 PROTEINN=`basename $PROTEIN`;
 GENOMEN=`basename $GENOME`
 
-if [ ! -e blastdb.success ];then
-log "Making the blast database"
-makeblastdb -dbtype nucl -in $GENOME -out $GENOMEN.blastdb && \
-touch blastdb.success
-fi
-
 if [ ! -e protein2genome.protein_align.success ];then
 log "Aligning proteins to the genome"
 rm -f tblastn{1,2,3,4}.success && \
-ufasta split -i $PROTEIN \
->(tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads $(($NUM_THREADS/4+1)) -outfmt 6 -query /dev/stdin -evalue 1e-8 2>/dev/null | awk '{if($3>75) print $0}' > tblastn1.out; touch tblastn1.success) \
->(tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads $(($NUM_THREADS/4+1)) -outfmt 6 -query /dev/stdin -evalue 1e-8 2>/dev/null | awk '{if($3>75) print $0}' > tblastn2.out; touch tblastn2.success) \
->(tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads $(($NUM_THREADS/4+1)) -outfmt 6 -query /dev/stdin -evalue 1e-8 2>/dev/null | awk '{if($3>75) print $0}' > tblastn3.out; touch tblastn3.success) \
->(tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads $(($NUM_THREADS/4+1)) -outfmt 6 -query /dev/stdin -evalue 1e-8 2>/dev/null | awk '{if($3>75) print $0}' > tblastn4.out; touch tblastn4.success)
-#wait for everything to finish
-while [ ! -e tblastn1.success ] || [ ! -e tblastn2.success ] || [ ! -e tblastn3.success ] || [ ! -e tblastn4.success ] 
-do
-sleep 1
-done
-log "Concatenating"
-cat tblastn{1,2,3,4}.out | \
+ufasta split -i $GENOME $GENOMEN.batch1 $GENOMEN.batch2 $GENOMEN.batch3 $GENOMEN.batch4 && \
+echo "#!/bin/bash" > run_tblastn.sh && \
+echo -n "makeblastdb -dbtype nucl -in \$1 -out \$1.blastdb 1>/dev/null 2>&1 && tblastn -db \$1.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
+echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
+echo " -outfmt 6 -query $PROTEIN -evalue 1e-8 2>/dev/null | awk '{if(\$3>75) print \$0}' > tblastn.\$1.out" >> run_tblastn.sh && \
+chmod 0755 run_tblastn.sh && \
+ls $GENOMEN.batch{1,2,3,4} |xargs -P 4 -I {} ./run_tblastn.sh {} && \
+log "Concatenating" && \
+cat tblastn.GENOMEN.batch{1,2,3,4}.out | \
 sort -k2,2 -k1,1 -k12,12nr -S 10% > $PROTEINN.tblastn.tmp && \
 mv $PROTEINN.tblastn.tmp $PROTEINN.tblastn && \
+rm -rf $GENOMEN.blastdb.batch{1,2,3,4}.* && \
 touch protein2genome.protein_align.success
 fi
 
