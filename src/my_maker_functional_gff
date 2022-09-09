@@ -51,12 +51,12 @@ while (my $line = <$IN>) {
 
 	my ($id) = $attrb =~ /ID\s*=\s*(.*?);/;
 
-	my $note;
+	my $note="";
 	if ($blast->{$id}{note}) {
 		$note .= $blast->{$id}{note};
 	}
 	else {
-		$note .= 'Protein of unknown function';
+		$note .= 'function unknown';
 	}
 
 	$note = uri_escape($note, ';=%&,');

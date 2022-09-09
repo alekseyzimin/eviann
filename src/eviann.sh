@@ -157,7 +157,7 @@ if [ ! -e align.success ];then
   log "Aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $ALT_EST ];then
-    echo "if [ ! -s tissue0.bam ];then hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam;fi" >> hisat2.sh
+    echo "if [ ! -s tissue0.bam ];then cat $ALT_EST $ALT_EST |awk 'BEGIN{n=0}{if(\$1 ~ /^>/){print \">\"n;n++}else{print \$1}}' > est_reads.fa && hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U est_reads.fa 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam && rm -f est_reads.fa;fi" >> hisat2.sh
   fi
   if [ -s $RNASEQ_PAIRED ];then
     awk 'BEGIN{n=1}{
@@ -190,6 +190,9 @@ fi
 
 if [ ! -e sort.success ];then
   log "Sorting alignment files"
+  if [ -s tissue0.bam ];then
+    samtools sort -@ $NUM_THREADS -m 1G tissue0.bam tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bam
+  fi
   if [ $NUM_TISSUES -gt 0 ];then
     for f in $(seq 1 $NUM_TISSUES);do
       if [ ! -s tissue$f.bam.sorted.bam ] && [ -s tissue$f.bam ];then
@@ -201,6 +204,10 @@ if [ ! -e sort.success ];then
 fi
 
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
+  if [ -s tissue0.bam.sorted.bam ];then
+    log "Assembling transcripts from related species with Stringtie"
+    stringtie2 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
+  fi
   if [ $NUM_TISSUES -gt 0 ];then
     log "Assembling transcripts with Stringtie"
     for f in $(seq 1 $NUM_TISSUES);do
@@ -208,13 +215,15 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
         stringtie2 -p $NUM_THREADS tissue$f.bam.sorted.bam -o tissue$f.bam.sorted.bam.gtf.tmp && mv tissue$f.bam.sorted.bam.gtf.tmp tissue$f.bam.sorted.bam.gtf
       fi
     done
-    OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
-    if [ $OUTCOUNT -eq $NUM_TISSUES ];then
-      log "Merging transcripts"
-      stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
-    else
-      error_exit "one or more Stringtie jobs failed"
-    fi
+  fi
+  OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
+  if [ $OUTCOUNT -eq 1 ];then
+    cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+  elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
+    log "Merging transcripts"
+    stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+  else
+    error_exit "one or more Stringtie jobs failed"
   fi
   touch stringtie.success && rm -f split.success
 fi

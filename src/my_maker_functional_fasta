@@ -65,7 +65,7 @@ while (<$IN>) {
     @attrbs = @attrbs_all[2..$#attrbs_all] if($#attrbs_all>1);
     $id =~ s/^>//;
 
-    my $func = $blast->{$id} || 'Name:"Protein of unknown function"';
+    my $func = $blast->{$id} || 'Name:"function unknown"';
 
     my $header = ">$id $mol_type ";
     $header .= "$func " if $func;
