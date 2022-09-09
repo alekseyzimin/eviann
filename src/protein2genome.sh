@@ -5,6 +5,7 @@ export PATH=$MYPATH:$PATH;
 set -o pipefail
 export NUM_THREADS=16
 export MAX_INTRON=200000
+BATCH_SIZE=1000000
 GC=
 RC=
 NC=
@@ -93,19 +94,22 @@ GENOMEN=`basename $GENOME`
 
 if [ ! -e protein2genome.protein_align.success ];then
 log "Aligning proteins to the genome"
-rm -f tblastn{1,2,3,4}.success && \
-ufasta split -i $GENOME $GENOMEN.batch1 $GENOMEN.batch2 $GENOMEN.batch3 $GENOMEN.batch4 && \
+makeblastdb -dbtype nucl -in $GENOME -out $GENOMEN.blastdb 1>/dev/null 2>&1 && \
+ufasta sizes -H $PROTEIN | \
+perl -ane 'BEGIN{$fn="'$PROTEINN'";$index=1;$batch_size=int("'$BATCH_SIZE'");open(FILE,">$fn.$index.batch");$n=0;}{if($n > $batch_size){close(FILE);$index++;open(FILE,">$fn.$index.batch");$n=$F[1];}else{$n+=$F[1];}print FILE $F[0],"\n";}' && \
+NUM_BATCHES=`ls $PROTEINN.*.batch |wc -l` && \
 echo "#!/bin/bash" > run_tblastn.sh && \
-echo -n "makeblastdb -dbtype nucl -in \$1 -out \$1.blastdb 1>/dev/null 2>&1 && tblastn -db \$1.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
+echo "ufasta extract -f \$1 $PROTEIN > \$1.fa && \\" >>  run_tblastn.sh && \
+echo -n "tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
 echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
-echo " -outfmt 6 -query $PROTEIN -evalue 1e-8 2>/dev/null | awk '{if(\$3>75) print \$0}' > tblastn.\$1.out" >> run_tblastn.sh && \
+echo " -outfmt 6 -query \$1.fa  -evalue 1e-8 2>/dev/null | awk '{if(\$3>75) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \
-ls $GENOMEN.batch{1,2,3,4} |xargs -P 4 -I {} ./run_tblastn.sh {} && \
-log "Concatenating" && \
-cat tblastn.GENOMEN.batch{1,2,3,4}.out | \
+ls $PROTEINN.*.batch |xargs -P $NUM_THREADS -I {} ./run_tblastn.sh {} && \
+log "Concatenating outputs" && \
+cat tblastn.$PROTEINN.*.batch.out | \
 sort -k2,2 -k1,1 -k12,12nr -S 10% > $PROTEINN.tblastn.tmp && \
 mv $PROTEINN.tblastn.tmp $PROTEINN.tblastn && \
-rm -rf $GENOMEN.blastdb.batch{1,2,3,4}.* && \
+rm -rf  tblastn.$PROTEINN.*.batch.out $PROTEINN.*.batch && \
 touch protein2genome.protein_align.success
 fi
 
