@@ -157,7 +157,7 @@ if [ ! -e align.success ];then
   log "Aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $ALT_EST ];then
-    echo "if [ ! -s tissue0.bam ];then cat $ALT_EST $ALT_EST |awk 'BEGIN{n=0}{if(\$1 ~ /^>/){print \">\"n;n++}else{print \$1}}' > est_reads.fa && hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U est_reads.fa 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam && rm -f est_reads.fa;fi" >> hisat2.sh
+    echo "if [ ! -s tissue0.bam ];then cat $ALT_EST $ALT_EST $ALT_EST $ALT_EST $ALT_EST |awk 'BEGIN{n=0}{if(\$1 ~ /^>/){print \$1"."n;n++}else{print \$1}}' > est_reads.fa && hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U est_reads.fa 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam && rm -f est_reads.fa;fi" >> hisat2.sh
   fi
   if [ -s $RNASEQ_PAIRED ];then
     awk 'BEGIN{n=1}{
@@ -206,7 +206,8 @@ fi
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
   if [ -s tissue0.bam.sorted.bam ];then
     log "Assembling transcripts from related species with Stringtie"
-    stringtie2 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
+    stringtie2 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && 
+    mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
   fi
   if [ $NUM_TISSUES -gt 0 ];then
     log "Assembling transcripts with Stringtie"
