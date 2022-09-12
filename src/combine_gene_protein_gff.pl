@@ -15,7 +15,13 @@ while(my $line=<STDIN>){#we just read in the whole file
   my @gff_fields=split(/\t/,$line);
   my @attributes=split(";",$gff_fields[8]);
   if($gff_fields[2] eq "transcript"){
-    $protein_cds{$protID}=[@exons] if(not($protID eq ""));
+    if(not($protID eq "")){
+      #we need to fix the stop codon coord
+      my $last_cds=pop(@exons);
+      my @exon_fields=split(/\t/,$last_cds);
+      push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+      $protein_cds{$protID}=[@exons];
+    }
     @exons=();
     $geneID=substr($attributes[1],7);#this is the XLOC
     $protID=substr($attributes[0],3);#this is TCONS
@@ -25,7 +31,13 @@ while(my $line=<STDIN>){#we just read in the whole file
     push(@exons,$line);
   }
 }
-$protein_cds{$protID}=[@exons] if(not($protID eq ""));
+if(not($protID eq "")){
+#we need to fix the stop codon coord
+  my $last_cds=pop(@exons);
+  my @exon_fields=split(/\t/,$last_cds);
+  push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+  $protein_cds{$protID}=[@exons];
+}
 @exons=();
 
 #this is output of gffcompare -r protuniq.combined.gtf ../GCF_000001735.4_TAIR10.1_genomic.clean.fna.gtf -o protref
@@ -82,6 +94,9 @@ for my $locus(keys %loci){
   my $transcript_index=0;
   for my $prot(@proteins_at_loci){
     my @gff_fields_p=split(/\t/,$protein{$prot});
+    my @attributes_p=split(";",$gff_fields_p[8]);
+    my $start_cds=(split(/\t/,${$protein_cds{$prot}}[0]))[3];
+    my $end_cds=(split(/\t/,${$protein_cds{$prot}}[-1]))[4];
     $locus_start=$gff_fields_p[3] if($gff_fields_p[3]<$locus_start);
     $locus_end=$gff_fields_p[4] if($gff_fields_p[4]>$locus_end);
     if(defined($transripts_for_prot{$prot})){
@@ -90,10 +105,6 @@ for my $locus(keys %loci){
       for my $t(@transcripts){
         my @gff_fields_t=split(/\t/,$transcript{$t});
         my @attributes_t=split(";",$gff_fields_t[8]);
-        my @gff_fields_p=split(/\t/,$protein{$prot});
-        my @attributes_p=split(";",$gff_fields_p[8]);
-        my $start_cds=(split(/\t/,${$protein_cds{$prot}}[0]))[3];
-        my $end_cds=(split(/\t/,${$protein_cds{$prot}}[-1]))[4];
         my $transcript_start=$gff_fields_t[3];
         my $transcript_end=$gff_fields_t[4];
         my $transcript_cds_start_index=0;
@@ -156,10 +167,8 @@ for my $locus(keys %loci){
         }
       }
     }else{
-      my @gff_fields=split(/\t/,$protein{$prot});
-      my @attributes=split(";",$gff_fields[8]);
       $transcript_index++;
-      push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes[2]");
+      push(@output,$gff_fields_p[0]."\tEviAnn\tmRNA\t".join("\t",@gff_fields_p[3..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes_p[2]");
       my $i=1;
       for my $x(@{$protein_cds{$prot}}){ 
         my @gff_fields=split(/\t/,$x);
