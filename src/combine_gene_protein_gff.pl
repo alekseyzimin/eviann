@@ -8,6 +8,7 @@ my %transcript_gff;
 my @gene_records;
 my %gene_record;
 my $protID="";
+my $dir="";
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 while(my $line=<STDIN>){#we just read in the whole file
@@ -17,12 +18,19 @@ while(my $line=<STDIN>){#we just read in the whole file
   if($gff_fields[2] eq "transcript"){
     if(not($protID eq "")){
       #we need to fix the stop codon coord
-      my $last_cds=pop(@exons);
-      my @exon_fields=split(/\t/,$last_cds);
-      push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+      if($dir eq "+"){
+        my $last_cds=pop(@exons);
+        my @exon_fields=split(/\t/,$last_cds);
+        push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+      }else{
+        my $first_cds=shift(@exons);
+        my @exon_fields=split(/\t/,$first_cds);
+        unshift(@exons,join("\t",@exon_fields[0..2])."\t".($exon_fields[3]-3)."\t".join("\t",@exon_fields[4..$#exon_fields]));
+      }
       $protein_cds{$protID}=[@exons];
     }
     @exons=();
+    $dir=$gff_fields[6];
     $geneID=substr($attributes[1],7);#this is the XLOC
     $protID=substr($attributes[0],3);#this is TCONS
     $protein{$protID}=$line;
@@ -33,9 +41,15 @@ while(my $line=<STDIN>){#we just read in the whole file
 }
 if(not($protID eq "")){
 #we need to fix the stop codon coord
-  my $last_cds=pop(@exons);
-  my @exon_fields=split(/\t/,$last_cds);
-  push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+  if($dir eq "+"){
+    my $last_cds=pop(@exons);
+    my @exon_fields=split(/\t/,$last_cds);
+    push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+  }else{
+    my $first_cds=shift(@exons);
+    my @exon_fields=split(/\t/,$first_cds);
+    unshift(@exons,join("\t",@exon_fields[0..2])."\t".($exon_fields[3]-3)."\t".join("\t",@exon_fields[4..$#exon_fields]));
+  }
   $protein_cds{$protID}=[@exons];
 }
 @exons=();
@@ -63,7 +77,7 @@ while(my $line=<FILE>){
       my @gff_fields_p=split(/\t/,$protein{$protID});
       if($gff_fields_p[4]-$gff_fields_p[3] > ($gff_fields[4]-$gff_fields[3])*0.25){#protein must match more than 25% of the transcript length
         $transcript{$geneID}=$line;
-        $transripts_for_prot{$protID}.="$geneID ";
+        $transcripts_for_prot{$protID}.="$geneID ";
       }
     }elsif($attributes[3] eq "class_code=u"){#no match to protein
       $lociID=substr($attributes[2],5);
@@ -99,8 +113,8 @@ for my $locus(keys %loci){
     my $end_cds=(split(/\t/,${$protein_cds{$prot}}[-1]))[4];
     $locus_start=$gff_fields_p[3] if($gff_fields_p[3]<$locus_start);
     $locus_end=$gff_fields_p[4] if($gff_fields_p[4]>$locus_end);
-    if(defined($transripts_for_prot{$prot})){
-      my @transcripts=split(/\s+/,$transripts_for_prot{$prot});
+    if(defined($transcripts_for_prot{$prot})){
+      my @transcripts=split(/\s+/,$transcripts_for_prot{$prot});
       #here we have to be careful.  I do not want to output exons that are all UTR. So first we read the CDSs for each transcript
       for my $t(@transcripts){
         my @gff_fields_t=split(/\t/,$transcript{$t});
@@ -140,8 +154,8 @@ for my $locus(keys %loci){
         #output 5'UTR
         for(my $j=0;$j<=$transcript_cds_start_index;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
-          if($j==$transcript_cds_start_index && $start_cds>$gff_fields[3]){
-            push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t$gff_fields[3]\t".($start_cds-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index");
+          if($j==$transcript_cds_start_index){
+            push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t$gff_fields[3]\t".($start_cds-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index") if($start_cds>$gff_fields[3]);
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index");
           }
@@ -158,8 +172,8 @@ for my $locus(keys %loci){
         $i=1;
         for(my $j=$transcript_cds_end_index;$j<=$#{$transcript_gff{$t}};$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
-          if($j==$transcript_cds_end_index && $end_cds<$gff_fields[4]){
-            push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".($end_cds+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index");
+          if($j==$transcript_cds_end_index){
+            push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".($end_cds+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index") if($end_cds<$gff_fields[4]);
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index");
           }
