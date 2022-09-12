@@ -157,7 +157,7 @@ if [ ! -e align.success ];then
   log "Aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $ALT_EST ];then
-    echo "if [ ! -s tissue0.bam ];then cat $ALT_EST $ALT_EST $ALT_EST $ALT_EST $ALT_EST |awk 'BEGIN{n=0}{if(\$1 ~ /^>/){print \$1"."n;n++}else{print \$1}}' > est_reads.fa && hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U est_reads.fa 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam && rm -f est_reads.fa;fi" >> hisat2.sh
+    echo "if [ ! -s tissue0.bam ];then hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam; fi;" >> hisat2.sh
   fi
   if [ -s $RNASEQ_PAIRED ];then
     awk 'BEGIN{n=1}{
@@ -191,12 +191,17 @@ fi
 if [ ! -e sort.success ];then
   log "Sorting alignment files"
   if [ -s tissue0.bam ];then
-    samtools sort -@ $NUM_THREADS -m 1G tissue0.bam tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bam
+    #this is a cluge here, we duplicate each alignment in the sam file n=5 times, adding .i suffix to the transcript name, to force stringtie to drop fewer alignments
+    samtools sort -@ $NUM_THREADS -m 1G tissue0.bam tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bak && \
+    samtools view -h tissue0.bam.sorted.bak | perl -e '{while($line=<STDIN>){if($line =~ /^@/){print $line}else{chomp($line);@f=split(/\t/,$line);for(my $i=1;$i<=6;$i++){print $f[0],".$i\t",join("\t",@f[1..$#f]),"\n";}}}}' |samtools view -bhS /dev/stdin > tissue0.bam.sorted.tmp.bam && \
+    mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bam && \
+    rm -f tissue0.bam.sorted.bak
   fi
   if [ $NUM_TISSUES -gt 0 ];then
     for f in $(seq 1 $NUM_TISSUES);do
       if [ ! -s tissue$f.bam.sorted.bam ] && [ -s tissue$f.bam ];then
-        samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam tissue$f.bam.sorted.tmp && mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
+        samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam tissue$f.bam.sorted.tmp && \
+        mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
       fi
     done
   fi
@@ -206,7 +211,7 @@ fi
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
   if [ -s tissue0.bam.sorted.bam ];then
     log "Assembling transcripts from related species with Stringtie"
-    stringtie2 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && 
+    stringtie2 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
     mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
   fi
   if [ $NUM_TISSUES -gt 0 ];then
