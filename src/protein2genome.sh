@@ -238,7 +238,7 @@ GENOME=`head -n 1 $TASKFILE | cut -c 2-`
 head -n 2 $TASKFILE > /dev/shm/$TASKFILE.fa && \
 head -n 4 $TASKFILE |tail -n 2 | tr J I | tr B D | tr Z E > /dev/shm/$TASKFILE.faa && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
-exonerate --model protein2genome -Q protein -T dna -t /dev/shm/$TASKFILE.fa -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
+exonerate --model protein2genome -Q protein -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
 grep "^$GENOME" >> $TASKFILE.gff && \
 rm $TASKFILE
