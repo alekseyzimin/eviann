@@ -17,16 +17,16 @@ while(my $line=<STDIN>){#we just read in the whole file
   my @attributes=split(";",$gff_fields[8]);
   if($gff_fields[2] eq "transcript"){
     if(not($protID eq "")){
-      #we need to fix the stop codon coord
-      if($dir eq "+"){
-        my $last_cds=pop(@exons);
-        my @exon_fields=split(/\t/,$last_cds);
-        push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
-      }else{
-        my $first_cds=shift(@exons);
-        my @exon_fields=split(/\t/,$first_cds);
-        unshift(@exons,join("\t",@exon_fields[0..2])."\t".($exon_fields[3]-3)."\t".join("\t",@exon_fields[4..$#exon_fields]));
-      }
+      #this is dangerous, because the protein can be aligned incorrectly we need to fix the stop codon coord
+      #if($dir eq "+"){
+      #  my $last_cds=pop(@exons);
+      #  my @exon_fields=split(/\t/,$last_cds);
+      #  push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+      #}else{
+      #  my $first_cds=shift(@exons);
+      #  my @exon_fields=split(/\t/,$first_cds);
+      #  unshift(@exons,join("\t",@exon_fields[0..2])."\t".($exon_fields[3]-3)."\t".join("\t",@exon_fields[4..$#exon_fields]));
+      #}
       $protein_cds{$protID}=[@exons];
     }
     @exons=();
@@ -41,15 +41,15 @@ while(my $line=<STDIN>){#we just read in the whole file
 }
 if(not($protID eq "")){
 #we need to fix the stop codon coord
-  if($dir eq "+"){
-    my $last_cds=pop(@exons);
-    my @exon_fields=split(/\t/,$last_cds);
-    push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
-  }else{
-    my $first_cds=shift(@exons);
-    my @exon_fields=split(/\t/,$first_cds);
-    unshift(@exons,join("\t",@exon_fields[0..2])."\t".($exon_fields[3]-3)."\t".join("\t",@exon_fields[4..$#exon_fields]));
-  }
+  #if($dir eq "+"){
+  #  my $last_cds=pop(@exons);
+  #  my @exon_fields=split(/\t/,$last_cds);
+  #  push(@exons,join("\t",@exon_fields[0..3])."\t".($exon_fields[4]+3)."\t".join("\t",@exon_fields[5..$#exon_fields]));
+  #}else{
+  #  my $first_cds=shift(@exons);
+  #  my @exon_fields=split(/\t/,$first_cds);
+  #  unshift(@exons,join("\t",@exon_fields[0..2])."\t".($exon_fields[3]-3)."\t".join("\t",@exon_fields[4..$#exon_fields]));
+  #}
   $protein_cds{$protID}=[@exons];
 }
 @exons=();
