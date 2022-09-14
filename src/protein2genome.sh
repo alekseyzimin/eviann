@@ -231,19 +231,31 @@ fi
 
 if [ -e protein2genome.filter.success ] && [ ! -e protein2genome.exonerate_gff.success ];then
 log "Running exonerate on the filtered sequences" && \
-echo '#!/bin/bash
+echo -n '#!/bin/bash
 TASKFILE=$1
 if [ -s $TASKFILE ] ;then
 GENOME=`head -n 1 $TASKFILE | cut -c 2-`
 head -n 2 $TASKFILE > /dev/shm/$TASKFILE.fa && \
 head -n 4 $TASKFILE |tail -n 2 | tr J I | tr B D | tr Z E > /dev/shm/$TASKFILE.faa && \
+PROTLEN=`ufasta sizes /dev/shm/$TASKFILE.faa` && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
-exonerate --model protein2genome -Q protein -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
+exonerate --model protein2genome -Q protein -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 --maxintron ' > .run_exonerate.sh
+echo -n $MAX_INTRON >> .run_exonerate.sh
+echo -n ' -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
 grep "^$GENOME" >> $TASKFILE.gff && \
+ALNLEN=`awk '\''{if($3=="cds") n+=$5-$4}END{print int(n/3)}'\'' $TASKFILE.gff` && \
+if [ $ALNLEN -lt $(($PROTLEN-2)) ];then
+  tail -n 1 $TASKFILE > $TASKFILE.gff && \
+  exonerate --model protein2genome -Q protein --refine full -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 --maxintron ' >> .run_exonerate.sh && \
+  echo -n $MAX_INTRON >> .run_exonerate.sh && \
+  echo ' -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
+  awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
+  grep "^$GENOME" >> $TASKFILE.gff
+fi 
 rm $TASKFILE
 fi
-rm -rf /dev/shm/$TASKFILE.fa /dev/shm/$TASKFILE.faa ' > .run_exonerate.sh && \
+rm -rf /dev/shm/$TASKFILE.fa /dev/shm/$TASKFILE.faa ' >> .run_exonerate.sh && \
 chmod 0755 .run_exonerate.sh && \
 ls |grep .taskfile$ |xargs -P $NUM_THREADS -I {} ./.run_exonerate.sh {} 
 rm -f .run_exonerate.sh
