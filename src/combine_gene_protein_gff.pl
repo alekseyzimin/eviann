@@ -136,11 +136,13 @@ for my $locus(keys %loci){
         push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes_p[2]");
         #output exons
         my $i=1;
+        my $first_j=0;
+        my $last_j=$#{$transcript_gff{$t}};
         #allow at most one partial of full UTR exon
-        my $first_j=$transcript_cds_start_index;
-        my $last_j=$transcript_cds_end_index;
-        $first_j-- if((split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]))[3]==$start_cds && $first_j>0);
-        $last_j++  if((split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]))[4]==$end_cds && $last_j<$transcript_cds_end_index);
+        #my $first_j=$transcript_cds_start_index;
+        #my $last_j=$transcript_cds_end_index;
+        #$first_j-- if((split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]))[3]==$start_cds && $first_j>0);
+        #$last_j++  if((split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]))[4]==$end_cds && $last_j<$transcript_cds_end_index);
         for (my $j=$first_j;$j<=$last_j;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
           if($first_j==$last_j){ #single exon, make sure the boundaries are OK
