@@ -193,7 +193,8 @@ if [ ! -e sort.success ];then
   if [ -s tissue0.bam ];then
     #this is a cluge here, we duplicate each alignment in the sam file n=5 times, adding .i suffix to the transcript name, to force stringtie to drop fewer alignments
     samtools sort -@ $NUM_THREADS -m 1G tissue0.bam tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bak && \
-    samtools view -h tissue0.bam.sorted.bak | perl -e '{while($line=<STDIN>){if($line =~ /^@/){print $line}else{chomp($line);@f=split(/\t/,$line);for(my $i=1;$i<=6;$i++){print $f[0],".$i\t",join("\t",@f[1..$#f]),"\n";}}}}' |samtools view -bhS /dev/stdin > tissue0.bam.sorted.tmp.bam && \
+    samtools view -h tissue0.bam.sorted.bak | fix_splice_junctions.pl $ALT_EST | \
+    perl -e '{while($line=<STDIN>){if($line =~ /^@/){print $line}else{chomp($line);@f=split(/\t/,$line);for(my $i=1;$i<=6;$i++){print $f[0],".$i\t",join("\t",@f[1..$#f]),"\n";}}}}' |samtools view -bhS /dev/stdin > tissue0.bam.sorted.tmp.bam && \
     mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bam && \
     rm -f tissue0.bam.sorted.bak
   fi
