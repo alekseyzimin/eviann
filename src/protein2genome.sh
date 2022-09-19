@@ -126,8 +126,8 @@ awk 'BEGIN{protid="";seqid="";mp=0;}{
     seqid=$2;
   }else{
     mp+=$3*$4;
-    last_coord=coord;
-  } 
+  }
+  last_coord=coord;
 }END{  
   if(mp >0){
     print protid,seqid,mp;
