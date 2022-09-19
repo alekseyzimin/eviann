@@ -92,39 +92,51 @@ for my $locus(keys %loci){
     if(defined($transcripts_for_prot{$prot})){
       my @transcripts=split(/\s+/,$transcripts_for_prot{$prot});
       for my $t(@transcripts){
-        #first for each transcript we must evaluate and fix the splice sites; the test is if the protein alignment goes into the intron, eliminate the intron
+        #first for each transcript we must evaluate and fix the splice sites; the test is if the protein alignment goes into the intron, add another piece of CDS to compensate
         my @gff_fields_t=split(/\t/,$transcript{$t});
         my @attributes_t=split(";",$gff_fields_t[8]);
-        my @exons_fixed=();
-        push(@exons_fixed,${$transcript_gff{$t}}[0]);
+        my @cds_local=@{$protein_cds{$prot}};
         for(my $j=1;$j<=$#{$transcript_gff{$t}};$j++){
           my @gff_fields_curr=split(/\t/,${$transcript_gff{$t}}[$j]);
           my @gff_fields_prev=split(/\t/,${$transcript_gff{$t}}[$j-1]);
-          if(($start_cds>$gff_fields_prev[4] && $start_cds<$gff_fields_curr[3])||($end_cds>$gff_fields_prev[4] && $end_cds<$gff_fields_curr[3])){
-            #the junction between j and j+1 is bad, because the CDS starts or ends in an intron, eliminate it
-            pop(@exons_fixed);
-            push(@exons_fixed,join("\t",@gff_fields_prev[0..3])."\t".join("\t",@gff_fields_curr[4..$#gff_fields_curr]));
-          }else{
-            push(@exons_fixed,${$transcript_gff{$t}}[$j]);
+          if($start_cds>$gff_fields_prev[4] && $start_cds<$gff_fields_curr[3]){
+            #we need to add another CDS entry to compensate for cds running into intron
+            my $temp_cds=shift(@cds_local);#get the first cds to fix
+            my @temp_cds_fields=split(/\t/,$temp_cds);
+            $temp_cds_fields[3]=$gff_fields_curr[3];
+            unshift(@cds_local,join("\t",@temp_cds_fields));
+            $temp_cds_fields[4]=$gff_fields_prev[4];
+            $temp_cds_fields[3]=$gff_fields_prev[4]-($gff_fields_curr[3]-$start_cds-1);
+            unshift(@cds_local,join("\t",@temp_cds_fields));
           }
-        }
-        $transcript_gff{$t}=[@exons_fixed];
-        
+          if($end_cds>$gff_fields_prev[4] && $end_cds<$gff_fields_curr[3]){
+            #we need to add another CDS entry to compensate for cds running into intron
+            my $temp_cds=pop(@cds_local);#get the first cds to fix
+            my @temp_cds_fields=split(/\t/,$temp_cds);
+            $temp_cds_fields[4]=$gff_fields_prev[4];
+            push(@cds_local,join("\t",@temp_cds_fields));
+            $temp_cds_fields[3]=$gff_fields_curr[3];
+            $temp_cds_fields[4]=$gff_fields_curr[3]+($end_cds-$gff_fields_prev[4]-1);
+            push(@cds_local,join("\t",@temp_cds_fields));
+          }
+        }        
         my $transcript_start=$gff_fields_t[3];
         my $transcript_end=$gff_fields_t[4];
         my $transcript_cds_start_index=0;
         my $transcript_cds_end_index=$#{$transcript_gff{$t}};
+        my $start_cds_local=(split(/\t/,@cds_local[0]))[3];
+        my $end_cds_local=(split(/\t/,@cds_local[-1]))[4];
         #here we figure out which exons are UTR
         for(my $i=0;$i<=$#{$transcript_gff{$t}};$i++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$i]);
-          if($gff_fields[4]>$start_cds){
+          if($gff_fields[4]>$start_cds_local){
             $transcript_cds_start_index=$i;
             last;
           }
         }
         for(my $i=$#{$transcript_gff{$t}};$i>=0;$i--){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$i]);
-          if($gff_fields[3]<$end_cds && $gff_fields[4]>=$end_cds){
+          if($gff_fields[3]<$end_cds_local && $gff_fields[4]>=$end_cds_local){
             $transcript_cds_end_index=$i;
             last;
           }
@@ -138,18 +150,13 @@ for my $locus(keys %loci){
         my $i=1;
         my $first_j=0;
         my $last_j=$#{$transcript_gff{$t}};
-        #allow at most one partial of full UTR exon
-        #my $first_j=$transcript_cds_start_index;
-        #my $last_j=$transcript_cds_end_index;
-        #$first_j-- if((split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]))[3]==$start_cds && $first_j>0);
-        #$last_j++  if((split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]))[4]==$end_cds && $last_j<$transcript_cds_end_index);
         for (my $j=$first_j;$j<=$last_j;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
           if($first_j==$last_j){ #single exon, make sure the boundaries are OK
             my $exon_start=$gff_fields[3];
             my $exon_end=$gff_fields[4];
-            $exon_start=$start_cds if($exon_start>$start_cds);
-            $exon_end=$end_cds if($exon_end<$end_cds);
+            $exon_start=$start_cds_local if($exon_start>$start_cds_local);
+            $exon_end=$end_cds_local if($exon_end<$end_cds_local);
             push(@output,$gff_fields[0]."\tEviAnn\texon\t$exon_start\t$exon_end\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:exon:$i;Parent=$parent$transcript_index");
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\texon\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:exon:$i;Parent=$parent$transcript_index");
@@ -161,7 +168,7 @@ for my $locus(keys %loci){
         for(my $j=$first_j;$j<=$transcript_cds_start_index;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
           if($j==$transcript_cds_start_index){
-            push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t$gff_fields[3]\t".($start_cds-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index") if($start_cds>$gff_fields[3]);
+            push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t$gff_fields[3]\t".($start_cds_local-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index") if($start_cds_local>$gff_fields[3]);
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index");
           }
@@ -169,7 +176,7 @@ for my $locus(keys %loci){
         }
         #output cds
         $i=1;
-        for my $x(@{$protein_cds{$prot}}){
+        for my $x(@cds_local){
           my @gff_fields=split(/\t/,$x);
           push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
           $i++;
@@ -179,7 +186,7 @@ for my $locus(keys %loci){
         for(my $j=$transcript_cds_end_index;$j<=$last_j;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
           if($j==$transcript_cds_end_index){
-            push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".($end_cds+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index") if($end_cds<$gff_fields[4]);
+            push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".($end_cds_local+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index") if($end_cds_local<$gff_fields[4]);
           }else{
             push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index");
           }
