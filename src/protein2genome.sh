@@ -116,7 +116,8 @@ fi
 if [ ! -e protein2genome.filter.success ] && [ -e protein2genome.protein_align.success ];then
 log "Filtering protein alignment file"
 awk 'BEGIN{protid="";seqid="";mp=0;}{
-  if($1 != protid || $2 != seqid){  
+  coord=($9+$10)/2;
+  if($1 != protid || $2 != seqid || ((coord-last_coord)>int("'$MAX_INTRON'") || (last_coord-coord)>int("'$MAX_INTRON'"))){  
     if(mp >0){
       print protid,seqid,mp;
     }
@@ -125,6 +126,7 @@ awk 'BEGIN{protid="";seqid="";mp=0;}{
     seqid=$2;
   }else{
     mp+=$3*$4;
+    last_coord=coord;
   } 
 }END{  
   if(mp >0){
