@@ -21,7 +21,7 @@ while($line=<STDIN>){
     print join("\t",@f[0..1]),"\ttranscript\t",join("\t",@f[3..$#f]),"\n";
     $prev_intron_good=0;
     $first_cds=1;
-  }elsif($f[2] eq "cds"){
+  }elsif($f[2] eq "exon"){
     if($first_cds){
       $cds=[@f];
       $first_cds=0;
