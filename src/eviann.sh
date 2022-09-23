@@ -245,7 +245,7 @@ fi
 
 if [ ! -e merge.success ];then 
   log "Deriving gene models from protein and transcript alignments"
-  gffcompare -T -D -o $GENOME.palign.uniq $GENOME.$PROTEIN.palign.gff && \
+  gffcompare -T -D -o $GENOME.palign.uniq <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff) && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.uniq.combined.gtf $GENOME.gtf && \
   gffread -F $GENOME.palign.uniq.combined.gtf | \
   combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf ) > $GENOME.gff.tmp && \
