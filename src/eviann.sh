@@ -212,7 +212,7 @@ fi
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
   if [ -s tissue0.bam.sorted.bam ];then
     log "Assembling transcripts from related species with Stringtie"
-    stringtie2 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
+    stringtie2 -g 1 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
     mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
   fi
   if [ $NUM_TISSUES -gt 0 ];then
