@@ -113,7 +113,7 @@ rm -rf  tblastn.$PROTEINN.*.batch.out $PROTEINN.*.batch && \
 touch protein2genome.protein_align.success
 fi
 
-if [ ! -e protein2genome.filter.success ] && [ -e protein2genome.protein_align.success ];then
+if [ ! -e protein2genome.exonerate_gff.success ] && [ -e protein2genome.protein_align.success ];then
 log "Filtering protein alignment file"
 awk 'BEGIN{protid="";seqid="";mp=0;}{
   coord=($9+$10)/2;
@@ -228,10 +228,7 @@ END{
       }
     }
   }
-}' && touch protein2genome.filter.success 
-fi
-
-if [ -e protein2genome.filter.success ] && [ ! -e protein2genome.exonerate_gff.success ];then
+}' && \
 log "Running exonerate on the filtered sequences" && \
 echo -n '#!/bin/bash
 TASKFILE=$1
@@ -249,7 +246,7 @@ grep "^$GENOME" >> $TASKFILE.gff && \
 ALNLEN=`awk '\''{if($3=="cds") n+=$5-$4}END{print int(n/3)}'\'' $TASKFILE.gff` && \
 if [ $ALNLEN -lt $(($PROTLEN-2)) ];then
   tail -n 1 $TASKFILE > $TASKFILE.gff && \
-  exonerate --model protein2genome -Q protein --refine full -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 --maxintron ' >> .run_exonerate.sh && \
+  exonerate --model protein2genome -Q protein --refine full -T dna -t /dev/shm/$TASKFILE.fa  --minintron 10 --maxintron ' >> .run_exonerate.sh && \
   echo -n $MAX_INTRON >> .run_exonerate.sh && \
   echo ' -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
   awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \

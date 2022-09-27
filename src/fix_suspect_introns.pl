@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+#exonerate makes mistakes inserting introns of size 11,14,...,59.  This code removes introns of these sizes if they do not match the splice sites by stringtie
 my $prev="";
 my $prevc=0;
 open(FILE,$ARGV[0]);
@@ -18,10 +19,11 @@ while($line=<STDIN>){
   @f=split(/\t/,$line);
   if($f[2] eq "gene"){
     print join("\t",@{$cds}),"\n" unless($first_cds);
-    print join("\t",@f[0..1]),"\ttranscript\t",join("\t",@f[3..$#f]),"\n";
+    print join("\t",@{$cds}[0..1]),"\texon\t",join("\t",@{$cds}[3..$#{$cds}]),"\n" unless($first_cds);
+    print join("\t",@f),"\n";
     $prev_intron_good=0;
     $first_cds=1;
-  }elsif($f[2] eq "exon"){
+  }elsif($f[2] eq "cds"){
     if($first_cds){
       $cds=[@f];
       $first_cds=0;
@@ -29,6 +31,7 @@ while($line=<STDIN>){
     }else{
       if($prev_intron_good){
         print join("\t",@{$cds}),"\n";
+        print join("\t",@{$cds}[0..1]),"\texon\t",join("\t",@{$cds}[3..$#{$cds}]),"\n";
         $cds=[@f];
       }else{
         if($f[6] eq "+"){
@@ -49,3 +52,4 @@ while($line=<STDIN>){
   }
 }
 print join("\t",@{$cds}),"\n" unless($first_cds);
+print join("\t",@{$cds}[0..1]),"\texon\t",join("\t",@{$cds}[3..$#{$cds}]),"\n" unless($first_cds);

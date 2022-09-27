@@ -245,10 +245,14 @@ fi
 
 if [ ! -e merge.success ];then 
   log "Deriving gene models from protein and transcript alignments"
-  gffcompare -T -D -o $GENOME.palign.uniq <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff) && \
-  gffcompare -T -o $GENOME.protref -r $GENOME.palign.uniq.combined.gtf $GENOME.gtf && \
-  gffread -F $GENOME.palign.uniq.combined.gtf | \
-  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf ) > $GENOME.gff.tmp && \
+  gffread -F  <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff) > $GENOME.palign.fixed.gff.tmp && \
+  mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
+  gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
+  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf ) 1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
+  gffcompare  -D $GENOME.unused_proteins.gff -o $GENOME.unused && \
+  cat $GENOME.unused.combined.gtf $GENOME.gtf > $GENOME.all.gtf && \
+  gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.gtf && \
+  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   mv $GENOME.gff.tmp $GENOME.gff && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   touch merge.success && rm -f functional.success pseudo_detect.success 
