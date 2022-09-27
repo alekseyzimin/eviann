@@ -57,7 +57,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "="){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "=" || $class_code eq "j"){#equal intron chain or contains protein
       $transcript{$geneID}=$line;
       $transcript_cds{$geneID}=$protID;
       $transcripts_cds_loci{$locID}.="$geneID ";
@@ -176,13 +176,26 @@ for my $locus(keys %transcripts_cds_loci){
       }
       $i++;
     }
-#output cds
+#output cds from exons
     $i=1;
-    for my $x(@cds_local){
-      my @gff_fields=split(/\t/,$x);
-      push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+    {
+      my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
       $i++;
+      push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds_local\t",join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+      for(my $j=$transcript_cds_start_index;$j<$transcript_cds_end_index;$j++){
+        my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
+        push(@output,$gff_fields[0]."\tEviAnn\tcds\t",join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+        $i++;
+      }
+      my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]);
+      push(@output,$gff_fields[0]."\tEviAnn\tcds\t$gff_fields[3]\t$end_cds_local\t",join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
     }
+    #output cds from protein alignment
+    #for my $x(@cds_local){
+    #  my @gff_fields=split(/\t/,$x);
+    #  push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+    #  $i++;
+    #}
 #output 3'UTR
     $i=1;
     for(my $j=$transcript_cds_end_index;$j<=$last_j;$j++){
