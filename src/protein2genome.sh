@@ -100,7 +100,7 @@ perl -ane 'BEGIN{$fn="'$PROTEINN'";$index=1;$batch_size=int("'$BATCH_SIZE'");ope
 NUM_BATCHES=`ls $PROTEINN.*.batch |wc -l` && \
 echo "#!/bin/bash" > run_tblastn.sh && \
 echo "ufasta extract -f \$1 $PROTEIN > \$1.fa && \\" >>  run_tblastn.sh && \
-echo -n "tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
+echo -n "tblastn -db $GENOMEN.blastdb -word_size 5 -threshold 19  -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
 echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
 echo " -outfmt 6 -query \$1.fa  -evalue 1e-8 2>/dev/null | awk '{if(\$3>75) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \

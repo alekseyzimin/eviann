@@ -104,7 +104,7 @@ for my $locus(keys %transcripts_cds_loci){
     #here we fix CDS alignment problems
     #print "DEBUG $transcript{$t}\n";
     my $num_cds=-1;
-    for (my $l=0;$l<5 && not($num_cds==$#cds_local);$l++){
+    for (my $l=0;$l<=5 && not($num_cds==$#cds_local);$l++){
       $num_cds=$#cds_local;
       #print "$transcript_start $transcript_end $start_cds $end_cds\n";
       for(my $j=1;$j<=$#{$transcript_gff{$t}};$j++){
@@ -226,6 +226,7 @@ for my $locus(keys %transcripts_cds_loci){
 }
 
 #finally output "intergenic" transcripts
+#some of these may be completely messed up
 for my $locus(keys %transcripts_only_loci){
   my @output=();
   my @transcripts_at_loci=split(/\s+/,$transcripts_only_loci{$locus});
@@ -235,6 +236,23 @@ for my $locus(keys %transcripts_only_loci){
   my $geneID=$locus."_lncRNA";
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
+  #here we first compute intron junction score as the number of distinct intron junctions over the number of total intron junctions
+  my %distinct_intron_junctions=();
+  my $total_intron_junctions=1;
+  my $junction_score=0;
+  if($#transcripts_at_loci>0){
+    for my $t(@transcripts_at_loci){
+      for(my $j=1;$j<=$#{$transcript_gff_u{$t}};$j++){
+        my @gff_fields_curr=split(/\t/,${$transcript_gff_u{$t}}[$j]);
+        my @gff_fields_prev=split(/\t/,${$transcript_gff_u{$t}}[$j-1]);
+        $distinct_intron_junctions{"$gff_fields_prev[4] $gff_fields_curr[3]"}=1;
+        $total_intron_junctions++;
+     }
+    }
+    $junction_score=scalar(keys %distinct_intron_junctions)/$total_intron_junctions;
+  }
+  #do not output the locus if there are too many disagreements between the intron junctions
+  next if($junction_score>0.75);
   for my $t(@transcripts_at_loci){
     next if(not(defined($transcript_gff_u{$t})));
     my @gff_fields_t=split(/\t/,$transcript_u{$t});
@@ -251,7 +269,7 @@ for my $locus(keys %transcripts_only_loci){
     }
   }
   if($transcript_index>0){
-    $gene_record{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA\n".join("\n",@output)."\n";
+    $gene_record{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;junction_score=$junction_score;\n".join("\n",@output)."\n";
     push(@gene_records,$gff_fields[0]." ".$locus_start);
   }
 }
