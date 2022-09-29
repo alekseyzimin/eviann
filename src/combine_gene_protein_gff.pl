@@ -252,7 +252,7 @@ for my $locus(keys %transcripts_only_loci){
     $junction_score=scalar(keys %distinct_intron_junctions)/$total_intron_junctions;
   }
   #do not output the locus if there are too many disagreements between the intron junctions
-  next if($junction_score>0.75);
+  next if($junction_score>0.66);
   for my $t(@transcripts_at_loci){
     next if(not(defined($transcript_gff_u{$t})));
     my @gff_fields_t=split(/\t/,$transcript_u{$t});
@@ -276,10 +276,11 @@ for my $locus(keys %transcripts_only_loci){
 #output unused proteins
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
-  print STDERR $protein{$p},"\n";
+  my @gff_fields_p=split(/\t/,$protein{$p});
+  print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
   foreach my $cds(@{$protein_cds{$p}}){
     my @gff_fields_c=split(/\t/,$cds);
-    print STDERR "$cds\n",join("\t",@gff_fields_c[0..1]),"\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
+    print STDERR "$gff_fields_c[0]\tEviAnn\t",join("\t",@gff_fields_c[2..$#gff_fields_c]),"\n$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
   }
 }
 
