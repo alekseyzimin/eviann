@@ -191,7 +191,7 @@ fi
 if [ ! -e sort.success ];then
   log "Sorting alignment files"
   if [ -s tissue0.bam ];then
-    #this is a cluge here, we duplicate each alignment in the sam file n=5 times, adding .i suffix to the transcript name, to force stringtie to drop fewer alignments
+    #this is a cludge here, we duplicate each alignment in the sam file n=5 times, adding .i suffix to the transcript name, to force stringtie to drop fewer alignments
     samtools sort -@ $NUM_THREADS -m 1G tissue0.bam tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bak && \
     samtools view -h tissue0.bam.sorted.bak | fix_splice_junctions.pl $ALT_EST | \
     perl -e '{while($line=<STDIN>){if($line =~ /^@/){print $line}else{chomp($line);@f=split(/\t/,$line);for(my $i=1;$i<=6;$i++){print $f[0],".$i\t",join("\t",@f[1..$#f]),"\n";}}}}' |samtools view -bhS /dev/stdin > tissue0.bam.sorted.tmp.bam && \
@@ -249,7 +249,7 @@ if [ ! -e merge.success ];then
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf ) 1>/dev/null 2>$GENOME.unused_proteins.gff && \
-  gffcompare -D $GENOME.unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
+  gffcompare -T -D $GENOME.unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
   gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.combined.gtf && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null && \
   mv $GENOME.gff.tmp $GENOME.gff && \
