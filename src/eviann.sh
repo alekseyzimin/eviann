@@ -11,7 +11,6 @@ MAX_INTRON=100000
 UNIPROT="uniprot.fa"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
-SNAP=0
 PID=$$
 export PATH=$MYPATH:$PATH;
 set -o pipefail
@@ -34,7 +33,7 @@ exit 1
 }
 
 function usage {
- echo "Usage: eugene.sh [options]"
+ echo "Usage: eviann.sh [options]"
  echo "Options:"
  echo "-t <number of threads, default:1>"
  echo "-g <MANDATORY:genome fasta file with full path>"
@@ -44,10 +43,8 @@ function usage {
  echo "-r <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
  echo "-s <MANDATORY:fasta file of uniprot proteins>"
  echo "-m <max intron size, default: 100000>"
- echo "-d <add de novo gene finding pass with SNAP>"
  echo "-v <verbose flag>"
- echo "One or more of the -p -u or -e must be supplied."
- echo "De novo gene finding pass will find more exons at the expense of many false positives."
+ echo "-r AND one or more of the -p -u or -e must be supplied."
 }
 
 log () {
@@ -106,9 +103,6 @@ do
             ;;
         -v|--verbose)
             set -x
-            ;;
-        -d|--denovo)
-            SNAP=1
             ;;
         -h|--help|-u|--usage)
             usage
