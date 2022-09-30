@@ -280,7 +280,7 @@ foreach my $p(keys %protein){
   print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
   foreach my $cds(@{$protein_cds{$p}}){
     my @gff_fields_c=split(/\t/,$cds);
-    print STDERR "$gff_fields_c[0]\tEviAnn\t",join("\t",@gff_fields_c[2..$#gff_fields_c]),"\n$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
+    print STDERR "$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
   }
 }
 
