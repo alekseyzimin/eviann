@@ -1,2 +1,2 @@
-# eugene
-eukaryotic annotation pipeline
+# EviAnn
+An evidence-based eukaryotic annotation pipeline
