@@ -228,6 +228,44 @@ END{
       }
     }
   }
+      if(not($prot eq "")){
+        $max_intron=int("'$MAX_INTRON'");
+        @lines_filter=();
+        @ff=split(/\t/,@lines[0]);
+        $min_coord=($ff[8]+$ff[9])/2;
+        $max_coord=$min_coord;
+        foreach $l (@lines){
+          @ff=split(/\t/,$l);
+          $coord=($ff[8]+$ff[9])/2;
+          $lori="+";
+          $lori="-" if($ff[8]>$ff[9]);
+          if($lori eq $ori){
+            if($coord<=$min_coord){
+              if($min_coord-$coord<$max_intron){
+                $min_coord=$coord;
+                push(@lines_filter,$l);
+              }
+            }elsif($coord>=$max_coord){
+              if($coord-$max_coord<$max_intron){
+                $max_coord=$coord;
+                push(@lines_filter,$l);
+              }
+            }else{
+              push(@lines_filter,$l);
+            }
+          }
+        }
+        @lines_sorted = sort {(split(/\t/,$a))[8] <=> (split(/\t/,$b))[8]} @lines_filter;
+        @ff=split(/\t/,$lines_sorted[0]);
+        $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
+        @ff=split(/\t/,$lines_sorted[-1]);
+        $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+        $start = ($start-$padding)>=0 ? $start-$padding :0;
+        open(OUTFILE,">$seq.$prot.taskfile");
+        print OUTFILE ">$seq\n",substr($sequence{$seq},$start,$end-$start+$padding),"\n>$prot\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$seq}) && defined($protsequence{$prot}));
+        close(OUTFILE);
+      }
+
 }' && \
 log "Running exonerate on the filtered sequences" && \
 echo -n '#!/bin/bash
@@ -235,7 +273,8 @@ TASKFILE=$1
 if [ -s $TASKFILE ] ;then
 GENOME=`head -n 1 $TASKFILE | cut -c 2-`
 head -n 2 $TASKFILE > /dev/shm/$TASKFILE.fa && \
-head -n 4 $TASKFILE |tail -n 2 | tr J I | tr B D | tr Z E > /dev/shm/$TASKFILE.faa && \
+head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILE.faa && \
+head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILE.faa && \
 PROTLEN=`ufasta sizes /dev/shm/$TASKFILE.faa` && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
 exonerate --model protein2genome -Q protein -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 --maxintron ' > .run_exonerate.sh
