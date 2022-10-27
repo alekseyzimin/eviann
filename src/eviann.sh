@@ -231,7 +231,8 @@ fi
 
 if [ ! -e protein_align.success ];then
   log "Aligning proteins"
-  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+  ufasta one $PROTEINFILE | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $PROTEIN.uniq.faa && \
+  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN.uniq.faa -m $MAX_INTRON
   if [ -s $GENOME.$PROTEIN.palign.gff ];then
     touch protein_align.success
   fi

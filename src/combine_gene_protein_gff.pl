@@ -59,6 +59,7 @@ while(my $line=<FILE>){
     }
     if($class_code eq "k" || $class_code eq "=" || $class_code eq "j"){#equal intron chain or contains protein
       $transcript{$geneID}=$line;
+      die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
       $transcript_class{$geneID}=$class_code;
       $transcripts_cds_loci{$locID}.="$geneID ";
