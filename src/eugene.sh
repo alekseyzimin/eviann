@@ -40,6 +40,7 @@ function usage {
  echo "-g <MANDATORY:genome fasta file with full path>"
  echo "-p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
  echo "-u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
+ echo "--rmlib <fasta file with species-specific repeats produced by RepeatModeler>"
  echo "-e <fasta file with transcripts from related species>"
  echo "-r <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
  echo "-s <MANDATORY:fasta file of uniprot proteins>"
@@ -98,6 +99,10 @@ do
             ;;
         -u|--unpaired)
             RNASEQ_UNPAIRED="$2"
+            shift
+            ;;
+        --rmlib)
+            RMLIB="$2"
             shift
             ;;
         -m|--max-intron)
@@ -302,6 +307,11 @@ if [ ! -e maker1.success ] && [ -e split.success ];then
     if [ -s "$f.dir/$f.proteins.fa" ];then
       mv $f.dir/maker_opts.ctl $f.dir/maker_opts.ctl.bak && \
       sed s,^protein=,protein=$PWD/$f.dir/$f.proteins.fa, $f.dir/maker_opts.ctl.bak > $f.dir/maker_opts.ctl && \
+      rm $f.dir/maker_opts.ctl.bak
+    fi
+    if [ -s "$RMLIB" ];then
+      mv $f.dir/maker_opts.ctl $f.dir/maker_opts.ctl.bak && \
+      sed s,^rmlib=,rmlib=$RMLIB, $f.dir/maker_opts.ctl.bak > $f.dir/maker_opts.ctl && \
       rm $f.dir/maker_opts.ctl.bak
     fi
     #these are the aligned est evidence, they could be either from de novo or from aligned proteins

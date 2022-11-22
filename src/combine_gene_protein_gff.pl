@@ -24,6 +24,7 @@ while(my $line=<STDIN>){#we just read in the whole file
     }
     @exons=();
     $protID=substr($attributes[0],3);#this is protein name
+    die("error in line $line, protein ID $protID already exists in $protein{$protID}") if(defined($protein{$protID}));
     $protein{$protID}=$line;
   }elsif($gff_fields[2] eq "CDS"){
     push(@exons,$line);
