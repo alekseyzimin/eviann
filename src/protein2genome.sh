@@ -102,40 +102,20 @@ echo "#!/bin/bash" > run_tblastn.sh && \
 echo "ufasta extract -f \$1 $PROTEIN > \$1.fa && \\" >>  run_tblastn.sh && \
 echo -n "tblastn -db $GENOMEN.blastdb -word_size 5 -threshold 19  -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
 echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
-echo " -outfmt 6 -query \$1.fa  -evalue 1e-8 2>/dev/null | awk '{if(\$3>50) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
+echo " -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=75) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \
 ls $PROTEINN.*.batch |xargs -P $NUM_THREADS -I {} ./run_tblastn.sh {} && \
 log "Concatenating outputs" && \
 cat tblastn.$PROTEINN.*.batch.out | \
-sort -k2,2 -k1,1 -k12,12nr -S 10% > $PROTEINN.tblastn.tmp && \
+sort -S 10% > $PROTEINN.tblastn.tmp && \
 mv $PROTEINN.tblastn.tmp $PROTEINN.tblastn && \
 rm -rf  tblastn.$PROTEINN.*.batch.out $PROTEINN.*.batch && \
-touch protein2genome.protein_align.success
+touch protein2genome.protein_align.successi && rm protein2genome.exonerate_gff.success
 fi
 
 if [ ! -e protein2genome.exonerate_gff.success ] && [ -e protein2genome.protein_align.success ];then
 log "Filtering protein alignment file"
-awk 'BEGIN{protid="";seqid="";mp=0;}{
-  coord=($9+$10)/2;
-  if($1 != protid || $2 != seqid || ((coord-last_coord)>int("'$MAX_INTRON'") || (last_coord-coord)>int("'$MAX_INTRON'"))){  
-    if(mp >0){
-      print protid,seqid,mp;
-    }
-    mp=$3*$4;
-    protid=$1;
-    seqid=$2;
-  }else{
-    mp+=$3*$4;
-  }
-  last_coord=coord;
-}END{  
-  if(mp >0){
-    print protid,seqid,mp;
-  }
-}' $PROTEINN.tblastn | \
-sort -nrk3,3 -S 10% | \
-perl -ane '{$h{$F[0]}=$F[1] if(not(defined($h{$F[0]})));}
-END{
+perl -e '{
   $prot="";
   $seq="";
   $padding=5000;
@@ -173,99 +153,103 @@ END{
   $protsequence{$ctg}=$seq if(not($ctg eq ""));
 
   open(FILE,"'$PROTEINN'.tblastn");
+  $max_intron=int("'$MAX_INTRON'");
   while($line=<FILE>){
+    #print "READ $line";
     chomp($line);
-    @f=split(/\t/,$line);
-    next if(not($h{$f[0]} eq $f[1]));
+    @f=split(/\t/,$line,2);
     if($f[0] eq $prot){
       push(@lines,$line);
     }else{
       if(not($prot eq "")){
-        $max_intron=int("'$MAX_INTRON'");
-        @lines_filter=();
-        @ff=split(/\t/,@lines[0]);
-        $min_coord=($ff[8]+$ff[9])/2;
-        $max_coord=$min_coord;
-        foreach $l (@lines){
-          @ff=split(/\t/,$l);
-          $coord=($ff[8]+$ff[9])/2;
-          $lori="+";
-          $lori="-" if($ff[8]>$ff[9]);
-          if($lori eq $ori){
-            if($coord<=$min_coord){
-              if($min_coord-$coord<$max_intron){
-                $min_coord=$coord;
-                push(@lines_filter,$l);
-              }
-            }elsif($coord>=$max_coord){
-              if($coord-$max_coord<$max_intron){
-                $max_coord=$coord;
-                push(@lines_filter,$l);
-              }
-            }else{
-              push(@lines_filter,$l);
+        #we first sort lines by bitscore in reverse
+        @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @lines;
+        #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
+        $prev_length=0;
+        for(my $i=0;$i<=$#lines_all_sorted;$i++){
+          next if($lines_all_sorted[$i] eq "");
+          @ff=split(/\t/,$lines_all_sorted[$i]);
+          next if($ff[3]*$ff[2]<$prev_length*.9);#the next best match should be at least 85% as long
+          @lines_filter=();
+          push(@lines_filter,$lines_all_sorted[$i]);
+          #print "NEW center $i $lines_all_sorted[$i]\n";
+          $lines_all_sorted[$i]="";
+          $prev_length=$ff[3]*$ff[2] if($prev_length==0);
+          $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
+          $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+          my $new_seq=$ff[1];
+          my $new_ori="+";
+          $new_ori="-" if($ff[8]>$ff[9]);
+          #here we build a cluster of matches
+          for(my $j=0;$j<=$#lines_all_sorted;$j++){
+            next if($lines_all_sorted[$j] eq "");
+            @ff=split(/\t/,$lines_all_sorted[$j]);
+            next if(not($ff[1] eq  $new_seq));
+            $lori="+";
+            $lori="-" if($ff[8]>$ff[9]);
+            next if(not($lori eq  $new_ori));
+	    $startl = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
+	    $endl = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+            if($endl > $start-$max_intron && $startl < $end+$max_intron){
+              push(@lines_filter,$lines_all_sorted[$j]);
+              $lines_all_sorted[$j]="";
+	      $start = $startl if($startl < $start);
+              $end = $endl if($endl > $end);
             }
           }
-        }
-        @lines_sorted = sort {(split(/\t/,$a))[8] <=> (split(/\t/,$b))[8]} @lines_filter;
-        @ff=split(/\t/,$lines_sorted[0]);
-        $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
-        @ff=split(/\t/,$lines_sorted[-1]);
-        $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
-        $start = ($start-$padding)>=0 ? $start-$padding :0;
-        open(OUTFILE,">$seq.$prot.taskfile");
-        print OUTFILE ">$seq\n",substr($sequence{$seq},$start,$end-$start+$padding),"\n>$prot\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$seq}) && defined($protsequence{$prot}));
-        close(OUTFILE);
-      }
+          $start = ($start-$padding)>=0 ? $start-$padding :0;
+          open(OUTFILE,">$new_seq.$prot.$start.taskfile");
+          print OUTFILE ">$new_seq\n",substr($sequence{$new_seq},$start,$end-$start+$padding),"\n>$prot.$start\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$new_seq}) && defined($protsequence{$prot}));
+          close(OUTFILE);
+        }#for
+      }#if
       @lines=();
       push(@lines,$line);
       $prot=$f[0];
-      $seq=$f[1];
-      if($f[8]<$f[9]){
-        $ori="+";
-      }else{
-        $ori="-";
-      }
-    }
-  }
+    }#if
+  } #while
       if(not($prot eq "")){
-        $max_intron=int("'$MAX_INTRON'");
-        @lines_filter=();
-        @ff=split(/\t/,@lines[0]);
-        $min_coord=($ff[8]+$ff[9])/2;
-        $max_coord=$min_coord;
-        foreach $l (@lines){
-          @ff=split(/\t/,$l);
-          $coord=($ff[8]+$ff[9])/2;
-          $lori="+";
-          $lori="-" if($ff[8]>$ff[9]);
-          if($lori eq $ori){
-            if($coord<=$min_coord){
-              if($min_coord-$coord<$max_intron){
-                $min_coord=$coord;
-                push(@lines_filter,$l);
-              }
-            }elsif($coord>=$max_coord){
-              if($coord-$max_coord<$max_intron){
-                $max_coord=$coord;
-                push(@lines_filter,$l);
-              }
-            }else{
-              push(@lines_filter,$l);
+        #we first sort lines by bitscore in reverse
+        @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @lines;
+        #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
+        $prev_length=0;
+        for(my $i=0;$i<=$#lines_all_sorted;$i++){
+          next if($lines_all_sorted[$i] eq "");
+          @ff=split(/\t/,$lines_all_sorted[$i]);
+          next if($ff[3]*$ff[2]<$prev_length*.9);#the next best match should be at least 85% as long
+          @lines_filter=();
+          push(@lines_filter,$lines_all_sorted[$i]);
+          #print "NEW center $i $lines_all_sorted[$i]\n";
+          $lines_all_sorted[$i]="";
+          $prev_length=$ff[3]*$ff[2] if($prev_length==0);
+          $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
+          $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+          my $new_seq=$ff[1];
+          my $new_ori="+";
+          $new_ori="-" if($ff[8]>$ff[9]);
+          #here we build a cluster of matches
+          for(my $j=0;$j<=$#lines_all_sorted;$j++){
+            next if($lines_all_sorted[$j] eq "");
+            @ff=split(/\t/,$lines_all_sorted[$j]);
+            next if(not($ff[1] eq  $new_seq));
+            $lori="+";
+            $lori="-" if($ff[8]>$ff[9]);
+            next if(not($lori eq  $new_ori));
+            $startl = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
+            $endl = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+            if($endl > $start-$max_intron && $startl < $end+$max_intron){
+              push(@lines_filter,$lines_all_sorted[$j]);
+              $lines_all_sorted[$j]="";
+              $start = $startl if($startl < $start);
+              $end = $endl if($endl > $end);
             }
           }
-        }
-        @lines_sorted = sort {(split(/\t/,$a))[8] <=> (split(/\t/,$b))[8]} @lines_filter;
-        @ff=split(/\t/,$lines_sorted[0]);
-        $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
-        @ff=split(/\t/,$lines_sorted[-1]);
-        $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
-        $start = ($start-$padding)>=0 ? $start-$padding :0;
-        open(OUTFILE,">$seq.$prot.taskfile");
-        print OUTFILE ">$seq\n",substr($sequence{$seq},$start,$end-$start+$padding),"\n>$prot\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$seq}) && defined($protsequence{$prot}));
-        close(OUTFILE);
-      }
-
+          $start = ($start-$padding)>=0 ? $start-$padding :0;
+          open(OUTFILE,">$new_seq.$prot.$start.taskfile");
+          print OUTFILE ">$new_seq\n",substr($sequence{$new_seq},$start,$end-$start+$padding),"\n>$prot.$start\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$new_seq}) && defined($protsequence{$prot}));
+          close(OUTFILE);
+        }#for
+      }#if
 }' && \
 log "Running exonerate on the filtered sequences" && \
 echo -n '#!/bin/bash
@@ -277,7 +261,7 @@ head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILE.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILE.faa && \
 PROTLEN=`ufasta sizes /dev/shm/$TASKFILE.faa` && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
-exonerate --model protein2genome -Q protein -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 --maxintron ' > .run_exonerate.sh
+exonerate --model protein2genome --refine full  -Q protein -T dna -t /dev/shm/$TASKFILE.fa --minintron 10 --maxintron ' > .run_exonerate.sh
 echo -n $MAX_INTRON >> .run_exonerate.sh
 echo -n ' -q /dev/shm/$TASKFILE.faa --bestn 1 --showtargetgff 2>/dev/null | \
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
@@ -297,7 +281,7 @@ rm -rf /dev/shm/$TASKFILE.fa /dev/shm/$TASKFILE.faa ' >> .run_exonerate.sh && \
 chmod 0755 .run_exonerate.sh && \
 ls |grep .taskfile$ |xargs -P $NUM_THREADS -I {} ./.run_exonerate.sh {} 
 rm -f .run_exonerate.sh
-touch protein2genome.exonerate_gff.success
+touch protein2genome.exonerate_gff.success && rm protein2genome.final_gff_merge.success
 fi
 
 if [ -e protein2genome.exonerate_gff.success ] && [ ! -e protein2genome.final_gff_merge.success ];then

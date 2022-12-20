@@ -311,4 +311,51 @@ return($chroma cmp $chromb || $coorda <=>$coordb);
 }
 
 
-  
+sub find_longest_orf{
+# Search for the longest open reading frame for this DNA.
+my $RNA_seq=$_[0];
+while ( / ATG /g ) {
+    my $start = pos () - 2 ;
+    if ( / TGA|TAA|TAG /g ) {
+        my $stop = pos ;
+        $gene = substr ( $_ , $start - 1 , $stop - $start + 1 ), $/ ;
+    }
+}
+return ($start,$stop);
+}
+
+sub translate {
+    my ( $gene , $reading_frame ) = @_ ;
+    my %protein = ();
+    for ( $i = $reading_frame ; $i < length ( $gene ); $i += 3 ) {
+        $codon = substr ( $gene , $i , 3 );
+        $amino_acid = translate_codon( $codon );
+        $protein { $amino_acid }++;
+        $protein { "gene" } .= $amino_acid ;
+    }
+    return %protein ;
+}
+
+sub translate_codon {
+if ( $_ [ 0 ] =~ / GC[AGCT] /i )             { return 'A';} # Alanine;
+if ( $_ [ 0 ] =~ / TGC|TGT /i )              { return 'C';} # Cysteine
+if ( $_ [ 0 ] =~ / GAC|GAT /i )              { return 'D';} # Aspartic Acid;
+if ( $_ [ 0 ] =~ / GAA|GAG /i )              { return 'Q';} # Glutamine;
+if ( $_ [ 0 ] =~ / TTC|TTT /i )              { return 'F';} # Phenylalanine;
+if ( $_ [ 0 ] =~ / GG[AGCT] /i )             { return 'G';} # Glycine;
+if ( $_ [ 0 ] =~ / CAC|CAT /i )              { return 'H';} # Histine (start codon);
+if ( $_ [ 0 ] =~ / AT[ATC] /i )              { return 'I';} # Isoleucine;
+if ( $_ [ 0 ] =~ / AAA|AAG /i )              { return 'K';} # Lysine;
+if ( $_ [ 0 ] =~ / TTA|TTG|CT[AGCT] /i )     { return 'L';} # Leucine;
+if ( $_ [ 0 ] =~ / ATG /i )                  { return 'M';} # Methionine;
+if ( $_ [ 0 ] =~ / AAC|AAT /i )              { return 'N';} # Asparagine;
+if ( $_ [ 0 ] =~ / CC[AGCT] /i )             { return 'P';} # Proline;
+if ( $_ [ 0 ] =~ / CAA|CAG /i )              { return 'G';} # Glutamine;
+if ( $_ [ 0 ] =~ / AGA|AGG|CG[AGCT] /i )     { return 'R';} # Arginine;
+if ( $_ [ 0 ] =~ / AGC|AGT|TC[AGCT] /i )     { return 'S';} # Serine;
+if ( $_ [ 0 ] =~ / AC[AGCT] /i )             { return 'T';} # Threonine;
+if ( $_ [ 0 ] =~ / GT[AGCT] /i )             { return 'V';} # Valine;
+if ( $_ [ 0 ] =~ / TGG /i )                  { return 'W';} # Tryptophan;
+if ( $_ [ 0 ] =~ / TAC|TAT /i )              { return 'Y';} # Tyrosine;
+if ( $_ [ 0 ] =~ / TAA|TGA|TAG /i )          { return "*" ;} # Stop Codons;
+}  
