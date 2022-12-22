@@ -110,7 +110,7 @@ cat tblastn.$PROTEINN.*.batch.out | \
 sort -S 10% > $PROTEINN.tblastn.tmp && \
 mv $PROTEINN.tblastn.tmp $PROTEINN.tblastn && \
 rm -rf  tblastn.$PROTEINN.*.batch.out $PROTEINN.*.batch && \
-touch protein2genome.protein_align.successi && rm protein2genome.exonerate_gff.success
+touch protein2genome.protein_align.successi && rm -f protein2genome.exonerate_gff.success
 fi
 
 if [ ! -e protein2genome.exonerate_gff.success ] && [ -e protein2genome.protein_align.success ];then
@@ -154,14 +154,17 @@ perl -e '{
 
   open(FILE,"'$PROTEINN'.tblastn");
   $max_intron=int("'$MAX_INTRON'");
+  $max_matches=2;
   while($line=<FILE>){
-    #print "READ $line";
     chomp($line);
-    @f=split(/\t/,$line,2);
+    @f=split(/\t/,$line,3);
+    next if(not(defined($sequence{$f[1]})) || not(defined($protsequence{$f[0]})));
     if($f[0] eq $prot){
       push(@lines,$line);
     }else{
       if(not($prot eq "")){
+        @filenames=();
+        @filecontents=();
         #we first sort lines by bitscore in reverse
         @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @lines;
         #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
@@ -198,10 +201,16 @@ perl -e '{
             }
           }
           $start = ($start-$padding)>=0 ? $start-$padding :0;
-          open(OUTFILE,">$new_seq.$prot.$start.taskfile");
-          print OUTFILE ">$new_seq\n",substr($sequence{$new_seq},$start,$end-$start+$padding),"\n>$prot.$start\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$new_seq}) && defined($protsequence{$prot}));
-          close(OUTFILE);
+          push(@filenames,"$new_seq.$prot.$start.taskfile");
+          push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
         }#for
+        if($#filenames <= $max_matches){
+          for(my $k=0;$k<=$#filenames;$k++){
+            open(OUTFILE,">$filenames[$k]");
+            print OUTFILE $filecontents[$k];
+            close(OUTFILE);
+          }
+        }#if
       }#if
       @lines=();
       push(@lines,$line);
@@ -209,6 +218,8 @@ perl -e '{
     }#if
   } #while
       if(not($prot eq "")){
+        @filenames=();
+        @filecontents=();
         #we first sort lines by bitscore in reverse
         @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @lines;
         #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
@@ -245,10 +256,16 @@ perl -e '{
             }
           }
           $start = ($start-$padding)>=0 ? $start-$padding :0;
-          open(OUTFILE,">$new_seq.$prot.$start.taskfile");
-          print OUTFILE ">$new_seq\n",substr($sequence{$new_seq},$start,$end-$start+$padding),"\n>$prot.$start\n",$protsequence{$prot},"\n#\t$start\t",$end-$start+$padding,"\n" if(defined($sequence{$new_seq}) && defined($protsequence{$prot}));
-          close(OUTFILE);
+          push(@filenames,"$new_seq.$prot.$start.taskfile");
+          push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
         }#for
+        if($#filenames <= $max_matches){
+          for(my $k=0;$k<=$#filenames;$k++){
+            open(OUTFILE,">$filenames[$k]");
+            print OUTFILE $filecontents[$k];
+            close(OUTFILE);
+          }
+        }#if
       }#if
 }' && \
 log "Running exonerate on the filtered sequences" && \
@@ -281,7 +298,7 @@ rm -rf /dev/shm/$TASKFILE.fa /dev/shm/$TASKFILE.faa ' >> .run_exonerate.sh && \
 chmod 0755 .run_exonerate.sh && \
 ls |grep .taskfile$ |xargs -P $NUM_THREADS -I {} ./.run_exonerate.sh {} 
 rm -f .run_exonerate.sh
-touch protein2genome.exonerate_gff.success && rm protein2genome.final_gff_merge.success
+touch protein2genome.exonerate_gff.success && rm -f protein2genome.final_gff_merge.success
 fi
 
 if [ -e protein2genome.exonerate_gff.success ] && [ ! -e protein2genome.final_gff_merge.success ];then
