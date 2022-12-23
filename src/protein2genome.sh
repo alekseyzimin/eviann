@@ -110,7 +110,7 @@ cat tblastn.$PROTEINN.*.batch.out | \
 sort -S 10% > $PROTEINN.tblastn.tmp && \
 mv $PROTEINN.tblastn.tmp $PROTEINN.tblastn && \
 rm -rf  tblastn.$PROTEINN.*.batch.out $PROTEINN.*.batch && \
-touch protein2genome.protein_align.successi && rm -f protein2genome.exonerate_gff.success
+touch protein2genome.protein_align.success && rm -f protein2genome.exonerate_gff.success
 fi
 
 if [ ! -e protein2genome.exonerate_gff.success ] && [ -e protein2genome.protein_align.success ];then
