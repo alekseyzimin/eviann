@@ -204,13 +204,11 @@ perl -e '{
           push(@filenames,"$new_seq.$prot.$start.taskfile");
           push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
         }#for
-        if($#filenames <= $max_matches){
-          for(my $k=0;$k<=$#filenames;$k++){
-            open(OUTFILE,">$filenames[$k]");
-            print OUTFILE $filecontents[$k];
-            close(OUTFILE);
-          }
-        }#if
+        for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
+          open(OUTFILE,">$filenames[$k]");
+          print OUTFILE $filecontents[$k];
+          close(OUTFILE);
+        }
       }#if
       @lines=();
       push(@lines,$line);
@@ -259,13 +257,11 @@ perl -e '{
           push(@filenames,"$new_seq.$prot.$start.taskfile");
           push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
         }#for
-        if($#filenames <= $max_matches){
-          for(my $k=0;$k<=$#filenames;$k++){
-            open(OUTFILE,">$filenames[$k]");
-            print OUTFILE $filecontents[$k];
-            close(OUTFILE);
-          }
-        }#if
+        for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
+          open(OUTFILE,">$filenames[$k]");
+          print OUTFILE $filecontents[$k];
+          close(OUTFILE);
+        }
       }#if
 }' && \
 log "Running exonerate on the filtered sequences" && \
