@@ -12,6 +12,7 @@ my %gene_record;
 my $protID="";
 my $dir="";
 my %used_proteins;
+my %suspect_proteins;
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 while(my $line=<STDIN>){#we just read in the whole file
@@ -67,6 +68,8 @@ while(my $line=<FILE>){
     }elsif($class_code eq "u"){#no match to protein
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
+    }else{#likely messed up protein?
+      $suspect_proteins{$protID}=1;
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}));
@@ -98,6 +101,7 @@ for my $locus(keys %transcripts_cds_loci){
       next if(defined($output_proteins_for_locus{$protID}) && $class eq "j");
       $output_proteins_for_locus{$protID}=1;
       $used_proteins{$protID}=1;
+      my $note="";
       my @gff_fields_t=split(/\t/,$transcript{$t});
       my @attributes_t=split(";",$gff_fields_t[8]);
       my @cds_local=@{$protein_cds{$transcript_cds{$t}}};
@@ -129,6 +133,7 @@ for my $locus(keys %transcripts_cds_loci){
             $temp_cds_fields[4]=$gff_fields_prev[4];
             $temp_cds_fields[3]=$gff_fields_prev[4]-($gff_fields_curr[3]-$start_cds-1);
             unshift(@cds_local,join("\t",@temp_cds_fields));
+            $note=";Note=CDSadjusted5";
           }
           if($end_cds>$gff_fields_prev[4] && $end_cds<$gff_fields_curr[3]){
 #we need to add another CDS entry to compensate for cds running into intron
@@ -139,6 +144,7 @@ for my $locus(keys %transcripts_cds_loci){
             $temp_cds_fields[3]=$gff_fields_curr[3];
             $temp_cds_fields[4]=$gff_fields_curr[3]+($end_cds-$gff_fields_prev[4]-1);
             push(@cds_local,join("\t",@temp_cds_fields));
+            $note=";Note=CDSadjusted3";
           }
         }
         $start_cds=(split(/\t/,@cds_local[0]))[3];
@@ -199,17 +205,17 @@ for my $locus(keys %transcripts_cds_loci){
       if($transcript_cds_start_index<$transcript_cds_end_index){
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
         $i++;
-        push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds_local\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+        push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds_local\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
         for(my $j=$transcript_cds_start_index+1;$j<$transcript_cds_end_index;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
-          push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+          push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
           $i++;
         }
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]);
-        push(@output,$gff_fields[0]."\tEviAnn\tcds\t$gff_fields[3]\t$end_cds_local\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+        push(@output,$gff_fields[0]."\tEviAnn\tcds\t$gff_fields[3]\t$end_cds_local\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
       }else{#single exon
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
-        push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds_local\t$end_cds_local\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index");
+        push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds_local\t$end_cds_local\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
       }
 #output cds from protein alignment
 #for my $x(@cds_local){
@@ -286,6 +292,7 @@ for my $locus(keys %transcripts_only_loci){
 #output unused proteins
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
+  #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
   print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
   foreach my $cds(@{$protein_cds{$p}}){
@@ -311,51 +318,4 @@ return($chroma cmp $chromb || $coorda <=>$coordb);
 }
 
 
-sub find_longest_orf{
-# Search for the longest open reading frame for this DNA.
-my $RNA_seq=$_[0];
-while ( / ATG /g ) {
-    my $start = pos () - 2 ;
-    if ( / TGA|TAA|TAG /g ) {
-        my $stop = pos ;
-        $gene = substr ( $_ , $start - 1 , $stop - $start + 1 ), $/ ;
-    }
-}
-return ($start,$stop);
-}
-
-sub translate {
-    my ( $gene , $reading_frame ) = @_ ;
-    my %protein = ();
-    for ( $i = $reading_frame ; $i < length ( $gene ); $i += 3 ) {
-        $codon = substr ( $gene , $i , 3 );
-        $amino_acid = translate_codon( $codon );
-        $protein { $amino_acid }++;
-        $protein { "gene" } .= $amino_acid ;
-    }
-    return %protein ;
-}
-
-sub translate_codon {
-if ( $_ [ 0 ] =~ / GC[AGCT] /i )             { return 'A';} # Alanine;
-if ( $_ [ 0 ] =~ / TGC|TGT /i )              { return 'C';} # Cysteine
-if ( $_ [ 0 ] =~ / GAC|GAT /i )              { return 'D';} # Aspartic Acid;
-if ( $_ [ 0 ] =~ / GAA|GAG /i )              { return 'Q';} # Glutamine;
-if ( $_ [ 0 ] =~ / TTC|TTT /i )              { return 'F';} # Phenylalanine;
-if ( $_ [ 0 ] =~ / GG[AGCT] /i )             { return 'G';} # Glycine;
-if ( $_ [ 0 ] =~ / CAC|CAT /i )              { return 'H';} # Histine (start codon);
-if ( $_ [ 0 ] =~ / AT[ATC] /i )              { return 'I';} # Isoleucine;
-if ( $_ [ 0 ] =~ / AAA|AAG /i )              { return 'K';} # Lysine;
-if ( $_ [ 0 ] =~ / TTA|TTG|CT[AGCT] /i )     { return 'L';} # Leucine;
-if ( $_ [ 0 ] =~ / ATG /i )                  { return 'M';} # Methionine;
-if ( $_ [ 0 ] =~ / AAC|AAT /i )              { return 'N';} # Asparagine;
-if ( $_ [ 0 ] =~ / CC[AGCT] /i )             { return 'P';} # Proline;
-if ( $_ [ 0 ] =~ / CAA|CAG /i )              { return 'G';} # Glutamine;
-if ( $_ [ 0 ] =~ / AGA|AGG|CG[AGCT] /i )     { return 'R';} # Arginine;
-if ( $_ [ 0 ] =~ / AGC|AGT|TC[AGCT] /i )     { return 'S';} # Serine;
-if ( $_ [ 0 ] =~ / AC[AGCT] /i )             { return 'T';} # Threonine;
-if ( $_ [ 0 ] =~ / GT[AGCT] /i )             { return 'V';} # Valine;
-if ( $_ [ 0 ] =~ / TGG /i )                  { return 'W';} # Tryptophan;
-if ( $_ [ 0 ] =~ / TAC|TAT /i )              { return 'Y';} # Tyrosine;
-if ( $_ [ 0 ] =~ / TAA|TGA|TAG /i )          { return "*" ;} # Stop Codons;
-}  
+  
