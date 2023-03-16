@@ -156,9 +156,9 @@ if [ ! -e align.success ];then
   if [ -s $RNASEQ_PAIRED ];then
     awk 'BEGIN{n=1}{
     if($NF == "fasta"){
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 10 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }else{
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 10 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }
     }' $RNASEQ_PAIRED >> hisat2.sh
   fi
@@ -169,9 +169,9 @@ if [ ! -e align.success ];then
     fi
     awk 'BEGIN{n=int("'$START'");}{
     if($NF == "fasta"){
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 10 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }else{
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 10 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
   bash ./hisat2.sh && touch align.success && rm -f sort.success || error_exit "Alignment with HISAT2 failed, please check if reads files exist"
@@ -237,16 +237,15 @@ fi
 
 if [ ! -e protein_align.success ];then
   log "Aligning proteins"
-  ufasta one $PROTEINFILE | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $PROTEIN.uniq.faa && \
-  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN.uniq.faa -m $MAX_INTRON
-  if [ -s $GENOME.$PROTEIN.uniq.faa.palign.gff ];then
+  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+  if [ -s $GENOME.$PROTEIN.palign.gff ];then
     touch protein_align.success
   fi
 fi
 
 if [ ! -e merge.success ];then 
   log "Deriving gene models from protein and transcript alignments"
-  gffread -F  <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.uniq.faa.palign.gff) > $GENOME.palign.fixed.gff.tmp && \
+  gffread -F  <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf ) 1>/dev/null 2>$GENOME.unused_proteins.gff && \
