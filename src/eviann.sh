@@ -182,6 +182,15 @@ if [ -e tissue0.bam ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
+if [ ! -e protein_align.success ];then
+  log "Aligning proteins"
+  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+  if [ -s $GENOME.$PROTEIN.palign.gff ];then
+    touch protein_align.success
+  fi
+fi
+
+
 if [ ! -e sort.success ];then
   log "Sorting alignment files"
   if [ -s tissue0.bam ];then
@@ -228,19 +237,11 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
-    stringtie2 --merge tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+    stringtie2 --merge -g 100 -c 10 -G $GENOME.$PROTEIN.palign.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   else
     error_exit "one or more Stringtie jobs failed"
   fi
   touch stringtie.success && rm -f split.success
-fi
-
-if [ ! -e protein_align.success ];then
-  log "Aligning proteins"
-  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
-  if [ -s $GENOME.$PROTEIN.palign.gff ];then
-    touch protein_align.success
-  fi
 fi
 
 if [ ! -e merge.success ];then 
