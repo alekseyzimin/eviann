@@ -244,6 +244,8 @@ for my $locus(keys %transcripts_cds_loci){
 #finally output "intergenic" transcripts
 #some of these may be completely messed up
 for my $locus(keys %transcripts_only_loci){
+  #next if we have seen this locus with a protein match
+  next if(defined($transcripts_cds_loci{$locus}));
   my @output=();
   my @transcripts_at_loci=split(/\s+/,$transcripts_only_loci{$locus});
   my @gff_fields=split(/\t/,$transcript_u{$transcripts_at_loci[0]});

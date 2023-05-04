@@ -253,13 +253,31 @@ if [ ! -e merge.success ];then
   gffcompare -T -D $GENOME.unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
   gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.combined.gtf && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null && \
-  mv $GENOME.gff.tmp $GENOME.gff && \
-  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
+  mv $GENOME.gff.tmp $GENOME.prelim.gff && \
   touch merge.success && rm -f functional.success pseudo_detect.success 
 fi
 
-if [ ! -e functional.success ];then
+if [ -e merge.success ] && [ ! -e find_orfs.success ];then
+  log "Looking for ORFs in transcripts without protein matches"
+  awk -F '\t' '{if($9 ~ /_lncRNA/) print $0}' $GENOME.prelim.gff > $GENOME.lncRNA.gff && \
+  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
+  gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.lncRNA.gff && \
+  rm -rf $GENOME.lncRNA.fa.transdecoder* && \
+  TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+  blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt 6 -evalue 1e-6 -num_threads $NUM_THREADS > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.blastp && \
+  TransDecoder.Predict -t $GENOME.lncRNA.fa --retain_blastp_hits $GENOME.lncRNA.blastp 1>transdecoder.Predict.out 2>&1 
+  #now we have the cds features in $GENOME.lncRNA.transdecoder.gff3 to integrate into our $GENOME.lncRNA.gff file and add them into $GENOME.prelim.gff
+  if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
+    cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
+    touch find_orfs.success 
+  else
+    error_exit "TransDecoder failed on ORF detection"
+  fi
+fi
+
+if [ -e find_orfs.success ] && [ ! -e functional.success ];then
   log "Performing functional annotation" && \
+  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
   blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
