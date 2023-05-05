@@ -5,6 +5,9 @@ my @exons=();
 my %loci;
 my %protein_cds;
 my %protein;
+my @outputLOCbeg;
+my @outputLOCend;
+my @outputLOCchr;
 my %transcript_gff;
 my %transcript_cds;
 my @gene_records;
@@ -239,6 +242,9 @@ for my $locus(keys %transcripts_cds_loci){
 #now we know the locus start ans end, and we can output the gene record
   $gene_record{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=protein_coding\n".join("\n",@output)."\n";
   push(@gene_records,$gff_fields[0]." ".$locus_start);
+  push(@outputLOCchr,$gff_fields[0]);
+  push(@outputLOCbeg,$locus_start);
+  push(@outputLOCend,$locus_end);
 }
 
 #finally output "intergenic" transcripts
@@ -260,6 +266,11 @@ for my $locus(keys %transcripts_only_loci){
   my $junction_score=0;
   if($#transcripts_at_loci>0){
     for my $t(@transcripts_at_loci){
+      next if(not(defined($transcript_gff_u{$t})));
+      my @gff_fields_t=split(/\t/,$transcript_u{$t});
+      my @attributes_t=split(";",$gff_fields_t[8]);
+      $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
+      $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
       for(my $j=1;$j<=$#{$transcript_gff_u{$t}};$j++){
         my @gff_fields_curr=split(/\t/,${$transcript_gff_u{$t}}[$j]);
         my @gff_fields_prev=split(/\t/,${$transcript_gff_u{$t}}[$j-1]);
@@ -271,12 +282,20 @@ for my $locus(keys %transcripts_only_loci){
   }
   #do not output the locus if there are too many disagreements between the intron junctions
   next if($junction_score>0.66);
+  #do not output if this locus has already been output
+  my $output_check=0;
+  for(my $i=0;$i<=$#outputLOCchr;$i++){
+    if($gff_fields[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $locus_start && $outputLOCend[$i]+100 > $locus_end)){
+      $output_check=1;
+      $i=$#outputLOCchr+1;
+    }
+  }
+  next if($output_check);
+  #if we got here we can outout the transcript
   for my $t(@transcripts_at_loci){
     next if(not(defined($transcript_gff_u{$t})));
     my @gff_fields_t=split(/\t/,$transcript_u{$t});
     my @attributes_t=split(";",$gff_fields_t[8]);
-    $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
-    $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
     $transcript_index++;
     push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes_t[3]");
     my $i=1;
@@ -296,10 +315,19 @@ foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
-  print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
-  foreach my $cds(@{$protein_cds{$p}}){
-    my @gff_fields_c=split(/\t/,$cds);
-    print STDERR "$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
+  my $output_check=1;
+  for(my $i=0;$i<=$#outputLOCchr;$i++){
+    if($gff_fields_p[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $gff_fields_p[3] && $outputLOCend[$i]+100 > $gff_fields_p[4])){
+      $output_check=0;
+      $i=$#outputLOCchr+1;
+    }
+  }
+  if($output_check){
+    print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
+    foreach my $cds(@{$protein_cds{$p}}){
+      my @gff_fields_c=split(/\t/,$cds);
+      print STDERR "$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
+    }
   }
 }
 
