@@ -185,11 +185,34 @@ fi
 if [ ! -e protein_align.success ];then
   log "Aligning proteins"
   protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
-  if [ -s $GENOME.$PROTEIN.palign.gff ];then
+  gffcompare -SDT $GENOME.$PROTEIN.palign.gff -o $GENOME.palign.dedup && \
+  awk -F '\t' '{if($3=="transcript"){split($9,a,";");print $5-$4,a[2],a[3]}}' $GENOME.palign.dedup.combined.gtf | \
+  sort -nrk1,1 -S 10% |\
+  perl -ane '{
+    if($h{$F[2]}<3){
+      $h{$F[2]}++;
+      $hn{$F[2]}.="$F[4] ";
+    }
+  }END{
+    foreach $k(keys %hn){
+      @f=split(/\s/,$hn{$k});
+      foreach $l(@f){
+        $l=~s/^"//;
+        $l=~s/"$//;
+        $output{$l}=1;
+      }
+    }
+    open(FILE,"'$GENOME'.'$PROTEIN'.palign.gff");
+    while($line=<FILE>){
+      chomp($line);
+      @f=split(/=/,$line);
+      print "$line\n" if(defined($output{$f[-1]}));
+    }
+  }' > $GENOME.palign.uniq.gff && \
+  if [ -s $GENOME.palign.uniq.gff ];then
     touch protein_align.success
   fi
 fi
-
 
 if [ ! -e sort.success ];then
   log "Sorting alignment files"
@@ -237,7 +260,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
-    stringtie2 --merge -g 100 -c 10 -G $GENOME.$PROTEIN.palign.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+    stringtie2 --merge -g 100 -G $GENOME.palign.uniq.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   else
     error_exit "one or more Stringtie jobs failed"
   fi
@@ -246,38 +269,14 @@ fi
 
 if [ ! -e merge.success ];then 
   log "Deriving gene models from protein and transcript alignments"
-  gffcompare -SDT $GENOME.$PROTEIN.palign.gff -o $GENOME.palign.dedup && \
-  awk -F '\t' '{if($3=="transcript"){split($9,a,";");print $5-$4,a[2],a[3]}}' $GENOME.palign.dedup.combined.gtf | \
-  sort -nrk1,1 -S 10% |\
-  perl -ane '{
-    if($h{$F[2]}<3){
-      $h{$F[2]}++;
-      $hn{$F[2]}.="$F[4] ";
-    }
-  }END{
-    foreach $k(keys %hn){
-      @f=split(/\s/,$hn{$k});
-      foreach $l(@f){
-        $l=~s/^"//;
-        $l=~s/"$//;
-        $output{$l}=1;
-      }
-    }
-    open(FILE,"'$GENOME'.'$PROTEIN'.palign.gff");
-    while($line=<FILE>){
-      chomp($line);
-      @f=split(/=/,$line);
-      print "$line\n" if(defined($output{$f[-1]}));
-    }
-  }' > $GENOME.palign.uniq.gff && \
   gffread -F  <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.palign.uniq.gff) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
-  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.annotated.gtf |awk -F '\t' '{if($2=="StringTie") print $0}') 1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
+  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
     gffcompare -T -D $GENOME.unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.combined.gtf && \
-    cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <(gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
+    cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
   fi && \
   mv $GENOME.gff.tmp $GENOME.prelim.gff && \
   touch merge.success && rm -f functional.success pseudo_detect.success 
