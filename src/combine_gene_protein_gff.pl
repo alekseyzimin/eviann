@@ -88,9 +88,9 @@ for my $locus(keys %transcripts_cds_loci){
   my @output=();
   my $gene_feature="";
   my @transcripts_at_loci=split(/\s+/,$transcripts_cds_loci{$locus});
-  my $locus_start=1000000000000;
-  my $locus_end=0;
   my @gff_fields=split(/\t/,$transcript{$transcripts_at_loci[0]});
+  my $locus_start=$gff_fields[3];
+  my $locus_end=$gff_fields[4];
   my @attributes=split(";",$gff_fields[8]);
   $geneID=substr($attributes[1],7);#this is the XLOC
   my $parent=$geneID."-mRNA-";
@@ -255,8 +255,8 @@ for my $locus(keys %transcripts_only_loci){
   my @output=();
   my @transcripts_at_loci=split(/\s+/,$transcripts_only_loci{$locus});
   my @gff_fields=split(/\t/,$transcript_u{$transcripts_at_loci[0]});
-  my $locus_start=1000000000000;
-  my $locus_end=0;
+  my $locus_start=$gff_fields[3];
+  my $locus_end=$gff_fields[4];
   my $geneID=$locus."_lncRNA";
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
@@ -324,9 +324,9 @@ foreach my $p(keys %protein){
   }
   if($output_check){
     #make sure to output only 1 "extra" protein per locus
-    push(@outputLOCchr,$gff_fields_p[0]);
-    push(@outputLOCbeg,$gff_fields_p[3]);
-    push(@outputLOCend,$gff_fields_p[4]);
+    #push(@outputLOCchr,$gff_fields_p[0]);
+    #push(@outputLOCbeg,$gff_fields_p[3]);
+    #push(@outputLOCend,$gff_fields_p[4]);
 
     print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
     foreach my $cds(@{$protein_cds{$p}}){
