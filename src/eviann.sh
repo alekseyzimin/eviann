@@ -186,19 +186,18 @@ if [ ! -e protein_align.success ];then
   log "Aligning proteins"
   protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
   gffcompare -SDT $GENOME.$PROTEIN.palign.gff -o $GENOME.palign.dedup && \
-  awk -F '\t' '{if($3=="transcript"){split($9,a,";");print $5-$4,a[2],a[3]}}' $GENOME.palign.dedup.combined.gtf | \
+  gffread -y $GENOME.palign.dedup.combined.faa -g  $GENOMEFILE $GENOME.$PROTEIN.palign.gff && \
+  ufasta one $GENOME.palign.dedup.combined.faa | perl -ane '{if($F[0] =~/^>/){$name=substr($F[0],1);}else{if($F[0] =~ /^M/){$len{$name}=length($F[0])+100}else{$len{$name}=length($F[0])}}}END{open(FILE,"'$GENOME'.palign.dedup.combined.gtf");while($line=<FILE>){chomp($line);@f=split(/\t/,$line);if($f[2] eq "transcript"){@ff=split(/;/,$f[8]);$ff[1]=~s/^\sgene_id\s"//;$ff[1]=~s/"$//;$ff[2]=~s/^\soId\s"//;$ff[2]=~s/"$//;print "$len{$ff[2]} $ff[1] $ff[2]\n";}}}' | \
   sort -nrk1,1 -S 10% |\
   perl -ane '{
-    if($h{$F[2]}<3){
-      $h{$F[2]}++;
-      $hn{$F[2]}.="$F[4] ";
+    if($h{$F[1]}<3){
+      $h{$F[1]}++;
+      $hn{$F[1]}.="$F[2] ";
     }
   }END{
     foreach $k(keys %hn){
       @f=split(/\s/,$hn{$k});
       foreach $l(@f){
-        $l=~s/^"//;
-        $l=~s/"$//;
         $output{$l}=1;
       }
     }
@@ -289,8 +288,8 @@ if [ -e merge.success ] && [ ! -e find_orfs.success ];then
   gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.lncRNA.gff && \
   rm -rf $GENOME.lncRNA.fa.transdecoder* && \
   TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-  blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt 6 -evalue 1e-6 -num_threads $NUM_THREADS > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.blastp && \
-  TransDecoder.Predict -t $GENOME.lncRNA.fa --retain_blastp_hits $GENOME.lncRNA.blastp 1>transdecoder.Predict.out 2>&1 
+  blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt 6 -evalue 1e-5 -num_threads $NUM_THREADS > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.blastp && \
+  TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.blastp 1>transdecoder.Predict.out 2>&1 
   #now we have the cds features in $GENOME.lncRNA.transdecoder.gff3 to integrate into our $GENOME.lncRNA.gff file and add them into $GENOME.prelim.gff
   if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
     cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
