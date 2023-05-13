@@ -126,6 +126,7 @@ echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
 echo " -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=50) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \
 ls $PROTEINN.*.batch |xargs -P $NUM_THREADS -I {} ./run_tblastn.sh {} && \
+rm -f $PROTEINN.*.batch $PROTEINN.*.batch.fa run_tblastn.sh && \
 log "Concatenating outputs" && \
 cat tblastn.$PROTEINN.*.batch.out | \
 sort -S 10% > $PROTEINN.tblastn.tmp && \

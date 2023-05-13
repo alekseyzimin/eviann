@@ -8,7 +8,7 @@ RNASEQ_UNPAIRED="unpaired"
 ALT_EST="altest"
 export BATCH_SIZE=1000000
 export MAX_INTRON=100000
-export MIN_TPM=1
+export MIN_TPM=0.25
 UNIPROT="uniprot.fa"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
@@ -258,7 +258,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     if [ -s stringtie_to_assemble.txt ];then
       echo "#!/bin/bash" > run_stringtie.sh && \
       echo "stringtie2 -p 4 \$1 -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
-      echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/) break;} m=split(a[i],b,\"\\\"\");if(b[m-1]>int(\"'\$MIN_TPM'\")) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
+      echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > '\$MIN_TPM' || tpm > '\$MIN_TPM' ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
       echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
       echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
       chmod 0755 run_stringtie.sh && \
@@ -273,8 +273,8 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     log "Merging transcripts"
     #stringtie2 --merge -g 100 -G $GENOME.palign.uniq.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     #stringtie2 --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
-    gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG && \
-    awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/10;) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf > $GENOME.tmp2.combined.gtf &&\
+    gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
+    awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf > $GENOME.tmp2.combined.gtf &&\
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
     rm $GENOME.tmp.combined.gtf
   else
