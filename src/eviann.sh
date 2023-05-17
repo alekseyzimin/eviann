@@ -271,8 +271,8 @@ if [ ! -e merge.success ];then
       log "Checking unused protein only loci against Uniprot" && \
       gffcompare -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
       gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.gff) -g $GENOMEFILE && \
-      ufasta one $GENOME.unused_proteins.faa.1.tmp | grep ^M -B1 | grep -v '\-\-' > $GENOME.unused_proteins.faa.2.tmp && \
-      mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
+      #ufasta one $GENOME.unused_proteins.faa.1.tmp | grep ^M -B1 | grep -v '\-\-' > $GENOME.unused_proteins.faa.2.tmp && \
+      mv $GENOME.unused_proteins.faa.1.tmp $GENOME.unused_proteins.faa && \
       rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
       makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb1.out 2>&1 && \
       blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
