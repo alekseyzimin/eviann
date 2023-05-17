@@ -323,11 +323,6 @@ foreach my $p(keys %protein){
     }
   }
   if($output_check){
-    #make sure to output only 1 "extra" protein per locus
-    #push(@outputLOCchr,$gff_fields_p[0]);
-    #push(@outputLOCbeg,$gff_fields_p[3]);
-    #push(@outputLOCend,$gff_fields_p[4]);
-
     print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
     foreach my $cds(@{$protein_cds{$p}}){
       my @gff_fields_c=split(/\t/,$cds);

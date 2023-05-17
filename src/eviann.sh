@@ -186,55 +186,7 @@ fi
 if [ ! -e protein_align.success ];then
   log "Aligning proteins"
   protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
-  gffcompare -SDT $GENOME.$PROTEIN.palign.gff -o $GENOME.palign.dedup && \
-  gffread -y $GENOME.palign.dedup.combined.faa -g  $GENOMEFILE $GENOME.$PROTEIN.palign.gff && \
-  ufasta one $GENOME.palign.dedup.combined.faa | \
-  perl -ane '{
-      if($F[0] =~/^>/){
-        $name=substr($F[0],1);
-      }else{
-        if($F[0] =~ /^M/){
-          $len{$name}=length($F[0])+100;
-        }else{
-          $len{$name}=length($F[0]);
-        }
-      }
-    }END{
-      open(FILE,"'$GENOME'.palign.dedup.combined.gtf");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/\t/,$line);
-        if($f[2] eq "transcript"){
-          @ff=split(/;/,$f[8]);
-          $ff[1]=~s/^\sgene_id\s"//;
-          $ff[1]=~s/"$//;
-          $ff[2]=~s/^\soId\s"//;
-          $ff[2]=~s/"$//;
-          print "$len{$ff[2]} $ff[1] $ff[2]\n" if(defined($len{$ff[2]}));
-        }
-      }
-    }' | \
-  sort -nrk1,1 -S 10% |\
-  perl -ane '{
-    if($h{$F[1]}<3){
-      $h{$F[1]}++;
-      $hn{$F[1]}.="$F[2] ";
-    }
-  }END{
-    foreach $k(keys %hn){
-      @f=split(/\s/,$hn{$k});
-      foreach $l(@f){
-        $output{$l}=1;
-      }
-    }
-    open(FILE,"'$GENOME'.'$PROTEIN'.palign.gff");
-    while($line=<FILE>){
-      chomp($line);
-      @f=split(/=/,$line);
-      print "$line\n" if(defined($output{$f[-1]}));
-    }
-  }' > $GENOME.palign.uniq.gff && \
-  if [ -s $GENOME.palign.uniq.gff ];then
+  if [ -s $GENOME.$PROTEIN.palign.gff ];then
     touch protein_align.success
   fi
 fi
@@ -310,15 +262,18 @@ fi
 
 if [ ! -e merge.success ];then 
   log "Deriving gene models from protein and transcript alignments"
-  gffread -F  <(fix_suspect_introns.pl $GENOME.gtf < $GENOME.palign.uniq.gff) > $GENOME.palign.fixed.gff.tmp && \
+  gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
-    log "Checking unused protein only loci against Uniprot" && \
-    gffcompare -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
-    gffread -y $GENOME.unused_proteins.faa <(sed 's/exon/cds/' $GENOME.unused_proteins.gff) -g $GENOMEFILE && \
     if [ ! -s $GENOME.unused.blastp ];then
+      log "Checking unused protein only loci against Uniprot" && \
+      gffcompare -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
+      gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.gff) -g $GENOMEFILE && \
+      ufasta one $GENOME.unused_proteins.faa.1.tmp | grep ^M -B1 | grep -v '\-\-' > $GENOME.unused_proteins.faa.2.tmp && \
+      mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
+      rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
       makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb1.out 2>&1 && \
       blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
       mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp
@@ -343,18 +298,18 @@ if [ ! -e merge.success ];then
       }' $GENOME.unused.blastp | \
     sort -nrk1,1 -S 10% |\
     perl -ane '{
-      if(not(defined($h{$F[1]}))){
-        $h{$F[1]}=1;
-        $hn{$F[2]}=1;
-      }
-    }END{
-      open(FILE,"'$GENOME'.unused_proteins.gff");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/=/,$line);
-        print "$line\n" if(defined($hn{$f[-1]}));
-      }
-    }' > $GENOME.best_unused_proteins.gff && \
+        if(not(defined($h{$F[1]}))){
+          $h{$F[1]}=1;
+          $hn{$F[2]}=1;
+        }
+      }END{
+        open(FILE,"'$GENOME'.unused_proteins.gff");
+        while($line=<FILE>){
+          chomp($line);
+          @f=split(/=/,$line);
+          print "$line\n" if(defined($hn{$f[-1]}));
+        }
+      }' > $GENOME.best_unused_proteins.gff && \
     gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.combined.gtf && \
     cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
