@@ -278,10 +278,27 @@ if [ ! -e merge.success ];then
       blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
       mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp
     fi && \
+    #here we compute the score for each protein -- the score is bitscore*1000+length plus 100 if the protein starts with "M"
     perl -ane '{
         $name=$F[0];
         $score{$name}=$F[-1];
       }END{
+        my $seq="";
+        my $name="";
+        open(FILE,"'$GENOME'.unused_proteins.faa");
+        while($line=<FILE>){
+          chomp($line);
+          if($line=~/^>/){
+            $len{$name}=length($seq) if(length($seq)>0);
+            $len{$name}+=100 if($seq =~ /^M/);
+            $name=substr($line,1);
+            $seq="";
+          }else{
+            $seq.=$line;
+          }
+        }
+        $len{$name}=length($seq) if(length($seq)>0);
+        $len{$name}+=100 if($seq =~ /^M/);
         open(FILE,"'$GENOME'.unused_proteins.dedup.combined.gtf");
         while($line=<FILE>){
           chomp($line);
@@ -292,7 +309,7 @@ if [ ! -e merge.success ];then
             $ff[1]=~s/"$//;
             $ff[2]=~s/^\soId\s"//;
             $ff[2]=~s/"$//;
-            print "$score{$ff[2]} $ff[1] $ff[2]\n" if(defined($score{$ff[2]}));
+            print $score{$ff[2]}*1000+$len{$ff[2]}," $ff[1] $ff[2]\n";
           }
         }
       }' $GENOME.unused.blastp | \

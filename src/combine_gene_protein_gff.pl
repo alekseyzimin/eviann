@@ -68,7 +68,7 @@ while(my $line=<FILE>){
       $transcript_cds{$geneID}=$protID;
       $transcript_class{$geneID}=$class_code;
       $transcripts_cds_loci{$locID}.="$geneID ";
-    }elsif($class_code eq "u"){#no match to protein
+    }elsif($class_code eq "u" || $class_code eq "j"){#no match to protein or an inconsistent match
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
     }else{#likely messed up protein?
@@ -291,7 +291,7 @@ for my $locus(keys %transcripts_only_loci){
     }
   }
   next if($output_check);
-  #if we got here we can outout the transcript
+  #if we got here we can output the transcript
   for my $t(@transcripts_at_loci){
     next if(not(defined($transcript_gff_u{$t})));
     my @gff_fields_t=split(/\t/,$transcript_u{$t});
@@ -311,6 +311,7 @@ for my $locus(keys %transcripts_only_loci){
   }
 }
 #output unused proteins
+#we will then look at them, pick only one per locus that best matches uniprot and join them in at the second pass
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   #next if(defined($suspect_proteins{$p}));
