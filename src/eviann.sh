@@ -120,7 +120,7 @@ done
 GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 stringtie2 gffread blastp tblastn makeblastdb gffcompare");do
+for prog in $(echo "ufasta hisat2 stringtie gffread blastp tblastn makeblastdb gffcompare");do
   which $prog > /dev/null || error_exit "$prog not found the the PATH, please install the appropriate package";
 done
 
@@ -221,7 +221,7 @@ fi
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
   if [ -s tissue0.bam.sorted.bam ];then
     log "Assembling transcripts from related species with Stringtie"
-    stringtie2 -g 1 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
+    stringtie -g 1 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
     mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
   fi
   if [ $NUM_TISSUES -gt 0 ];then
@@ -234,7 +234,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     done
     if [ -s stringtie_to_assemble.txt ];then
       echo "#!/bin/bash" > run_stringtie.sh && \
-      echo "stringtie2 -p 4 \$1 -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
+      echo "stringtie -p 4 \$1 -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
       echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > '\$MIN_TPM' || tpm > '\$MIN_TPM' ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
       echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
       echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
@@ -248,8 +248,8 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
-    #stringtie2 --merge -g 100 -G $GENOME.palign.uniq.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
-    #stringtie2 --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+    #stringtie --merge -g 100 -G $GENOME.palign.uniq.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+    #stringtie --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf > $GENOME.tmp2.combined.gtf &&\
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
