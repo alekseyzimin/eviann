@@ -373,6 +373,14 @@ fi
 
 if [ -e functional.success ] && [ -e pseudo_detect.success ];then
   log "Output annotation is in $GENOME.functional_note.pseudo_label.gff $GENOME.functional_note.proteins.fasta $GENOME.functional_note.transcripts.fasta"
+  echo "Annotation summary:"
+  echo -n "Number of genes: ";awk '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
+  echo -n "Number of functional genes: "; awk '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.gff| grep Similar |wc -l
+  echo -n "Number of processed pseudo genes: ";awk '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.gff| grep 'pseudo=true' |wc -l
+  echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
+  echo -n "Number of functional protein coding transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |grep Similar |wc -l
+  echo -n "Number of proteins: "; grep '^>' $GENOME.functional_note.proteins.fasta |wc -l
+  echo -n "Number of functional proteins: "; grep '^>' $GENOME.functional_note.proteins.fasta | grep Similar |wc -l
 fi
 
 
