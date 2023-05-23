@@ -253,11 +253,11 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf > $GENOME.tmp2.combined.gtf &&\
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
-    rm $GENOME.tmp.combined.gtf
+    rm -f $GENOME.tmp.combined.gtf
   else
     error_exit "one or more Stringtie jobs failed"
   fi
-  touch stringtie.success && rm -f split.success
+  touch stringtie.success && rm -f merge.success
 fi
 
 if [ ! -e merge.success ];then 
@@ -330,7 +330,7 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
   fi && \
   mv $GENOME.gff.tmp $GENOME.prelim.gff && \
-  touch merge.success && rm -f functional.success pseudo_detect.success 
+  touch merge.success && rm -f find_orfs.success 
 fi
 
 if [ -e merge.success ] && [ ! -e find_orfs.success ];then
@@ -345,7 +345,7 @@ if [ -e merge.success ] && [ ! -e find_orfs.success ];then
   #now we have the cds features in $GENOME.lncRNA.transdecoder.gff3 to integrate into our $GENOME.lncRNA.gff file and add them into $GENOME.prelim.gff
   if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
     cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
-    touch find_orfs.success 
+    touch find_orfs.success && rm -f functional.success
   else
     error_exit "TransDecoder failed on ORF detection"
   fi
