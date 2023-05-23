@@ -197,28 +197,28 @@ perl -e '{
         for(my $i=0;$i<=$#lines_all_sorted;$i++){
           next if($lines_all_sorted[$i] eq "");
           @ff=split(/\t/,$lines_all_sorted[$i]);
-          next if($ff[3]*$ff[2] < $prev_length*$match_ratio);#the next best match should be at least 85% as long
           @lines_filter=();
           push(@lines_filter,$lines_all_sorted[$i]);
           #print "NEW center $i $lines_all_sorted[$i]\n";
           $lines_all_sorted[$i]="";
-          $prev_length=$ff[3]*$ff[2] if($prev_length==0);
           $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
           $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
           my $new_seq=$ff[1];
           my $new_ori="+";
           $new_ori="-" if($ff[8]>$ff[9]);
           #here we build a cluster of matches
+          $cluster_size=$ff[3]*$ff[2];
           for(my $j=0;$j<=$#lines_all_sorted;$j++){
             next if($lines_all_sorted[$j] eq "");
-            @ff=split(/\t/,$lines_all_sorted[$j]);
-            next if(not($ff[1] eq  $new_seq));
+            @ffc=split(/\t/,$lines_all_sorted[$j]);
+            next if(not($ffc[1] eq  $new_seq));
             $lori="+";
-            $lori="-" if($ff[8]>$ff[9]);
+            $lori="-" if($ffc[8]>$ffc[9]);
             next if(not($lori eq  $new_ori));
-	    $startl = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
-	    $endl = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+	    $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
+	    $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
             if($endl > $start-$max_intron && $startl < $end+$max_intron){
+              $cluster_size+=$ffc[3]*$ffc[2];
               push(@lines_filter,$lines_all_sorted[$j]);
               $lines_all_sorted[$j]="";
 	      $start = $startl if($startl < $start);
@@ -226,8 +226,13 @@ perl -e '{
             }
           }
           $start = ($start-$padding)>=0 ? $start-$padding :0;
-          push(@filenames,"$new_seq.$prot.$start.taskfile");
-          push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+          $prev_length=$cluster_size if($prev_length==0 || $cluster_size>$prev_length);
+          #print "CLUSTER $cluster_size PREV $prev_length $start $end $new_seq\n";
+          if($cluster_size >$prev_length*$match_ratio){
+            #print "OUTPUT cluster $start $end $new_seq\n";
+            push(@filenames,"$new_seq.$prot.$start.taskfile");
+            push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+          }
         }#for
         for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
           open(OUTFILE,">$pathprefix$filenames[$k]");
@@ -240,6 +245,7 @@ perl -e '{
       $prot=$f[0];
     }#if
   } #while
+  #the last one
       if(not($prot eq "")){
         @filenames=();
         @filecontents=();
@@ -250,28 +256,28 @@ perl -e '{
         for(my $i=0;$i<=$#lines_all_sorted;$i++){
           next if($lines_all_sorted[$i] eq "");
           @ff=split(/\t/,$lines_all_sorted[$i]);
-          next if($ff[3]*$ff[2]<$prev_length*('$MATCH_RATIO'));#the next best match should be at least 85% as long
           @lines_filter=();
           push(@lines_filter,$lines_all_sorted[$i]);
           #print "NEW center $i $lines_all_sorted[$i]\n";
           $lines_all_sorted[$i]="";
-          $prev_length=$ff[3]*$ff[2] if($prev_length==0);
           $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
           $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
           my $new_seq=$ff[1];
           my $new_ori="+";
           $new_ori="-" if($ff[8]>$ff[9]);
           #here we build a cluster of matches
+          $cluster_size=$ff[3]*$ff[2];
           for(my $j=0;$j<=$#lines_all_sorted;$j++){
             next if($lines_all_sorted[$j] eq "");
-            @ff=split(/\t/,$lines_all_sorted[$j]);
-            next if(not($ff[1] eq  $new_seq));
+            @ffc=split(/\t/,$lines_all_sorted[$j]);
+            next if(not($ffc[1] eq  $new_seq));
             $lori="+";
-            $lori="-" if($ff[8]>$ff[9]);
+            $lori="-" if($ffc[8]>$ffc[9]);
             next if(not($lori eq  $new_ori));
-            $startl = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
-            $endl = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+            $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
+            $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
             if($endl > $start-$max_intron && $startl < $end+$max_intron){
+              $cluster_size+=$ffc[3]*$ffc[2];
               push(@lines_filter,$lines_all_sorted[$j]);
               $lines_all_sorted[$j]="";
               $start = $startl if($startl < $start);
@@ -279,11 +285,16 @@ perl -e '{
             }
           }
           $start = ($start-$padding)>=0 ? $start-$padding :0;
-          push(@filenames,"$new_seq.$prot.$start.taskfile");
-          push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+          $prev_length=$cluster_size if($prev_length==0 || $cluster_size>$prev_length);
+          #print "CLUSTER $cluster_size PREV $prev_length $start $end $new_seq\n";
+          if($cluster_size >$prev_length*$match_ratio){
+            #print "OUTPUT cluster $start $end $new_seq\n";
+            push(@filenames,"$new_seq.$prot.$start.taskfile");
+            push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+          }
         }#for
         for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
-          open(OUTFILE,">$pathprefix/$filenames[$k]");
+          open(OUTFILE,">$pathprefix$filenames[$k]");
           print OUTFILE $filecontents[$k];
           close(OUTFILE);
         }
