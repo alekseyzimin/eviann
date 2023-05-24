@@ -248,7 +248,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
-    #stringtie --merge -g 100 -G $GENOME.palign.uniq.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+    #stringtie --merge -g 100 -G $GENOME.$PROTEIN.palign.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     #stringtie --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf > $GENOME.tmp2.combined.gtf &&\
@@ -267,17 +267,15 @@ if [ ! -e merge.success ];then
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
-    if [ ! -s $GENOME.unused.blastp ];then
-      log "Checking unused protein only loci against Uniprot" && \
-      gffcompare -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
-      gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.gff) -g $GENOMEFILE && \
-      ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
-      mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
-      rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
-      makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb1.out 2>&1 && \
-      blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
-      mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp
-    fi && \
+    log "Checking unused protein only loci against Uniprot" && \
+    gffcompare -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
+    gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.gff) -g $GENOMEFILE && \
+    ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
+    mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
+    rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
+    makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb1.out 2>&1 && \
+    blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
+    mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp && \
     #here we compute the score for each protein -- the score is bitscore*1000+length plus 100 if the protein starts with "M"
     perl -ane '{
         $name=$F[0];
