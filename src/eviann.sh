@@ -262,13 +262,18 @@ fi
 
 if [ ! -e merge.success ];then 
   log "Deriving gene models from protein and transcript alignments"
+  gffcompare -p PCONS -SDT $GENOME.$PROTEIN.palign.gff -o count && \
+  NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))+0.5),"\n";}' count.combined.gtf` && \
+  rm -f count.combined.gtf  count.{loci,stats,tracking} && \
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
+  rm -f $GENOME.protref.{loci,tracking,stats} && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Checking unused protein only loci against Uniprot" && \
     gffcompare -p PCONS -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
+    rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats}
     gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.dedup.combined.gtf) -g $GENOMEFILE && \
     ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
     mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
@@ -317,8 +322,12 @@ if [ ! -e merge.success ];then
       }' $GENOME.unused.blastp | \
     sort -nrk1,1 -S 10% |\
     perl -ane '{
-        if(not(defined($h{$F[1]}))){
-          $h{$F[1]}=1;
+        $max_prot_at_locus=2;
+        #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
+        #then we allow for more extra proteins per locus
+        $max_prot_at_locus=10 if(int('$NUM_PROT_SPECIES')<=2);
+        if($h{$F[1]} < $max_prot_at_locus){
+          $h{$F[1]}+=1;
           $hn{$F[2]}=1;
         }
       }END{
@@ -330,7 +339,9 @@ if [ ! -e merge.success ];then
         }
       }' > $GENOME.best_unused_proteins.gff && \
     gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
+    rm -f $GENOME.all.{loci,stats,tracking} && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.combined.gtf && \
+    rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
   fi && \
   mv $GENOME.gff.tmp $GENOME.prelim.gff && \
