@@ -317,12 +317,15 @@ foreach my $p(keys %protein){
   #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
   my $output_check=1;
-  for(my $i=0;$i<=$#outputLOCchr;$i++){
-    if($gff_fields_p[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $gff_fields_p[3] && $outputLOCend[$i]+100 > $gff_fields_p[4])){
-      $output_check=0;
-      $i=$#outputLOCchr+1;
-    }
-  }
+  #the commented out code below would prohibit outputting extra protein-only transcripts at sites where we have real transcripts
+  #but I think we should allow one best protein
+  #we will output all and then filter the unused to output one per xloc
+  #for(my $i=0;$i<=$#outputLOCchr;$i++){
+  #  if($gff_fields_p[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $gff_fields_p[3] && $outputLOCend[$i]+100 > $gff_fields_p[4])){
+  #    $output_check=0;
+  #    $i=$#outputLOCchr+1;
+  #  }
+  #}
   if($output_check){
     print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
     foreach my $cds(@{$protein_cds{$p}}){

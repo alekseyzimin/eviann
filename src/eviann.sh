@@ -301,13 +301,17 @@ if [ ! -e merge.success ];then
           @f=split(/\t/,$line);
           if($f[2] eq "transcript"){
             @ff=split(/;/,$f[8]);
-            $ff[1]=~s/^\sgene_id\s"//;
-            $ff[1]=~s/"$//;
-            $ff[0]=~s/^\transcript_id\s"//;
-            $ff[0]=~s/"$//;
-            $ff[2]=~s/^\old\s"//;
-            $ff[2]=~s/"$//;
-            print $score{$ff[0]}*1000+$len{$ff[0]}," $ff[1] $ff[2]\n" if(defined($score{$ff[0]}) || defined($len{$ff[0]}));
+            undef($transcript_id);
+            undef($oId);
+            undef($gene_id);
+            for(my $i=0;$i<=$#ff;$i++){
+              $transcript_id=$1 if($ff[$i]=~/transcript_id "(.+)"/);
+              $oId=$1 if($ff[$i]=~/oId "(.+)"/);
+              $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
+            }
+            if(defined($transcript_id) && defined($oId) && defined($gene_id)){
+              print $score{$transcript_id}*1000+$len{$transcript_id}," $gene_id $oId\n" if(defined($score{$transcript_id}) || defined($len{$transcript_id}));
+            }
           }
         }
       }' $GENOME.unused.blastp | \
