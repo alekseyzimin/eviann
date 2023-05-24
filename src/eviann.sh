@@ -268,8 +268,8 @@ if [ ! -e merge.success ];then
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Checking unused protein only loci against Uniprot" && \
-    gffcompare -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
-    gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.gff) -g $GENOMEFILE && \
+    gffcompare -p PCONS -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
+    gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.dedup.combined.gtf) -g $GENOMEFILE && \
     ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
     mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
     rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
@@ -303,9 +303,11 @@ if [ ! -e merge.success ];then
             @ff=split(/;/,$f[8]);
             $ff[1]=~s/^\sgene_id\s"//;
             $ff[1]=~s/"$//;
-            $ff[2]=~s/^\soId\s"//;
+            $ff[0]=~s/^\transcript_id\s"//;
+            $ff[0]=~s/"$//;
+            $ff[2]=~s/^\old\s"//;
             $ff[2]=~s/"$//;
-            print $score{$ff[2]}*1000+$len{$ff[2]}," $ff[1] $ff[2]\n" if(defined($score{$ff[2]}) || defined($len{$ff[2]}));
+            print $score{$ff[0]}*1000+$len{$ff[0]}," $ff[1] $ff[2]\n" if(defined($score{$ff[0]}) || defined($len{$ff[0]}));
           }
         }
       }' $GENOME.unused.blastp | \
