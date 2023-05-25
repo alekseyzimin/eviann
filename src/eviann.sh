@@ -325,7 +325,7 @@ if [ ! -e merge.success ];then
         $max_prot_at_locus=2;
         #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
         #then we allow for more extra proteins per locus
-        $max_prot_at_locus=5 if(int('$NUM_PROT_SPECIES')<=2);
+        $max_prot_at_locus=4 if(int('$NUM_PROT_SPECIES')<=2);
         if($h{$F[1]} < $max_prot_at_locus){
           $h{$F[1]}+=1;
           $hn{$F[2]}=1;
@@ -374,7 +374,7 @@ if [ -e find_orfs.success ] && [ ! -e functional.success ];then
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-  touch functional.success && rm -rf pseudo_detect.success
+  touch functional.success && rm -rf pseudo_detect.success pipeliner.*.cmds
 fi
 
 if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
