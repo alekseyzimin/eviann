@@ -6,7 +6,7 @@ set -o pipefail
 export NUM_THREADS=16
 export MAX_INTRON=200000
 export MAX_MATCHES=2
-export MATCH_RATIO="0.75"
+export MATCH_RATIO="0.6"
 export MYPID=$$
 BATCH_SIZE=1000000
 GC=

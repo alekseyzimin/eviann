@@ -322,7 +322,7 @@ if [ ! -e merge.success ];then
       }' $GENOME.unused.blastp | \
     sort -nrk1,1 -S 10% |\
     perl -ane '{
-        $max_prot_at_locus=2;
+        $max_prot_at_locus=1;
         #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
         #then we allow for more extra proteins per locus
         $max_prot_at_locus=4 if(int('$NUM_PROT_SPECIES')<=2);
