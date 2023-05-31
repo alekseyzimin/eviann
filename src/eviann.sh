@@ -9,6 +9,7 @@ ALT_EST="altest"
 export BATCH_SIZE=1000000
 export MAX_INTRON=100000
 export MIN_TPM=0.25
+export DEBUG=0
 UNIPROT="uniprot.fa"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
@@ -104,6 +105,9 @@ do
             ;;
         -v|--verbose)
             set -x
+            ;;
+        --debug)
+            DEBUG=1
             ;;
         -h|--help|-u|--usage)
             usage
@@ -268,12 +272,12 @@ if [ ! -e merge.success ];then
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
-  rm -f $GENOME.protref.{loci,tracking,stats} && \
+  rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Checking unused protein only loci against Uniprot" && \
     gffcompare -p PCONS -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
-    rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats}
+    rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
     gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.dedup.combined.gtf) -g $GENOMEFILE && \
     ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
     mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
@@ -345,7 +349,11 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
   fi && \
   mv $GENOME.gff.tmp $GENOME.prelim.gff && \
-  touch merge.success && rm -f find_orfs.success 
+  touch merge.success && \
+  rm -f find_orfs.success && \
+  if [ $DEBUG -lt 1 ];then
+    rm -rf uniprot.n?? $GENOME.unused.blastp $GENOME.best_unused_proteins.gff $GENOME.protref.all.annotated.gtf $GENOME.unused_proteins.gff $GENOME.unused_proteins.dedup.combined.gtf $GENOME.unused_proteins.faa $GENOME.all $GENOME.protref.all
+  fi
 fi
 
 if [ -e merge.success ] && [ ! -e find_orfs.success ];then
@@ -360,7 +368,10 @@ if [ -e merge.success ] && [ ! -e find_orfs.success ];then
   #now we have the cds features in $GENOME.lncRNA.transdecoder.gff3 to integrate into our $GENOME.lncRNA.gff file and add them into $GENOME.prelim.gff
   if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
     cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
-    touch find_orfs.success && rm -f functional.success
+    touch find_orfs.success && rm -f functional.success && \
+    if [ $DEBUG -lt 1 ];then 
+      rm -rf $GENOME.lncRNA.fa.transdecoder_dir $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs $GENOME.lncRNA.gff $GENOME.lncRNA.fa transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? $GENOME.prelim.gff
+    fi
   else
     error_exit "TransDecoder failed on ORF detection"
   fi
@@ -374,16 +385,25 @@ if [ -e find_orfs.success ] && [ ! -e functional.success ];then
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-  touch functional.success && rm -rf pseudo_detect.success pipeliner.*.cmds
+  touch functional.success && rm -rf pseudo_detect.success pipeliner.*.cmds && \
+  if [ $DEBUG -lt 1 ];then
+    rm -rf uniprot.p?? $GENOME.gff $GENOME.proteins.fasta $GENOME.transcripts.fasta
+  fi
 fi
 
 if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes"
-  ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
-  ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
+  ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
+  ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb2.out 2>&1 && \
   blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp2.out 2>&1 && \
-  perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && touch pseudo_detect.success
+  perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && \
+  mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
+  rm $GENOME.functional_note.gff && \
+  if [ $DEBUG -lt 1 ];then
+    rm -rf $GENOME.proteins.mex.p??
+  fi
+  touch pseudo_detect.success
 fi
 
 if [ -e functional.success ] && [ -e pseudo_detect.success ];then
