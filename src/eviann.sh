@@ -45,6 +45,7 @@ function usage {
  echo "-r <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
  echo "-s <MANDATORY:fasta file of uniprot proteins>"
  echo "-m <max intron size, default: 100000>"
+ echo "--debug <debug flag, if used intermediate output files will be kept>"
  echo "-v <verbose flag>"
  echo "-r AND one or more of the -p -u or -e must be supplied."
 }
@@ -352,7 +353,7 @@ if [ ! -e merge.success ];then
   touch merge.success && \
   rm -f find_orfs.success && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf uniprot.n?? $GENOME.unused.blastp $GENOME.best_unused_proteins.gff $GENOME.protref.all.annotated.gtf $GENOME.unused_proteins.gff $GENOME.unused_proteins.dedup.combined.gtf $GENOME.unused_proteins.faa $GENOME.all $GENOME.protref.all
+    rm -rf uniprot.n?? $GENOME.unused.blastp $GENOME.best_unused_proteins.gff $GENOME.protref.all.annotated.gtf $GENOME.unused_proteins.gff $GENOME.all.combined.gtf $GENOME.unused_proteins.dedup.combined.gtf $GENOME.unused_proteins.faa $GENOME.all $GENOME.protref.all 
   fi
 fi
 
@@ -370,7 +371,7 @@ if [ -e merge.success ] && [ ! -e find_orfs.success ];then
     cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
     touch find_orfs.success && rm -f functional.success && \
     if [ $DEBUG -lt 1 ];then 
-      rm -rf $GENOME.lncRNA.fa.transdecoder_dir $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs $GENOME.lncRNA.gff $GENOME.lncRNA.fa transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? $GENOME.prelim.gff
+      rm -rf $GENOME.lncRNA.fa.transdecoder_dir $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs $GENOME.lncRNA.gff $GENOME.lncRNA.fa transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? 
     fi
   else
     error_exit "TransDecoder failed on ORF detection"
@@ -387,7 +388,7 @@ if [ -e find_orfs.success ] && [ ! -e functional.success ];then
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
   touch functional.success && rm -rf pseudo_detect.success pipeliner.*.cmds && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf uniprot.p?? $GENOME.gff $GENOME.proteins.fasta $GENOME.transcripts.fasta
+    rm -rf uniprot.p?? $GENOME.proteins.fasta $GENOME.transcripts.fasta
   fi
 fi
 
@@ -395,13 +396,13 @@ if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes"
   ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
   ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
-  makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb2.out 2>&1 && \
+  makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb4.out 2>&1 && \
   blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp2.out 2>&1 && \
   perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && \
   mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
   rm $GENOME.functional_note.gff && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.proteins.mex.p??
+    rm -rf $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta
   fi
   touch pseudo_detect.success
 fi
