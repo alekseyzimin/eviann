@@ -265,19 +265,24 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   touch stringtie.success && rm -f merge.success
 fi
 
-if [ ! -e merge.success ];then 
+if [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
+#we first estimate the redundancy of proteins -- this can tell us how many species were used for protein references
   gffcompare -p PCONS -SDT $GENOME.$PROTEIN.palign.gff -o count && \
   NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))+0.5),"\n";}' count.combined.gtf` && \
   rm -f count.combined.gtf  count.{loci,stats,tracking} && \
+#now we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
+#here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
+#here we combine the transcripts and protein matches; we will use only protein CDS's that are contained in the transcripts;some transcripts do not get annotated, we only use "=", "k","j" and "u"
+#unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Checking unused protein only loci against Uniprot" && \
-    gffcompare -p PCONS -SDT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
+    gffcompare -p PCONS -SDAT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
     rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
     gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.dedup.combined.gtf) -g $GENOMEFILE && \
     ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \

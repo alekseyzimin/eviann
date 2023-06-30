@@ -54,8 +54,8 @@ while(my $line=<FILE>){
       }
     } 
     @exons=();
-    $locID=substr($attributes[1],7);
-    $geneID=substr($attributes[0],3);
+    $locID=substr($attributes[2],5);#this is the xloc
+    $geneID=substr($attributes[0],3);#this is the transcript_id
     my $class_code="";
     my $protID="";
     foreach my $attr(@attributes){
@@ -68,7 +68,7 @@ while(my $line=<FILE>){
       $transcript_cds{$geneID}=$protID;
       $transcript_class{$geneID}=$class_code;
       $transcripts_cds_loci{$locID}.="$geneID ";
-    }elsif($class_code eq "u" || $class_code eq "j"){#no match to protein or an inconsistent match
+    }elsif($class_code eq "u" || $class_code eq "j"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
     }else{#likely messed up protein?
@@ -282,15 +282,6 @@ for my $locus(keys %transcripts_only_loci){
   }
   #do not output the locus if there are too many disagreements between the intron junctions
   next if($junction_score>0.66);
-  #do not output if this locus has already been output
-  my $output_check=0;
-  for(my $i=0;$i<=$#outputLOCchr;$i++){
-    if($gff_fields[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $locus_start && $outputLOCend[$i]+100 > $locus_end)){
-      $output_check=1;
-      $i=$#outputLOCchr+1;
-    }
-  }
-  next if($output_check);
   #if we got here we can output the transcript
   for my $t(@transcripts_at_loci){
     next if(not(defined($transcript_gff_u{$t})));
@@ -317,9 +308,9 @@ foreach my $p(keys %protein){
   #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
   my $output_check=1;
-  #the commented out code below would prohibit outputting extra protein-only transcripts at sites where we have real transcripts
+  #the commented out code below would prohibit outputting extra protein-only transcripts at sites where we have real transcripts with protein alignments
   #but I think we should allow one best protein
-  #we will output all and then filter the unused to output one per xloc
+  #we will output all and then later filter the unused to output one per xloc
   #for(my $i=0;$i<=$#outputLOCchr;$i++){
   #  if($gff_fields_p[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $gff_fields_p[3] && $outputLOCend[$i]+100 > $gff_fields_p[4])){
   #    $output_check=0;
