@@ -377,10 +377,10 @@ if [ -e merge.success ] && [ ! -e find_orfs.success ];then
     awk -F '\t' '{split($9,a,";");print substr(a[1],4)}' $GENOME.gff.tmp |\
     perl -ane '{$coding{$F[0]}=1}END{open(FILE,"'$GENOME'.gff.tmp");while($line=<FILE>){chomp($line);if($line=~ /ID=XLOC_(\d+)_lncRNA/){print $line,"\n" unless(defined $coding{"XLOC_".$1})}else{print $line,"\n"}}}' > $GENOME.gff.tmp1 && \
     mv $GENOME.gff.tmp1 $GENOME.gff && \
-    rm $GENOME.gff.tmp \
+    rm -rf $GENOME.gff.tmp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? && \
     touch find_orfs.success && rm -f functional.success && \
     if [ $DEBUG -lt 1 ];then 
-      rm -rf $GENOME.lncRNA.fa.transdecoder_dir $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs $GENOME.lncRNA.gff $GENOME.lncRNA.fa transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? 
+      rm -rf $GENOME.lncRNA.gff $GENOME.lncRNA.fa 
     fi
   else
     error_exit "TransDecoder failed on ORF detection"
@@ -395,7 +395,7 @@ if [ -e find_orfs.success ] && [ ! -e functional.success ];then
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-  touch functional.success && rm -rf pseudo_detect.success pipeliner.*.cmds && \
+  touch functional.success && rm -rf pseudo_detect.success && \
   if [ $DEBUG -lt 1 ];then
     rm -rf uniprot.p?? $GENOME.proteins.fasta $GENOME.transcripts.fasta
   fi
