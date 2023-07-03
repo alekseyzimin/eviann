@@ -373,7 +373,11 @@ if [ -e merge.success ] && [ ! -e find_orfs.success ];then
   TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.blastp 1>transdecoder.Predict.out 2>&1 
   #now we have the cds features in $GENOME.lncRNA.transdecoder.gff3 to integrate into our $GENOME.lncRNA.gff file and add them into $GENOME.prelim.gff
   if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
-    cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && \
+    cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && \
+    awk -F '\t' '{split($9,a,";");print substr(a[1],4)}' $GENOME.gff.tmp |\
+    perl -ane '{$coding{$F[0]}=1}END{open(FILE,"'$GENOME'.gff.tmp");while($line=<FILE>){chomp($line);if($line=~ /ID=XLOC_(\d+)_lncRNA/){print $line,"\n" unless(defined $coding{"XLOC_".$1})}else{print $line,"\n"}}}' > $GENOME.gff.tmp1 && \
+    mv $GENOME.gff.tmp1 $GENOME.gff && \
+    rm $GENOME.gff.tmp \
     touch find_orfs.success && rm -f functional.success && \
     if [ $DEBUG -lt 1 ];then 
       rm -rf $GENOME.lncRNA.fa.transdecoder_dir $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs $GENOME.lncRNA.gff $GENOME.lncRNA.fa transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? 

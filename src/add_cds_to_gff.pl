@@ -112,7 +112,7 @@ while($line=<STDIN>){
     my @fff=split(/_/,substr($ff[0],3));
     if(defined($cds_start{join("_",@fff[0..2])."-mRNA-1"})||defined($cds_start{join("_",@fff[0..2])."-mRNA-2"})||defined($cds_start{join("_",@fff[0..2])."-mRNA-3"})){
       $f[8]=~s/_lncRNA//g;
-      $f[8]=~s/type=lncRNA/type=protein_coding/;
+      $f[8]=~s/type=lncRNA/type=protein_coding;Note=TransDecoder_Predicted/;
       $line=join("\t",@f);
     }
   }

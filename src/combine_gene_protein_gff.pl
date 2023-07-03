@@ -62,13 +62,13 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "=" ){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "=" ||$class_code eq "j"){#equal intron chain or contains protein
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
       $transcript_class{$geneID}=$class_code;
       $transcripts_cds_loci{$locID}.="$geneID ";
-    }elsif($class_code eq "u" || $class_code eq "j"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
+    }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
     }else{#likely messed up protein?
@@ -97,9 +97,12 @@ for my $locus(keys %transcripts_cds_loci){
   my $transcript_index=0;
   my %output_proteins_for_locus=();
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
-  for my $class ("=","k"){
+  for my $class ("=","k","j"){
+    my $class_success=0;
     for my $t(@transcripts_at_loci){
+      $class_success=1 if($class eq "=" || $class eq "k");
       next if(not($transcript_class{$t} eq $class));
+      next if($class eq "j" && $class_success);#not interested in outputting j's if already have = or k here
       my $protID=$transcript_cds{$t};
       next if(defined($output_proteins_for_locus{$protID}) && $class eq "j");
       $output_proteins_for_locus{$protID}=1;
@@ -113,6 +116,7 @@ for my $locus(keys %transcripts_cds_loci){
       my $end_cds=$gff_fields_p[4];
       my $transcript_start=$gff_fields_t[3];
       my $transcript_end=$gff_fields_t[4];
+      next if($class eq "j" &&  $end_cds>$transcript_end);#we are not interested in j's that are too short
       my $transcript_cds_start_index=0;
       my $transcript_cds_end_index=$#{$transcript_gff{$t}};
       $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
