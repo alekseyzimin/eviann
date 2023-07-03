@@ -99,6 +99,7 @@ while($line=<STDIN>){
       $remember_exons=1;
       #remove lncRNA from the name
       $f[8]=~s/_lncRNA//g;
+      $f[8].=";Source=TransDecoder_Predicted";
       $line=join("\t",@f);
     }
   }elsif($f[2] eq "exon"){
@@ -112,7 +113,7 @@ while($line=<STDIN>){
     my @fff=split(/_/,substr($ff[0],3));
     if(defined($cds_start{join("_",@fff[0..2])."-mRNA-1"})||defined($cds_start{join("_",@fff[0..2])."-mRNA-2"})||defined($cds_start{join("_",@fff[0..2])."-mRNA-3"})){
       $f[8]=~s/_lncRNA//g;
-      $f[8]=~s/type=lncRNA/type=protein_coding;Note=TransDecoder_Predicted/;
+      $f[8]=~s/type=lncRNA/type=protein_coding/;
       $line=join("\t",@f);
     }
   }

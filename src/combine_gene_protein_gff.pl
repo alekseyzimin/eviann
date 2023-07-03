@@ -54,7 +54,7 @@ while(my $line=<FILE>){
       }
     } 
     @exons=();
-    $locID=substr($attributes[2],5);#this is the xloc
+    $locID=substr($attributes[1],7);#this is the gene_id
     $geneID=substr($attributes[0],3);#this is the transcript_id
     my $class_code="";
     my $protID="";
@@ -104,7 +104,7 @@ for my $locus(keys %transcripts_cds_loci){
       next if(not($transcript_class{$t} eq $class));
       next if($class eq "j" && $class_success);#not interested in outputting j's if already have = or k here
       my $protID=$transcript_cds{$t};
-      next if(defined($output_proteins_for_locus{$protID}) && $class eq "j");
+      next if(defined($output_proteins_for_locus{$protID}) && $class eq "j");#do not need to output j transcripts matching proteins already output earlier
       $output_proteins_for_locus{$protID}=1;
       $used_proteins{$protID}=1;
       my $note="";
