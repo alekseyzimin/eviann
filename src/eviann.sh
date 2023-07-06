@@ -226,7 +226,7 @@ fi
 if [ ! -e stringtie.success ] && [ -e sort.success ];then
   if [ -s tissue0.bam.sorted.bam ];then
     log "Assembling transcripts from related species with Stringtie"
-    stringtie -g 1 -m 100 -t -j 1 -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
+    stringtie -g 1 -m 100 -t -j 1 -l REFSTRG -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
     mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
   fi
   if [ $NUM_TISSUES -gt 0 ];then
@@ -279,8 +279,14 @@ if [ ! -e merge.success ];then
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
 #here we combine the transcripts and protein matches; we will use only protein CDS's that are contained in the transcripts;some transcripts do not get annotated, we only use "=", "k","j" and "u"
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
-  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.annotated.gtf )  1>$GENOME.gff.tmp 2>$GENOME.unused_proteins.gff && \
-  if [ -s $GENOME.unused_proteins.gff ];then
+#this produces files $GENOME.{k,j,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
+  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf )  && \
+  mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+  mv $GENOME.j.gff.tmp $GENOME.j.gff && \
+  mv $GENOME.u.gff.tmp $GENOME.u.gff && \
+  mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
+  if [ ! -e merge.unused.success ];then
+  if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Checking unused protein only loci against Uniprot" && \
     gffcompare -p PCONS -SDAT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
     rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
@@ -347,47 +353,115 @@ if [ ! -e merge.success ];then
           @f=split(/=/,$line);
           print "$line\n" if(defined($hn{$f[-1]}));
         }
-      }' > $GENOME.best_unused_proteins.gff && \
+      }' > $GENOME.best_unused_proteins.gff
+  else
+    echo "" > $GENOME.best_unused_proteins.gff
+  fi 
+  fi && touch merge.unused.success
+  #now we deal with j's -- we know that they are protein-coding but we could not find a good match to a protein
+  if [ ! -e merge.j.success ];then
+  if [ -s $GENOME.j.gff ];then
+    log "Looking for ORFs in transcripts with poor protein matches"
+    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.j.gff && \
+    makeblastdb -in $PROTEINFILE -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
+    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.j.gff && \
+    rm -rf $GENOME.lncRNA.fa.transdecoder* && \
+    TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen" -evalue 1e-5 -num_threads $NUM_THREADS |\
+    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.98 && $F[0] =~ /p1$/);}'> $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.j.blastp && \
+    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.j.blastp 1>transdecoder.Predict.out 2>&1
+    if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
+      add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.j.gff | \
+      perl -F'\t' -ane 'BEGIN{
+        open(FILE,"'$GENOME'.lncRNA.j.blastp");
+        while($line=<FILE>){
+          @f=split(/\./,$line);
+          $f[0]=~s/_lncRNA//;
+          $h{$f[0]}=1;
+        }
+      }{
+        unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
+          @f=split(/;|:/,$F[8]); 
+          if(defined($h{substr($f[0],3)})){
+            if($F[2] eq "mRNA"){
+              print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
+            }else{
+              print join("\t",@F);
+            }
+          }
+        }
+      }' > $GENOME.j.cds.gff.tmp && \
+      mv $GENOME.j.cds.gff.tmp $GENOME.j.cds.gff
+    else
+      echo "#gff" > $GENOME.j.cds.gff
+    fi
+    rm -rf pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
+  else
+    echo "#gff" > $GENOME.j.cds.gff
+  fi
+  fi && touch merge.j.success && \
+  #these are u's -- no match to a protein
+  if [ ! -e merge.u.success ];then
+  if [ -s $GENOME.u.gff ];then
+    log "Looking for ORFs in transcripts with no protein matches"
+    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
+    makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
+    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
+    rm -rf $GENOME.lncRNA.fa.transdecoder* && \
+    TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen" -evalue 1e-5 -num_threads $NUM_THREADS |\
+    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.75 && $F[0] =~ /p1$/);}' > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
+    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
+    if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
+      add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.u.gff | \
+      perl -F'\t' -ane 'BEGIN{
+        open(FILE,"'$GENOME'.lncRNA.u.blastp");
+        while($line=<FILE>){
+          @f=split(/\./,$line);
+          $f[0]=~s/_lncRNA//;
+          $h{$f[0]}=1;
+        }
+      }{
+        unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
+          @f=split(/;|:/,$F[8]); 
+          if(defined($h{substr($f[0],3)})){
+            if($F[2] eq "mRNA"){
+              print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
+            }else{
+              print join("\t",@F);;
+            }
+          }
+        }
+      }' > $GENOME.u.cds.gff.tmp && \
+      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff
+    else
+      echo "#gff" > $GENOME.u.cds.gff
+    fi
+    #rm -rf pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
+  else
+    echo "#gff" > $GENOME.u.cds.gff 
+  fi
+  fi && touch merge.u.success && \
+  if [ -s $GENOME.best_unused_proteins.gff ];then
+#now we have additional proteins produces by transdecoder, let's use them all
     gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
     rm -f $GENOME.all.{loci,stats,tracking} && \
-    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.fixed.gff $GENOME.all.combined.gtf && \
+    gffread $GENOME.palign.fixed.gff $GENOME.{j,u}.cds.gff >  $GENOME.palign.all.gff && \
+    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
-    cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl <( gffread -F $GENOME.protref.all.annotated.gtf ) 1>$GENOME.gff.tmp 2>/dev/null
-  fi && \
-  mv $GENOME.gff.tmp $GENOME.prelim.gff && \
-  touch merge.success && \
-  rm -f find_orfs.success && \
-  if [ $DEBUG -lt 1 ];then
-    rm -rf uniprot.n?? $GENOME.unused.blastp $GENOME.best_unused_proteins.gff $GENOME.protref.all.annotated.gtf $GENOME.unused_proteins.gff $GENOME.all.combined.gtf $GENOME.unused_proteins.dedup.combined.gtf $GENOME.unused_proteins.faa $GENOME.all $GENOME.protref.all 
-  fi
-fi
-
-if [ -e merge.success ] && [ ! -e find_orfs.success ];then
-  log "Looking for ORFs in transcripts without protein matches"
-  awk -F '\t' '{if($9 ~ /_lncRNA/) print $0}' $GENOME.prelim.gff > $GENOME.lncRNA.gff && \
-  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
-  gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.lncRNA.gff && \
-  rm -rf $GENOME.lncRNA.fa.transdecoder* && \
-  TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-  blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt 6 -evalue 1e-5 -num_threads $NUM_THREADS > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.blastp && \
-  TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.blastp 1>transdecoder.Predict.out 2>&1 
-  #now we have the cds features in $GENOME.lncRNA.transdecoder.gff3 to integrate into our $GENOME.lncRNA.gff file and add them into $GENOME.prelim.gff
-  if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
-    cat <(awk -F '\t' '{if($9 !~ /_lncRNA/) print $0}' $GENOME.prelim.gff) <(add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.lncRNA.gff) > $GENOME.gff.tmp && \
-    awk -F '\t' '{split($9,a,";");print substr(a[1],4)}' $GENOME.gff.tmp |\
-    perl -ane '{$coding{$F[0]}=1}END{open(FILE,"'$GENOME'.gff.tmp");while($line=<FILE>){chomp($line);if($line=~ /ID=XLOC_(\d+)_lncRNA/){print $line,"\n" unless(defined $coding{"XLOC_".$1})}else{print $line,"\n"}}}' > $GENOME.gff.tmp1 && \
-    mv $GENOME.gff.tmp1 $GENOME.gff && \
-    rm -rf $GENOME.gff.tmp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p?? && \
-    touch find_orfs.success && rm -f functional.success && \
-    if [ $DEBUG -lt 1 ];then 
-      rm -rf $GENOME.lncRNA.gff $GENOME.lncRNA.fa 
-    fi
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) && \
+    mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
   else
-    error_exit "TransDecoder failed on ORF detection"
-  fi
+    gffread $GENOME.palign.fixed.gff $GENOME.{j,u}.cds.gff >  $GENOME.palign.all.gff && \
+    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.gtf && \
+    rm -f $GENOME.protref.all.{loci,stats,tracking} && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) && \
+    mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
+  fi && \
+  touch merge.success && rm -f functional.success merge.{unused,j,u}.success
 fi
 
-if [ -e find_orfs.success ] && [ ! -e functional.success ];then
+if [ -e merge.success ] && [ ! -e functional.success ];then
   log "Performing functional annotation" && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb3.out 2>&1 && \

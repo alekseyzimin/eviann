@@ -10,12 +10,22 @@ my @outputLOCend;
 my @outputLOCchr;
 my %transcript_gff;
 my %transcript_cds;
-my @gene_records;
-my %gene_record;
+my @gene_records_k;
+my %gene_record_k;
+my @gene_records_j;
+my %gene_record_j;
+my @gene_records_u;
+my %gene_record_u;
 my $protID="";
 my $dir="";
 my %used_proteins;
 my %suspect_proteins;
+my $output_prefix=$ARGV[0];
+open(OUTFILE1,">$output_prefix".".k.gff.tmp");
+open(OUTFILE2,">$output_prefix".".j.gff.tmp");
+open(OUTFILE3,">$output_prefix".".u.gff.tmp");
+open(OUTFILE4,">$output_prefix".".unused_proteins.gff.tmp");
+
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 while(my $line=<STDIN>){#we just read in the whole file
@@ -41,18 +51,22 @@ if(not($protID eq "")){
 
 #this is output of gffcompare -r protalign.gtf ../GCF_000001735.4_TAIR10.1_genomic.clean.fna.gtf -o protref
 #here we load up all transcripts that matched proteins
-open(FILE,$ARGV[0]);
+open(FILE,$ARGV[1]);
 while(my $line=<FILE>){
   chomp($line);
   my @gff_fields=split(/\t/,$line);
   my @attributes=split(";",$gff_fields[8]);
   if($gff_fields[2] eq "transcript"){
-    $transcript_gff{$geneID}=[@exons] if(defined($transcript{$geneID}));
-    if(defined($transcript_u{$geneID})){
+    if(defined($transcript{$geneID})){
+      $transcript_gff{$geneID}=[@exons];
+    }elsif(defined($transcript_u{$geneID})){
       unless($#exons==-1){#not interested in single exon
         $transcript_gff_u{$geneID}=[@exons];
       }
-    } 
+    }elsif(defined($transcript_j{$geneID})){
+      $transcript_gff_j{$geneID}=[@exons];
+    }
+
     @exons=();
     $locID=substr($attributes[1],7);#this is the gene_id
     $geneID=substr($attributes[0],3);#this is the transcript_id
@@ -62,7 +76,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "=" ||$class_code eq "j"){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "="){#equal intron chain or contains protein
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
@@ -71,19 +85,22 @@ while(my $line=<FILE>){
     }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
+    }elsif($class_code eq "j" && $geneID=~/^REFSTRG/){#we only keep j's for reference transcript assemblies
+      $transcript_j{$geneID}=$line;
+      $transcripts_j_loci{$locID}.="$geneID ";
     }else{#likely messed up protein?
       $suspect_proteins{$protID}=1;
     }
   }elsif($gff_fields[2] eq "exon"){
-    push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}));
+    push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}) || defined($transcript_j{$geneID}));
   }
 }
 $transcript_gff{$geneID}=[@exons] if(not($geneID eq ""));
 @exons=();
 
 #process the loci
-#print the header
-print "##gff-version 3\n# EviAnn automated annotation\n";
+#print the headers
+print OUTFILE1 "##gff-version 3\n# EviAnn automated annotation\n";
 for my $locus(keys %transcripts_cds_loci){
   my @output=();
   my $gene_feature="";
@@ -97,14 +114,14 @@ for my $locus(keys %transcripts_cds_loci){
   my $transcript_index=0;
   my %output_proteins_for_locus=();
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
-  for my $class ("=","k","j"){
+  for my $class ("=","k"){
     my $class_success=0;
     for my $t(@transcripts_at_loci){
       $class_success=1 if($class eq "=" || $class eq "k");
       next if(not($transcript_class{$t} eq $class));
-      next if($class eq "j" && $class_success);#not interested in outputting j's if already have = or k here
+      #next if($class eq "j" && $class_success);#not interested in outputting j's if already have = or k here
       my $protID=$transcript_cds{$t};
-      next if(defined($output_proteins_for_locus{$protID}) && $class eq "j");#do not need to output j transcripts matching proteins already output earlier
+      #next if(defined($output_proteins_for_locus{$protID}) && $class eq "j");#do not need to output j transcripts matching proteins already output earlier
       $output_proteins_for_locus{$protID}=1;
       $used_proteins{$protID}=1;
       my $note="";
@@ -116,7 +133,7 @@ for my $locus(keys %transcripts_cds_loci){
       my $end_cds=$gff_fields_p[4];
       my $transcript_start=$gff_fields_t[3];
       my $transcript_end=$gff_fields_t[4];
-      next if($class eq "j" &&  $end_cds>$transcript_end);#we are not interested in j's that are too short
+      #next if($class eq "j" &&  $end_cds>$transcript_end);#we are not interested in j's that are too short
       my $transcript_cds_start_index=0;
       my $transcript_cds_end_index=$#{$transcript_gff{$t}};
       $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
@@ -244,11 +261,41 @@ for my $locus(keys %transcripts_cds_loci){
     }#end of transcripts loop
   }#end of class loop
 #now we know the locus start ans end, and we can output the gene record
-  $gene_record{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=protein_coding\n".join("\n",@output)."\n";
-  push(@gene_records,$gff_fields[0]." ".$locus_start);
+  $gene_record_k{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=protein_coding\n".join("\n",@output)."\n";
+  push(@gene_records_k,$gff_fields[0]." ".$locus_start);
   push(@outputLOCchr,$gff_fields[0]);
   push(@outputLOCbeg,$locus_start);
   push(@outputLOCend,$locus_end);
+}
+
+#output "j" transcripts; these could be additiona; trqanscripts at protein coding loci
+for my $locus(keys %transcripts_j_loci){
+  my @output=();
+  my @transcripts_at_loci=split(/\s+/,$transcripts_j_loci{$locus});
+  my @gff_fields=split(/\t/,$transcript_j{$transcripts_at_loci[0]});
+  my $locus_start=$gff_fields[3];
+  my $locus_end=$gff_fields[4];
+  my $geneID=$locus."J_lncRNA";
+  my $parent=$geneID."-mRNA-";
+  my $transcript_index=0;
+  #if we got here we can output the transcript
+  for my $t(@transcripts_at_loci){
+    next if(not(defined($transcript_gff_j{$t})));
+    my @gff_fields_t=split(/\t/,$transcript_j{$t});
+    my @attributes_t=split(";",$gff_fields_t[8]);
+    $transcript_index++;
+    push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes_t[3]");
+    my $i=1;
+    for my $x(@{$transcript_gff_j{$t}}){
+      my @gff_fields=split(/\t/,$x);
+      push(@output,"$gff_fields_t[0]\tEviAnn\t".join("\t",@gff_fields[2..7])."\tID=$parent$transcript_index:exon:$i;Parent=$parent$transcript_index");
+      $i++;
+    }
+  }
+  if($transcript_index>0){
+    $gene_record_j{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;\n".join("\n",@output)."\n";
+    push(@gene_records_j,$gff_fields[0]." ".$locus_start);
+  }
 }
 
 #finally output "intergenic" transcripts
@@ -261,7 +308,7 @@ for my $locus(keys %transcripts_only_loci){
   my @gff_fields=split(/\t/,$transcript_u{$transcripts_at_loci[0]});
   my $locus_start=$gff_fields[3];
   my $locus_end=$gff_fields[4];
-  my $geneID=$locus."_lncRNA";
+  my $geneID=$locus."U_lncRNA";
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
   #here we first compute intron junction score as the number of distinct intron junctions over the number of total intron junctions
@@ -301,10 +348,11 @@ for my $locus(keys %transcripts_only_loci){
     }
   }
   if($transcript_index>0){
-    $gene_record{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;junction_score=$junction_score;\n".join("\n",@output)."\n";
-    push(@gene_records,$gff_fields[0]." ".$locus_start);
+    $gene_record_u{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;junction_score=$junction_score;\n".join("\n",@output)."\n";
+    push(@gene_records_u,$gff_fields[0]." ".$locus_start);
   }
 }
+
 #output unused proteins
 #we will then look at them, pick only one per locus that best matches uniprot and join them in at the second pass
 foreach my $p(keys %protein){
@@ -312,30 +360,39 @@ foreach my $p(keys %protein){
   #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
   my $output_check=1;
-  #the commented out code below would prohibit outputting extra protein-only transcripts at sites where we have real transcripts with protein alignments
-  #but I think we should allow one best protein
-  #we will output all and then later filter the unused to output one per xloc
-  #for(my $i=0;$i<=$#outputLOCchr;$i++){
-  #  if($gff_fields_p[0] eq $outputLOCchr[$i] && ($outputLOCbeg[$i]-100 < $gff_fields_p[3] && $outputLOCend[$i]+100 > $gff_fields_p[4])){
-  #    $output_check=0;
-  #    $i=$#outputLOCchr+1;
-  #  }
-  #}
   if($output_check){
-    print STDERR "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
+    print OUTFILE4 "$gff_fields_p[0]\tEviAnn\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
     foreach my $cds(@{$protein_cds{$p}}){
       my @gff_fields_c=split(/\t/,$cds);
-      print STDERR "$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
+      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
     }
   }
 }
 
 #now we sort and output
-my @gene_records_sorted=sort mysort @gene_records;
-my %output;
+my @gene_records_sorted=sort mysort @gene_records_k;
+my %output=();
 foreach $g(@gene_records_sorted){
   if(not(defined($output{$g}))){
-    print $gene_record{$g};
+    print OUTFILE1 $gene_record_k{$g};
+    $output{$g}=1;
+  }
+}
+
+@gene_records_sorted=sort mysort @gene_records_j;
+%output=();
+foreach $g(@gene_records_sorted){
+  if(not(defined($output{$g}))){
+    print OUTFILE2 $gene_record_j{$g};
+    $output{$g}=1;
+  }
+}
+
+@gene_records_sorted=sort mysort @gene_records_u;
+%output=();
+foreach $g(@gene_records_sorted){
+  if(not(defined($output{$g}))){
+    print OUTFILE3 $gene_record_u{$g};
     $output{$g}=1;
   }
 }
