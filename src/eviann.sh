@@ -469,10 +469,20 @@ if [ -e merge.success ] && [ ! -e functional.success ];then
   log "Performing functional annotation" && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb3.out 2>&1 && \
-  blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
+  #blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
+  log "Eliminating non-functional partial proteins"
+  ufasta one $GENOME.functional_note.proteins.fasta | awk '{if($1~/^>/){if($0 ~ "function unknown"){rn=substr($1,2)}else{rn=""}}else if($1 !~ /^M/ && rn != ""){print rn}}' > $GENOME.non_functional_partial_proteins.txt.tmp && \
+  mv $GENOME.non_functional_partial_proteins.txt.tmp $GENOME.non_functional_partial_proteins.txt && \
+  ufasta extract -v -f $GENOME.non_functional_partial_proteins.txt $GENOME.functional_note.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp && \
+  mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta &&\
+  ufasta extract -v -f $GENOME.non_functional_partial_proteins.txt $GENOME.functional_note.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp && \
+  mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta &&\
+  perl -ane '{$h{$F[0]}=1}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@gff_fields=split(/\t/,$line);if($gff_fields[8]=~/^ID=(XLOC_\d+-mRNA-\d+).+/){print $line,"\n" if(not(defined($h{$1})));}else{print $line,"\n"}}}' $GENOME.non_functional_partial_proteins.txt | \
+  awk -F '\t' 'BEGIN{prev=""}{if($3=="gene"){geneline=$0}else{if(geneline !=""){print geneline;geneline="";}print $0;}}' > $GENOME.functional_note.gff.tmp && \
+  mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   touch functional.success && rm -rf pseudo_detect.success && \
   if [ $DEBUG -lt 1 ];then
     rm -rf uniprot.p?? $GENOME.proteins.fasta $GENOME.transcripts.fasta
