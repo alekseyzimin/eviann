@@ -190,7 +190,7 @@ fi
 
 if [ ! -e protein_align.success ];then
   log "Aligning proteins"
-  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+  eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
   if [ -s $GENOME.$PROTEIN.palign.gff ];then
     touch protein_align.success
   fi
