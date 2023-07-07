@@ -367,17 +367,18 @@ if [ ! -e merge.success ];then
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.j.gff && \
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen" -evalue 1e-5 -num_threads $NUM_THREADS |\
-    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.98 && $F[0] =~ /p1$/ && $F[2]>75);}' > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.j.blastp && \
+    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen" -evalue 0.000001 -num_threads $NUM_THREADS |\
+    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.98 && $F[0] =~ /p1$/ && $F[2]>90);}' > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.j.blastp && \
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.j.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
       add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.j.gff | \
       perl -F'\t' -ane 'BEGIN{
         open(FILE,"'$GENOME'.lncRNA.j.blastp");
         while($line=<FILE>){
-          @f=split(/\./,$line);
-          $f[0]=~s/_lncRNA//;
-          $h{$f[0]}=1;
+          $line=~/^(.+)\.p\d+/;
+          $f=$1;
+          $f=~s/_lncRNA//;
+          $h{$f}=1;
         }
       }{
         unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
@@ -395,7 +396,7 @@ if [ ! -e merge.success ];then
     else
       echo "#gff" > $GENOME.j.cds.gff
     fi
-    rm -rf pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
+    rm -rf $GENOME.lncRNA.fa pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
   else
     echo "#gff" > $GENOME.j.cds.gff
   fi
@@ -409,8 +410,9 @@ if [ ! -e merge.success ];then
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 1e-5 -num_threads $NUM_THREADS |\
-    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.6 && $F[0] =~ /p1$/ && $F[2]>75);}' > $GENOME.lncRNA.blastp.tmp && \
+    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS |\
+    #perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.6 && $F[0] =~ /p1$/ && $F[2]>75);}' > $GENOME.lncRNA.blastp.tmp && \
+    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.lncRNA.blastp.tmp && \
     mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
@@ -418,9 +420,10 @@ if [ ! -e merge.success ];then
       perl -F'\t' -ane 'BEGIN{
         open(FILE,"'$GENOME'.lncRNA.u.blastp");
         while($line=<FILE>){
-          @f=split(/\./,$line);
-          $f[0]=~s/_lncRNA//;
-          $h{$f[0]}=1;
+          $line=~/^(.+)\.p\d+/;
+          $f=$1;
+          $f=~s/_lncRNA//;
+          $h{$f}=1;
         }
       }{
         unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
@@ -438,7 +441,7 @@ if [ ! -e merge.success ];then
     else
       echo "#gff" > $GENOME.u.cds.gff
     fi
-    #rm -rf pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
+    rm -rf $GENOME.lncRNA.fa pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
   else
     echo "#gff" > $GENOME.u.cds.gff 
   fi
@@ -457,7 +460,7 @@ if [ ! -e merge.success ];then
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) && \
-    mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
+    mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{j,u,unused_proteins}.gff.tmp $GENOME.{j,u,unused_proteins}.gff
   fi && \
   touch merge.success && rm -f functional.success merge.{unused,j,u}.success
 fi
