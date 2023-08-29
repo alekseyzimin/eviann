@@ -158,7 +158,7 @@ for my $p(keys %protein_cds){
   if($protein_ori{$p} eq "+"){#forward orientation, check for the start codon
     my $tstart=$transcript_start{$protein_transcript{$p}};
     print "DEBUG examining protein $p $protein_ori{$p} $protein_start{$p} $protein_end{$p} $protein_scaffold{$p}\n";
-    #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
+#we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
     my $cds_start_on_transcript=0;
     my $cds_length=0;
     for(my $j=0;$j<=$#{$transcript_gff{$protein_transcript{$p}}};$j++){
@@ -180,7 +180,7 @@ for my $p(keys %protein_cds){
       $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-    #for now we will not be touching the CDS end on transcript, so let's find protein end position that is on an exon
+#for now we will not be touching the CDS end on transcript, so let's find protein end position that is on an exon
     my $sequence_covered=0;
     for(my $j=0;$j<=$#{$transcript_gff{$protein_transcript{$p}}};$j++){
       @gff_fields=split(/\t/,${$transcript_gff{$protein_transcript{$p}}}[$j]);
@@ -191,7 +191,7 @@ for my $p(keys %protein_cds){
       }
       $cds_end_on_transcript-=$sequence_covered;
     }
-    #now we look at the start codon
+#now we look at the start codon
     $first_codon=substr($transcript_seqs{$protein_transcript{$p}},$cds_start_on_transcript,3);
     print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $p transcript $protein_transcript{$p} tstart $tstart pstart $protein_start{$p} tori $transcript_ori{$protein_transcript{$p}} pori $protein_ori{$p}\n";
     if(not(uc($first_codon) eq "ATG")){
@@ -201,26 +201,27 @@ for my $p(keys %protein_cds){
       }
       if($i>=0){
         print "DEBUG found new start codon upstream at $i\n";
-        #NEED TO TRANSLATE BACK TO GENOME COORDS
+#NEED TO TRANSLATE BACK TO GENOME COORDS
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
       }
-      #translating back to genome coords
-      my $sequence_covered=0;
-      for(my $j=0;$j<=$#{$transcript_gff{$protein_transcript{$p}}};$j++){
-        @gff_fields=split(/\t/,${$transcript_gff{$protein_transcript{$p}}}[$j]);
-        $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-        if($sequence_covered>$cds_start_on_transcript){
-          $protein_start{$p}=$gff_fields[3]+$cds_start_on_transcript;
-          last;
-        }
-        $cds_start_on_transcript-=$sequence_covered;
+    }
+#translating back to genome coords
+    my $sequence_covered=0;
+    for(my $j=0;$j<=$#{$transcript_gff{$protein_transcript{$p}}};$j++){
+      @gff_fields=split(/\t/,${$transcript_gff{$protein_transcript{$p}}}[$j]);
+      $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+      if($sequence_covered>$cds_start_on_transcript){
+        $protein_start{$p}=$gff_fields[3]+$cds_start_on_transcript;
+        last;
+      }
+      $cds_start_on_transcript-=$sequence_covered;
     }
   }else{#reverse orientation
     $tend=$transcript_end{$protein_transcript{$p}};
     print "DEBUG examining protein $p $protein_ori{$p} $protein_start{$p} $protein_end{$p} $protein_scaffold{$p}\n";
-    #we need to determine the position or the CDS start on the transcript, minding the introns
+#we need to determine the position or the CDS start on the transcript, minding the introns
     my $cds_start_on_transcript=0;
     my @gff_fields;
     my @gff_fields_prev;
@@ -268,16 +269,16 @@ for my $p(keys %protein_cds){
       }else{
         print "DEBUG failed to find new start codon upstream\n";
       }
-      my $sequence_covered=0;
-      for(my $j=$#{$transcript_gff{$protein_transcript{$p}}};$j>=0;$j--){
-        @gff_fields=split(/\t/,${$transcript_gff{$protein_transcript{$p}}}[$j]);
-        $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-        if($sequence_covered>$cds_start_on_transcript){
-          $protein_end{$p}=$gff_fields[4]-$cds_start_on_transcript;
-          last;
-        }
-        $cds_start_on_transcript-=$sequence_covered;
+    }
+    my $sequence_covered=0;
+    for(my $j=$#{$transcript_gff{$protein_transcript{$p}}};$j>=0;$j--){
+      @gff_fields=split(/\t/,${$transcript_gff{$protein_transcript{$p}}}[$j]);
+      $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+      if($sequence_covered>$cds_start_on_transcript){
+        $protein_end{$p}=$gff_fields[4]-$cds_start_on_transcript;
+        last;
       }
+      $cds_start_on_transcript-=$sequence_covered;
     }
   }
 }
