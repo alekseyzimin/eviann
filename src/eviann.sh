@@ -125,7 +125,7 @@ done
 GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 stringtie gffread blastp tblastn makeblastdb gffcompare");do
+for prog in $(echo "ufasta hisat2 stringtie gffread blastp tblastn makeblastdb gffcompare TransDecoder.Predict TransDecoder.LongOrfs");do
   which $prog > /dev/null || error_exit "$prog not found the the PATH, please install the appropriate package";
 done
 
@@ -288,7 +288,7 @@ if [ ! -e merge.success ];then
   if [ ! -e merge.unused.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Checking unused protein only loci against Uniprot" && \
-    gffcompare -p PCONS -SDAT $GENOME.unused_proteins.gff -o $GENOME.unused_proteins.dedup && \
+    gffcompare -p PCONS -SDAT <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) -o $GENOME.unused_proteins.dedup && \
     rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
     gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.dedup.combined.gtf) -g $GENOMEFILE && \
     ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
