@@ -80,8 +80,6 @@ while(my $line=<FILE>){
       $gff_fields[4]=$protein_end{$transcript_cds{$geneID}} if($gff_fields[4]<$protein_end{$transcript_cds{$geneID}});
       $exons[-1]=join("\t",@gff_fields);
       $transcript_gff{$geneID}=[@exons];
-      $transcript_start{$geneID}=$tstart;
-      $transcript_end{$geneID}=$tend;
       $transcript_ori{$geneID}=$tori;
     }elsif(defined($transcript_u{$geneID})){
       unless($#exons==-1){#not interested in single exon
@@ -134,8 +132,6 @@ if(defined($transcript{$geneID})){
   $gff_fields[4]=$protein_end{$transcript_cds{$geneID}} if($gff_fields[4]<$protein_end{$transcript_cds{$geneID}});
   $exons[-1]=join("\t",@gff_fields);
   $transcript_gff{$geneID}=[@exons];
-  $transcript_start{$geneID}=$tstart;
-  $transcript_end{$geneID}=$tend;
   $transcript_ori{$geneID}=$tori;
 }elsif(defined($transcript_u{$geneID})){
   unless($#exons==-1){#not interested in single exon
@@ -180,9 +176,10 @@ for my $g(keys %transcript_gff){
 
 #here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then checl for a start codon and extend the start/stop of the CDSup to the transcript boundary to look for the valid start/stop
 for my $g(keys %transcript_cds){
+  my @gff_fields_t=split(/\t/,$transcript{$g});
+  my $tstart=$gff_fields_t[3];
   print "\nDEBUG protein $transcript_cds{$g} transript $g length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
-    my $tstart=$transcript_start{$g};
     print "DEBUG examining protein $transcript_cds{$g} $protein_ori{$transcript_cds{$g}} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} $protein_scaffold{$transcript_cds{$g}}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
     my $cds_start_on_transcript=0;
@@ -195,7 +192,7 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3];
         last;
       }elsif($transcript_cds_start{$g}<$gff_fields[3] && $transcript_cds_start{$g}>$gff_fields_prev[4]){#protein ends inside an intron
-        $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields_prev[4];
+        $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3]-1;
         last;
       }else{
         $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
@@ -213,7 +210,7 @@ for my $g(keys %transcript_cds){
     for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
       @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
       $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-      if($sequence_covered>$cds_end_on_transcript){
+      if($sequence_covered>=$cds_end_on_transcript){
         $transcript_cds_end{$g}=$gff_fields[4]-($sequence_covered-$cds_end_on_transcript);
         last;
       }
@@ -240,17 +237,17 @@ for my $g(keys %transcript_cds){
       @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
       $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
       if($sequence_covered>$cds_start_on_transcript){
-        $$transcript_cds_start{$g}=$gff_fields[4]-($sequence_covered-$cds_start_on_transcript)+1;
+        $transcript_cds_start{$g}=$gff_fields[4]-($sequence_covered-$cds_start_on_transcript)+1;
         last;
       }
     }
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
   }else{#reverse orientation
-    $tend=$transcript_end{$g};
     print "DEBUG examining protein $transcript_cds{$g} $protein_ori{$transcript_cds{$g}} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} $protein_scaffold{$transcript_cds{$g}}\n";
 #we need to determine the position or the CDS start on the transcript, minding the introns
     my $cds_start_on_transcript=0;
+    my $cds_length=0;
     my @gff_fields=();
     my @gff_fields_prev=();
     for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
@@ -259,7 +256,7 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g};
         last;
       }elsif($transcript_cds_end{$g}>$gff_fields[4] && $transcript_cds_end{$g}<$gff_fields_prev[3]){
-        $cds_start_on_transcript+=$gff_fields_prev[3]-$transcript_cds_end{$g};
+        $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g}-1;
         last;
       }else{
         $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
@@ -277,7 +274,7 @@ for my $g(keys %transcript_cds){
     for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
       @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
       $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-      if($sequence_covered>$cds_end_on_transcript){
+      if($sequence_covered>=$cds_end_on_transcript){
         $transcript_cds_start{$g}=$gff_fields[3]+($sequence_covered-$cds_end_on_transcript);
         last;
       }
@@ -401,8 +398,8 @@ for my $locus(keys %transcripts_cds_loci){
       $i=1;
       if($transcript_cds_start_index<$transcript_cds_end_index){
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
-        $i++;
         push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+        $i++;
         for(my $j=$transcript_cds_start_index+1;$j<$transcript_cds_end_index;$j++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
           push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
