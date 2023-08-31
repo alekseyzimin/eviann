@@ -41,7 +41,6 @@ while(my $line=<STDIN>){#we just read in the whole file
       $protein_cds{$protID}=[@exons];
       $protein_start{$protID}=$pstart;
       $protein_end{$protID}=$pend;
-      $protein_ori{$protID}=$pori;
     }
     @exons=();
     $protID=substr($attributes[0],3);#this is protein name
@@ -58,7 +57,6 @@ if(not($protID eq "")){
   $protein_cds{$protID}=[@exons];
   $protein_start{$protID}=$pstart;
   $protein_end{$protID}=$pend;
-  $protein_ori{$protID}=$pori;
 }
 @exons=();
 
@@ -106,7 +104,6 @@ while(my $line=<FILE>){
       $transcript_cds{$geneID}=$protID;
       $transcript_cds_start{$geneID}=$protein_start{$protID};
       $transcript_cds_end{$geneID}=$protein_end{$protID};
-      #$protein_transcript{$protID}=$geneID;#we just need to know one of the transcripts assigned to this protein ID
       $transcript_class{$geneID}=$class_code;
       $transcripts_cds_loci{$locID}.="$geneID ";
     }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
@@ -174,13 +171,13 @@ for my $g(keys %transcript_gff){
   }
 }  
 
-#here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then checl for a start codon and extend the start/stop of the CDSup to the transcript boundary to look for the valid start/stop
+#here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then check for a start codon and, if not found, extend the start/stop of the CDS up to the transcript boundary to look for the valid start/stop
 for my $g(keys %transcript_cds){
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
   print "\nDEBUG protein $transcript_cds{$g} transript $g length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
-    print "DEBUG examining protein $transcript_cds{$g} $protein_ori{$transcript_cds{$g}} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} $protein_scaffold{$transcript_cds{$g}}\n";
+    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
     my $cds_start_on_transcript=0;
     my $cds_length=0;
@@ -244,7 +241,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
   }else{#reverse orientation
-    print "DEBUG examining protein $transcript_cds{$g} $protein_ori{$transcript_cds{$g}} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} $protein_scaffold{$transcript_cds{$g}}\n";
+    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
 #we need to determine the position or the CDS start on the transcript, minding the introns
     my $cds_start_on_transcript=0;
     my $cds_length=0;
