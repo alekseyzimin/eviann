@@ -520,15 +520,18 @@ foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
-  print OUTFILE4 "$gff_fields_p[0]\tEviAnn\t$gff_fields_p[2]\t",$gff_fields_p[3]-99,"\t",$gff_fields_p[4]+99,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
+  my $ptstart=$gff_fields_p[3]-99>0 ? $gff_fields_p[3]-99:1;
+  my $ptend=$gff_fields_p[4]+99<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+99:length($genome_seqs{$gff_fields_p[0]});
+
+  print OUTFILE4 "$gff_fields_p[0]\tEviAnn\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
     my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
     if($#{$protein_cds{$p}}==0){#add "fake" 5' utr and 3' utr
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t",$gff_fields_c[3]-99,"\t",$gff_fields_c[4]+99,"\t",join("\t",@gff_fields_c[5..$#gff_fields_c]),"\n";
+      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t$ptstart\t$ptend\t",join("\t",@gff_fields_c[5..$#gff_fields_c]),"\n";
     }elsif($j==0){#add "fake" 5' utr
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t",$gff_fields_c[3]-99,"\t",join("\t",@gff_fields_c[4..$#gff_fields_c]),"\n";
+      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t$ptstart\t",join("\t",@gff_fields_c[4..$#gff_fields_c]),"\n";
     }elsif($j==$#{$protein_cds{$p}}){
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t",$gff_fields_c[3],"\t",$gff_fields_c[4]+99,"\t",join("\t",@gff_fields_c[5..$#gff_fields_c]),"\n";
+      print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t$gff_fields_c[3]\t$ptend\t",join("\t",@gff_fields_c[5..$#gff_fields_c]),"\n";
     }else{
       print OUTFILE4 "$gff_fields_c[0]\tEviAnn\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
     }
