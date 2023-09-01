@@ -202,19 +202,12 @@ for my $g(keys %transcript_cds){
       $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-#for now we will not be touching the CDS end on transcript, so let's find protein end position that is on an exon
-    my $sequence_covered=0;
-    for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
-      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-      $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-      if($sequence_covered>=$cds_end_on_transcript){
-        $transcript_cds_end{$g}=$gff_fields[4]-($sequence_covered-$cds_end_on_transcript);
-        last;
-      }
-    }
+
 #now we look at the start codon
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+
     if(not(uc($first_codon) eq "ATG")){
       my $i;
       for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
@@ -222,12 +215,24 @@ for my $g(keys %transcript_cds){
       }
       if($i>=0){
         print "DEBUG found new start codon upstream at $i\n";
-#NEED TO TRANSLATE BACK TO GENOME COORDS
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
       }
     }
+    if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
+      my $i;
+      for($i=$cds_end_on_transcript+3;$i<length($transcript_seqs{$g});$i+=3){
+        last if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA");
+      }
+      if($i<length($transcript_seqs{$g})){
+        print "DEBUG found new stop codon downstream at $i\n";
+        $cds_end_on_transcript=$i;
+      }else{
+        print "DEBUG failed to find new stop codon downstream\n";
+      }
+    }
+
 #translating back to genome coords
     my $sequence_covered=0;
     for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
@@ -238,8 +243,20 @@ for my $g(keys %transcript_cds){
         last;
       }
     }
+    my $sequence_covered=0;
+    for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+      $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+      if($sequence_covered>=$cds_end_on_transcript){
+        $transcript_cds_end{$g}=$gff_fields[4]-($sequence_covered-$cds_end_on_transcript);
+        last;
+      }
+    }
+
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+
   }else{#reverse orientation
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
 #we need to determine the position or the CDS start on the transcript, minding the introns
@@ -266,18 +283,10 @@ for my $g(keys %transcript_cds){
       $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-    #for now we will not be touching the CDS end on transcript, so let's find protein end position that is on an exon
-    my $sequence_covered=0;
-    for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
-      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-      $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-      if($sequence_covered>=$cds_end_on_transcript){
-        $transcript_cds_start{$g}=$gff_fields[3]+($sequence_covered-$cds_end_on_transcript);
-        last;
-      }
-    }
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+
     if(not(uc($first_codon) eq "ATG")){
       my $i;
       for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
@@ -285,12 +294,25 @@ for my $g(keys %transcript_cds){
       }
       if($i>=0){
         print "DEBUG found new start codon upstream at $i\n";
-        #NEED TO TRANSLATE BACK TO GENOME COORDS
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
       }
     }
+    if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
+      my $i;
+      for($i=$cds_end_on_transcript+3;$i<length($transcript_seqs{$g});$i+=3){
+        last if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA");
+      } 
+      if($i<length($transcript_seqs{$g})){
+        print "DEBUG found new stop codon downstream at $i\n";
+        $cds_end_on_transcript=$i;
+      }else{
+        print "DEBUG failed to find new stop codon downstream\n";
+      } 
+    } 
+
+#translating start and end to genome coords
     my $sequence_covered=0;
     for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
       @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
@@ -300,8 +322,20 @@ for my $g(keys %transcript_cds){
         last;
       }
     }
+
+    my $sequence_covered=0;
+    for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){ 
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+      $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+      if($sequence_covered>=$cds_end_on_transcript){
+        $transcript_cds_start{$g}=$gff_fields[3]+($sequence_covered-$cds_end_on_transcript);
+        last;
+      }
+    }
+
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    print "DEBUG $first_codon start_cds $cds_start_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
   }
 }
 
