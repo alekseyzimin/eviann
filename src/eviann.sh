@@ -257,7 +257,8 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     #stringtie --merge -g 100 -G $GENOME.$PROTEIN.palign.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     #stringtie --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
-    awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf > $GENOME.tmp2.combined.gtf &&\
+    awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf  | \
+    perl -F'\t' -ane '{if($F[2] eq "transcript"){print;if($F[8]=~/num_samples \"(\d+)\";/){$samples=$1;$F[8]=~s/MSTRG_(\d+)/MSTRG_$1:$samples/;print join("\t",@F),"\n";}}}' > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
     rm -f $GENOME.tmp.combined.gtf
   else
