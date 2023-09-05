@@ -258,7 +258,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     #stringtie --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf  | \
-    perl -F'\t' -ane '{if($F[2] eq "transcript"){print;if($F[8]=~/num_samples \"(\d+)\";/){$samples=$1;$F[8]=~s/MSTRG_(\d+)/MSTRG_$1:$samples/;print join("\t",@F),"\n";}}}' > $GENOME.tmp2.combined.gtf && \
+    perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/num_samples \"(\d+)\";/){$samples=$1;$F[8]=~s/MSTRG_(\d+)/MSTRG_$1:$samples/;print join("\t",@F);}}else{$F[8]=~s/MSTRG_(\d+)/MSTRG_$1:$samples/;print join("\t",@F);}}' > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
     rm -f $GENOME.tmp.combined.gtf
   else
@@ -279,6 +279,12 @@ if [ ! -e merge.success ];then
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
+  filter_by_local_abundance.pl < $GENOME.protref.annotated.gtf > $GENOME.transcripts_to_keep.txt.tmp && mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
+  mv $GENOME.protref.annotated.gtf $GENOME.protref.annotated.gtf.bak && \
+  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.annotated.gtf.bak > $GENOME.protref.annotated.gtf.tmp && \
+  mv $GENOME.protref.annotated.gtf.tmp $GENOME.protref.annotated.gtf && \
+  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.gtf > $GENOME.abundanceFiltered.gtf.tmp && \
+  mv $GENOME.abundanceFiltered.gtf.tmp $GENOME.abundanceFiltered.gtf && \
 #here we combine the transcripts and protein matches; we will use only protein CDS's that are contained in the transcripts;some transcripts do not get annotated, we only use "=", "k","j" and "u"
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,j,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
@@ -450,7 +456,7 @@ if [ ! -e merge.success ];then
   fi && touch merge.u.success && \
   if [ -s $GENOME.best_unused_proteins.gff ];then
 #now we have additional proteins produces by transdecoder, let's use them all
-    gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.gtf -o $GENOME.all && \
+    gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.gtf -o $GENOME.all && \
     rm -f $GENOME.all.{loci,stats,tracking} && \
     gffread $GENOME.palign.fixed.gff $GENOME.{j,u}.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
@@ -459,7 +465,7 @@ if [ ! -e merge.success ];then
     mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
   else
     gffread $GENOME.palign.fixed.gff $GENOME.{j,u}.cds.gff >  $GENOME.palign.all.gff && \
-    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.gtf && \
+    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
     mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{j,u,unused_proteins}.gff.tmp $GENOME.{j,u,unused_proteins}.gff
