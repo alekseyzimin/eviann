@@ -16,7 +16,7 @@ if($gtf_fields[2] eq "transcript"){
   if($class eq "u" && defined($id)){#no protein, keep
     print $id,"\n";
   }elsif(defined($id) && defined($xloc) && defined($protein) && ($class eq "j" || $class eq "k" || $class eq "=")){#protein defined, examine
-    $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id ";
+    $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
     #print "DEBUG $xloc:$protein $id\n";
   }
 }
@@ -25,11 +25,10 @@ if($gtf_fields[2] eq "transcript"){
 for $l(keys %transcripts_at_xloc_same_cds){
   #print "$l\n";
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
-  my ($j,$top_count)=split(/:/,$transcripts[0]);
-  my $max_transcripts=3;
-  for(my $i=0;$i<=$#transcripts && $i<$max_transcripts;$i++){
-    my ($j,$count)=split(/:/,$transcripts[$i]);
-    print "$transcripts[$i]\n" if($count > $top_count/10);
+  my ($tr,$top_count,$class)=split(/:/,$transcripts[0]);
+  for(my $i=0;$i<=$#transcripts;$i++){
+    my ($tr,$count,$class)=split(/:/,$transcripts[$i]);
+    print "$tr:$count\n" if($count > $top_count/10);
   }
 }
 
@@ -37,6 +36,6 @@ for $l(keys %transcripts_at_xloc_same_cds){
 sub by_abundance{
 my @fa=split(/:/,$a);
 my @fb=split(/:/,$b);
-return($fb[-1] <=> $fa[-1]);
+return($fb[1] <=> $fa[1]);
 }
   

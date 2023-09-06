@@ -279,7 +279,8 @@ if [ ! -e merge.success ];then
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
-  filter_by_local_abundance.pl < $GENOME.protref.annotated.gtf > $GENOME.transcripts_to_keep.txt.tmp && mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
+  filter_by_local_abundance.pl < $GENOME.protref.annotated.gtf > $GENOME.transcripts_to_keep.txt.tmp && \
+  mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
   mv $GENOME.protref.annotated.gtf $GENOME.protref.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.annotated.gtf.bak > $GENOME.protref.annotated.gtf.tmp && \
   mv $GENOME.protref.annotated.gtf.tmp $GENOME.protref.annotated.gtf && \
