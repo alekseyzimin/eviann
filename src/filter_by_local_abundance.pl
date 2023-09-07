@@ -26,11 +26,10 @@ for $l(keys %transcripts_at_xloc_same_cds){
   #print "$l\n";
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
   my ($tr,$top_count,$class)=split(/:/,$transcripts[0]);
-  my $threshold=$top_count*.15;
-  $threshold=1 if($threshold<1);
+  my $threshold=$top_count*.2 > 3 ? $top_count*.2 : $top_count*.1;
   for(my $i=0;$i<=$#transcripts;$i++){
     my ($tr,$count,$class)=split(/:/,$transcripts[$i]);
-    print "$tr:$count\n" if($count > $threshold);
+    print "$tr:$count\n" if($count >= $threshold);
   }
 }
 
