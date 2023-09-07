@@ -14,7 +14,7 @@ if($gtf_fields[2] eq "transcript"){
   my $protein=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\";/);
   my $class=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\";/);
   if($class eq "u" && defined($id)){#no protein, keep
-    print $id,"\n";
+    $transcripts_at_xloc_same_cds{"$xloc:u"}.="$id:$class ";
   }elsif(defined($id) && defined($xloc) && defined($protein) && ($class eq "j" || $class eq "k" || $class eq "=")){#protein defined, examine
     $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
     #print "DEBUG $xloc:$protein $id\n";
@@ -25,11 +25,12 @@ if($gtf_fields[2] eq "transcript"){
 for $l(keys %transcripts_at_xloc_same_cds){
   #print "$l\n";
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
-  my ($tr,$top_count,$class)=split(/:/,$transcripts[0]);
-  my $threshold=$top_count*.2 > 3 ? $top_count*.2 : $top_count*.1;
+  my ($tr,$top_count,$top_class)=split(/:/,$transcripts[0]);
+  my $threshold=$top_count**.6;
+  #print "DEBUG top $tr count $top_count class $class threshold $threshold\n";
   for(my $i=0;$i<=$#transcripts;$i++){
     my ($tr,$count,$class)=split(/:/,$transcripts[$i]);
-    print "$tr:$count\n" if($count >= $threshold);
+    print "$tr:$count\n" if($count >= $threshold || ($top_class eq "j" && ($class eq "k" || $class eq "=")));
   }
 }
 
