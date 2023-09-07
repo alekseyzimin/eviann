@@ -28,11 +28,11 @@ for $l(keys %transcripts_at_xloc_same_cds){
   #print "$l\n";
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
   my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
-  my $threshold=($top_count*$top_tpm)**.5;
+  my $threshold=weight_function($top_count,$top_tpm)**.67;
   #print "DEBUG top $tr count $top_count class $class threshold $threshold\n";
   for(my $i=0;$i<=$#transcripts;$i++){
     my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
-    print "$tr:$count:$tpm\n" if($count*$tpm >= $threshold || ($top_class eq "j" && ($class eq "k" || $class eq "=")));
+    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold || ($top_class eq "j" && ($class eq "k" || $class eq "=")));
   }
 }
 
@@ -40,6 +40,9 @@ for $l(keys %transcripts_at_xloc_same_cds){
 sub by_abundance{
 my @fa=split(/:/,$a);
 my @fb=split(/:/,$b);
-return($fb[1]*$fb[2] <=> $fa[1]*$fa[2]);
+return(weight_function($fb[1],$fb[2]) <=> weight_function($fa[1],$fa[2]));
 }
-  
+ 
+sub weight_function{
+  return($_[0]**.5*$_[1]);
+}
