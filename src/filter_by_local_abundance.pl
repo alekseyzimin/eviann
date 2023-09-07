@@ -25,14 +25,13 @@ if($gtf_fields[2] eq "transcript"){
 }
     
 for $l(keys %transcripts_at_xloc_same_cds){
-  #print "$l\n";
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
   my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
   my $threshold=weight_function($top_count,$top_tpm)**.66;
   #print "DEBUG top $tr count $top_count class $class threshold $threshold\n";
   for(my $i=0;$i<=$#transcripts;$i++){
     my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
-    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold || ($top_class eq "j" && ($class eq "k" || $class eq "=")));
+    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold);
   }
 }
 
