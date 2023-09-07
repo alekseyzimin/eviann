@@ -251,7 +251,19 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   fi
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq 1 ];then
-    cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
+    # a single tissue, we add 1 for the number of samples and the TPMs
+    cat tissue*.bam.sorted.bam.gtf | perl -F'\t' -ane '{
+      if($F[2] eq "transcript"){
+        if($F[8]=~/transcript_id \"(\S+)\";/){
+          $transcript=$1;
+          $tpm=1;
+          $tpm=$1 if($F[8] =~ /TPM \"(\S+)\";/);
+          $new_transcript_id="M$transcript:1:$tpm";
+        }
+      }
+      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
+      print join("\t",@F);
+    }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
@@ -272,13 +284,13 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
         $flag=1;
         if($F[8]=~/transcript_id \"(\S+)\";/){
           $transcript=$1;
-          if($samples{$transcript}<$thresh){
-            $flag=0;
-          }else{
-            $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$transcript:$samples{$transcript}:$tpm{$transcript}\";/;
-          }
+          $new_transcript_id="$transcript:$samples{$transcript}:$tpm{$transcript}";
+          $flag=0 if($samples{$transcript}<$thresh);
+        }else{
+          die("no transcript id found on line ".join("\t",@F));
         }
       }
+      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
       print join("\t",@F) if($flag);
     }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
