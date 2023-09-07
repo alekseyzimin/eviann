@@ -13,7 +13,9 @@ if($gtf_fields[2] eq "transcript"){
   my $xloc=$1 if($gtf_fields[8] =~ /gene_id \"(\S+)\";/);
   my $protein=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\";/);
   my $class=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\";/);
-  if($class eq "u" && defined($id)){#no protein, keep
+  if(not($id =~ /^MSTRG/)){#if not a merged transript -- do not mess with it
+    print "$id\n";
+  }elsif($class eq "u" && defined($id)){#no protein, keep
     $transcripts_at_xloc_same_cds{"$xloc:u"}.="$id:$class ";
   }elsif(defined($id) && defined($xloc) && defined($protein) && ($class eq "j" || $class eq "k" || $class eq "=")){#protein defined, examine
     $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
@@ -25,12 +27,12 @@ if($gtf_fields[2] eq "transcript"){
 for $l(keys %transcripts_at_xloc_same_cds){
   #print "$l\n";
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
-  my ($tr,$top_count,$top_class)=split(/:/,$transcripts[0]);
-  my $threshold=$top_count**.6;
+  my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
+  my $threshold=($top_count*$top_tpm)**.5;
   #print "DEBUG top $tr count $top_count class $class threshold $threshold\n";
   for(my $i=0;$i<=$#transcripts;$i++){
-    my ($tr,$count,$class)=split(/:/,$transcripts[$i]);
-    print "$tr:$count\n" if($count >= $threshold || ($top_class eq "j" && ($class eq "k" || $class eq "=")));
+    my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
+    print "$tr:$count:$tpm\n" if($count*$tpm >= $threshold || ($top_class eq "j" && ($class eq "k" || $class eq "=")));
   }
 }
 
@@ -38,6 +40,6 @@ for $l(keys %transcripts_at_xloc_same_cds){
 sub by_abundance{
 my @fa=split(/:/,$a);
 my @fb=split(/:/,$b);
-return($fb[1] <=> $fa[1]);
+return($fb[1]*$fb[2] <=> $fa[1]*$fa[2]);
 }
   

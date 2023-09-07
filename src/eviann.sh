@@ -254,11 +254,33 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
     cat tissue*.bam.sorted.bam.gtf > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
-    #stringtie --merge -g 100 -G $GENOME.$PROTEIN.palign.gff tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
-    #stringtie --merge -g 100 tissue*.bam.sorted.bam.gtf  -o $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
-    awk -F '\t' 'BEGIN{flag=0}{if($3=="transcript"){n=split($9,a,";");for(i=1;i<=n;i++){if(a[i] ~ /num_samples/) break;} m=split(a[i],b,"\"");if(b[m-1]>int("'$NUM_TISSUES'")/50) flag=1; else flag=0;}if(flag){print $0}}' $GENOME.tmp.combined.gtf  | \
-    perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/num_samples \"(\d+)\";/){$samples=$1;$F[8]=~s/MSTRG_(\d+)/MSTRG_$1:$samples/;print join("\t",@F);}}else{$F[8]=~s/MSTRG_(\d+)/MSTRG_$1:$samples/;print join("\t",@F);}}' > $GENOME.tmp2.combined.gtf && \
+    awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
+    mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
+    perl -F'\t' -ane '
+    BEGIN{
+      $thresh=int('$NUM_TISSUES')/50;
+      open(FILE,"'$GENOME'.max_tpm.samples.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $tpm{$f[0]}=$f[1];
+        $samples{$f[0]}=$f[2];
+      }
+    }{
+      if($F[2] eq "transcript"){
+        $flag=1;
+        if($F[8]=~/transcript_id \"(\S+)\";/){
+          $transcript=$1;
+          if($samples{$transcript}<$thresh){
+            $flag=0;
+          }else{
+            $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$transcript:$samples{$transcript}:$tpm{$transcript}\";/;
+          }
+        }
+      }
+      print join("\t",@F) if($flag);
+    }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
     rm -f $GENOME.tmp.combined.gtf
   else
