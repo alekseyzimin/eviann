@@ -115,24 +115,28 @@ fi
 
 if [ ! -e protein2genome.protein_align.success ];then
 log "Aligning proteins to the genome"
+mkdir -p protein_align.tmp && \
+cp $PROTEIN protein_align.tmp/$PROTEINN && \
+cd protein_align.tmp && \
 makeblastdb -dbtype nucl -in $GENOME -out $GENOMEN.blastdb 1>/dev/null 2>&1 && \
-ufasta sizes -H $PROTEIN | \
+ufasta sizes -H $PROTEINN | \
 perl -ane 'BEGIN{$fn="'$PROTEINN'";$index=1;$batch_size=int("'$BATCH_SIZE'");open(FILE,">$fn.$index.batch");$n=0;}{if($n > $batch_size){close(FILE);$index++;open(FILE,">$fn.$index.batch");$n=$F[1];}else{$n+=$F[1];}print FILE $F[0],"\n";}' && \
 NUM_BATCHES=`ls $PROTEINN.*.batch |wc -l` && \
 echo "#!/bin/bash" > run_tblastn.sh && \
-echo "ufasta extract -f \$1 $PROTEIN > \$1.fa && \\" >>  run_tblastn.sh && \
+echo "ufasta extract -f \$1 $PROTEINN > \$1.fa && \\" >>  run_tblastn.sh && \
 echo -n "tblastn -db $GENOMEN.blastdb -word_size 5 -threshold 19  -matrix BLOSUM80 -gapopen 13 -gapextend 2 -max_intron_length $MAX_INTRON -soft_masking true -num_threads " >> run_tblastn.sh && \
 echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
 echo " -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=75) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \
-ls $PROTEINN.*.batch |xargs -P $NUM_THREADS -I {} ./run_tblastn.sh {} && \
+ls $PROTEINN.*.batch |xargs -P $NUM_THREADS -I {} ./run_tblastn.sh {} 
 rm -f $PROTEINN.*.batch $PROTEINN.*.batch.fa run_tblastn.sh && \
 log "Concatenating outputs" && \
 cat tblastn.$PROTEINN.*.batch.out | \
 sort -S 10% > $PROTEINN.tblastn.tmp && \
-mv $PROTEINN.tblastn.tmp $PROTEINN.tblastn && \
-rm -rf  tblastn.$PROTEINN.*.batch.out $PROTEINN.*.batch && \
-touch protein2genome.protein_align.success && rm -f protein2genome.exonerate_gff.success $GENOMEN.blastdb.n??
+mv $PROTEINN.tblastn.tmp ../$PROTEINN.tblastn && \
+cd .. && \
+rm -rf protein_align.tmp && \
+touch protein2genome.protein_align.success && rm -f protein2genome.exonerate_gff.success
 fi
 
 if [ ! -e protein2genome.exonerate_gff.success ] && [ -e protein2genome.protein_align.success ];then
