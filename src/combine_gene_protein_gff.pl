@@ -26,7 +26,6 @@ my %used_proteins;
 my %suspect_proteins;
 my $output_prefix=$ARGV[0];
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
-open(OUTFILE2,">$output_prefix".".j.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
 open(OUTFILE4,">$output_prefix".".unused_proteins.gff.tmp");
 
@@ -71,7 +70,7 @@ while(my $line=<FILE>){
     if(defined($transcript{$geneID})){
     #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
       my @gff_fields=split(/\t/,$exons[0]);
-      $gff_fields[3]=$protein_start{$transcript_cds{$geneID}}-99 if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
+      $gff_fields[3]=$protein_start{$transcript_cds{$geneID}} if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
       $gff_fields[3]=1 if($gff_fields[3]<1);
       $exons[0]=join("\t",@gff_fields);
       my @gff_fields=split(/\t/,$exons[-1]);
@@ -83,8 +82,6 @@ while(my $line=<FILE>){
       unless($#exons==-1){#not interested in single exon
         $transcript_gff_u{$geneID}=[@exons];
       }
-    }elsif(defined($transcript_j{$geneID})){
-      $transcript_gff_j{$geneID}=[@exons];
     }
     @exons=();
     $locID=substr($attributes[1],7);#this is the gene_id
@@ -98,7 +95,8 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "="){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "=" || $class_code eq "j"){#equal intron chain or contains protein
+      next if($class_code eq "j"  && ($protein_start{$protID}<$tstart || $protein_end{$protID}>$tend)); # we skip this one if it is "j" and the match is not good
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
@@ -109,20 +107,17 @@ while(my $line=<FILE>){
     }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
-    }elsif($class_code eq "j" && $geneID=~/^REFSTRG/){#we only keep j's for reference transcript assemblies
-      $transcript_j{$geneID}=$line;
-      $transcripts_j_loci{$locID}.="$geneID ";
     }else{#likely messed up protein?
       $suspect_proteins{$protID}=1;
     }
   }elsif($gff_fields[2] eq "exon"){
-    push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}) || defined($transcript_j{$geneID}));
+    push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}));
   }
 }
 if(defined($transcript{$geneID})){
 #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
   my @gff_fields=split(/\t/,$exons[0]);
-  $gff_fields[3]=$protein_start{$transcript_cds{$geneID}}-99 if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
+  $gff_fields[3]=$protein_start{$transcript_cds{$geneID}} if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
   $gff_fields[3]=1 if($gff_fields[3]<1);
   $exons[0]=join("\t",@gff_fields);
   my @gff_fields=split(/\t/,$exons[-1]);
@@ -134,8 +129,6 @@ if(defined($transcript{$geneID})){
   unless($#exons==-1){#not interested in single exon
     $transcript_gff_u{$geneID}=[@exons];
   }
-}elsif(defined($transcript_j{$geneID})){
-  $transcript_gff_j{$geneID}=[@exons];
 }
 @exons=();
 
@@ -175,6 +168,7 @@ for my $g(keys %transcript_gff){
 for my $g(keys %transcript_cds){
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
+  my $tend=$gff_fields_t[4];
   print "\nDEBUG protein $transcript_cds{$g} transript $g length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
@@ -218,6 +212,7 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
+        $transcript_class{$g}="n" if($transcript_class{$g} eq "j");
       }
     }
     if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
@@ -230,6 +225,7 @@ for my $g(keys %transcript_cds){
         $cds_end_on_transcript=$i;
       }else{
         print "DEBUG failed to find new stop codon downstream\n";
+        $transcript_class{$g}="n" if($transcript_class{$g} eq "j");
       }
     }
 
@@ -355,7 +351,7 @@ for my $locus(keys %transcripts_cds_loci){
   my $transcript_index=0;
   my %output_proteins_for_locus=();
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
-  for my $class ("=","k"){
+  for my $class ("=","k","j"){
     my $class_success=0;
     for my $t(@transcripts_at_loci){
       $class_success=1 if($class eq "=" || $class eq "k");
@@ -461,36 +457,6 @@ for my $locus(keys %transcripts_cds_loci){
   push(@outputLOCchr,$gff_fields[0]);
   push(@outputLOCbeg,$locus_start);
   push(@outputLOCend,$locus_end);
-}
-
-#output "j" transcripts; these could be additiona; trqanscripts at protein coding loci
-for my $locus(keys %transcripts_j_loci){
-  my @output=();
-  my @transcripts_at_loci=split(/\s+/,$transcripts_j_loci{$locus});
-  my @gff_fields=split(/\t/,$transcript_j{$transcripts_at_loci[0]});
-  my $locus_start=$gff_fields[3];
-  my $locus_end=$gff_fields[4];
-  my $geneID=$locus."J_lncRNA";
-  my $parent=$geneID."-mRNA-";
-  my $transcript_index=0;
-  #if we got here we can output the transcript
-  for my $t(@transcripts_at_loci){
-    next if(not(defined($transcript_gff_j{$t})));
-    my @gff_fields_t=split(/\t/,$transcript_j{$t});
-    my @attributes_t=split(";",$gff_fields_t[8]);
-    $transcript_index++;
-    push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes_t[3]");
-    my $i=1;
-    for my $x(@{$transcript_gff_j{$t}}){
-      my @gff_fields=split(/\t/,$x);
-      push(@output,"$gff_fields_t[0]\tEviAnn\t".join("\t",@gff_fields[2..7])."\tID=$parent$transcript_index:exon:$i;Parent=$parent$transcript_index");
-      $i++;
-    }
-  }
-  if($transcript_index>0){
-    $gene_record_j{$gff_fields[0]." ".$locus_start}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;\n".join("\n",@output)."\n";
-    push(@gene_records_j,$gff_fields[0]." ".$locus_start);
-  }
 }
 
 #finally output "intergenic" transcripts

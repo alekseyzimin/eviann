@@ -130,9 +130,10 @@ for prog in $(echo "ufasta hisat2 stringtie gffread blastp tblastn makeblastdb g
 done
 
 #unpack uniprot
+export UNIPROT=$PWD/uniprot_sprot.nonred.85.fasta
 if [ ! -s $PWD/uniprot_sprot.nonred.85.fasta ];then
-  gzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta && \
-  export UNIPROT=$PWD/uniprot_sprot.nonred.85.fasta || error_exit "Uniprot database is not found in $MYPATH, please checl your installation"
+  log "Unpacking Uniprot database"
+  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > $PWD/uniprot_sprot.nonred.85.fasta || error_exit "Uniprot database is not found in $MYPATH, please checl your installation"
 fi
 
 #checking inputs
@@ -336,7 +337,6 @@ if [ ! -e merge.success ];then
 #this produces files $GENOME.{k,j,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf )  $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-  mv $GENOME.j.gff.tmp $GENOME.j.gff && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
   if [ ! -e merge.unused.success ];then
@@ -411,50 +411,7 @@ if [ ! -e merge.success ];then
   else
     echo "" > $GENOME.best_unused_proteins.gff
   fi 
-  fi && touch merge.unused.success
-  #now we deal with j's -- we know that they are protein-coding but we could not find a good match to a protein
-  if [ ! -e merge.j.success ];then
-  if [ -s $GENOME.j.gff ];then
-    log "Looking for ORFs in transcripts with poor protein matches"
-    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.j.gff && \
-    makeblastdb -in $PROTEINFILE -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
-    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.j.gff && \
-    rm -rf $GENOME.lncRNA.fa.transdecoder* && \
-    TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen" -evalue 0.000001 -num_threads $NUM_THREADS |\
-    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n" if($F[3]/$F[12]>.98 && $F[0] =~ /p1$/ && $F[2]>90);}' > $GENOME.lncRNA.blastp.tmp && mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.j.blastp && \
-    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.j.blastp 1>transdecoder.Predict.out 2>&1
-    if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
-      add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.j.gff | \
-      perl -F'\t' -ane 'BEGIN{
-        open(FILE,"'$GENOME'.lncRNA.j.blastp");
-        while($line=<FILE>){
-          $line=~/^(.+)\.p\d+/;
-          $f=$1;
-          $f=~s/_lncRNA//;
-          $h{$f}=1;
-        }
-      }{
-        unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
-          @f=split(/;|:/,$F[8]); 
-          if(defined($h{substr($f[0],3)})){
-            if($F[2] eq "mRNA"){
-              print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
-            }else{
-              print join("\t",@F);
-            }
-          }
-        }
-      }' > $GENOME.j.cds.gff.tmp && \
-      mv $GENOME.j.cds.gff.tmp $GENOME.j.cds.gff
-    else
-      echo "#gff" > $GENOME.j.cds.gff
-    fi
-    rm -rf $GENOME.lncRNA.fa pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
-  else
-    echo "#gff" > $GENOME.j.cds.gff
-  fi
-  fi && touch merge.j.success && \
+  fi && touch merge.unused.success && \
   #these are u's -- no match to a protein
   if [ ! -e merge.u.success ];then
   if [ -s $GENOME.u.gff ];then
@@ -514,7 +471,7 @@ if [ ! -e merge.success ];then
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
-    mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{j,u,unused_proteins}.gff.tmp $GENOME.{j,u,unused_proteins}.gff
+    mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   touch merge.success && rm -f functional.success merge.{unused,j,u}.success
 fi
