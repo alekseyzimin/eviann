@@ -1,7 +1,7 @@
 #!/bin/bash
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
 GENOME="genome.fa"
-PROTEINFILE="proteins.fa"
+PROTEINFILE="uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="genome.fa"
 RNASEQ_PAIRED="paired"
 RNASEQ_UNPAIRED="unpaired"
@@ -10,7 +10,7 @@ export BATCH_SIZE=1000000
 export MAX_INTRON=100000
 export MIN_TPM=0.25
 export DEBUG=0
-UNIPROT="uniprot.fa"
+UNIPROT="uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
 PID=$$
@@ -42,8 +42,7 @@ function usage {
  echo "-p <file containing list of filenames of paired Illumina reads from RNAseq experiments, one pair of /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line>"
  echo "-u <file containing list of filenames of unpaired Illumina reads from RNAseq experiments, one /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line>"
  echo "-e <fasta file with transcripts from related species>"
- echo "-r <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
- echo "-s <MANDATORY:fasta file of uniprot proteins>"
+ echo "-r <fasta file of protein sequences from related species>"
  echo "-m <max intron size, default: 100000>"
  echo "--debug <debug flag, if used intermediate output files will be kept>"
  echo "-v <verbose flag>"
@@ -130,6 +129,11 @@ for prog in $(echo "ufasta hisat2 stringtie gffread blastp tblastn makeblastdb g
   which $prog > /dev/null && echo "OK" || error_exit "$prog not found the the PATH, please install the appropriate package";
 done
 
+#unpack uniprot
+if [ ! -s uniprot_sprot.nonred.85.fasta ];then
+  gzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta || error_exit "Uniprot database is not found in $MYPATH, please checl your installation"
+fi
+
 #checking inputs
 mkdir -p tttt && cd tttt
 if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ]  && [ ! -s $ALT_EST ];then
@@ -139,7 +143,9 @@ if [ ! -s $UNIPROT ];then
   cd  .. && error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa> with an ABSOLUTE Path"
 fi
 if [ ! -s $PROTEINFILE ];then
-  cd .. && error_exit "File with proteing sequences for related species is missing or specified improperly, please supply it with -r </path_to/proteins_file.fa> with an ABSOLUTE Path"
+  cd .. && echo "Warning: proteins from related species are not specified, using Uniprot proteins as fallback option" && \
+  export PROTEINFILE=$PWD/uniprot_sprot.nonred.85.fasta && \
+  export PROTEIN=uniprot_sprot.nonred.85.fasta
 fi
 cd .. && rm -rf tttt
 
