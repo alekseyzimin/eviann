@@ -130,8 +130,9 @@ for prog in $(echo "ufasta hisat2 stringtie gffread blastp tblastn makeblastdb g
 done
 
 #unpack uniprot
-if [ ! -s uniprot_sprot.nonred.85.fasta ];then
-  gzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta || error_exit "Uniprot database is not found in $MYPATH, please checl your installation"
+if [ ! -s $PWD/uniprot_sprot.nonred.85.fasta ];then
+  gzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta && \
+  export UNIPROT=$PWD/uniprot_sprot.nonred.85.fasta || error_exit "Uniprot database is not found in $MYPATH, please checl your installation"
 fi
 
 #checking inputs
