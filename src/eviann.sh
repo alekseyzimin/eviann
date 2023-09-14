@@ -354,7 +354,7 @@ if [ ! -e merge.success ];then
     #here we compute the score for each protein -- the score is bitscore*1000+length plus 100 if the protein starts with "M"
     perl -ane '{
         $name=$F[0];
-        $score{$name}=$F[-1];
+        $bitscore{$name}=$F[-1];
       }END{
         my $seq="";
         my $name="";
@@ -362,14 +362,22 @@ if [ ! -e merge.success ];then
         while($line=<FILE>){
           chomp($line);
           if($line=~/^>/){
-            $len{$name}=length($seq) if(length($seq)>0 && $seq =~ /^M/);
+            if(length($seq)>0){
+              $len{$name}=length($seq);
+              $has_start{$name}=0;
+              $has_start{$name}=length($seq) if($seq =~ /^M/);
+            }
             $name=substr($line,1);
             $seq="";
           }else{
             $seq.=$line;
           }
         }
-        $len{$name}=length($seq) if(length($seq)>0 && $seq =~ /^M/);
+        if(length($seq)>0){
+          $has_start{$name}=0;
+          $has_start{$name}=length($seq) if($seq =~ /^M/);
+          $len{$name}=length($seq);
+        }
         open(FILE,"'$GENOME'.unused_proteins.dedup.combined.gtf");
         while($line=<FILE>){
           chomp($line);
@@ -385,17 +393,17 @@ if [ ! -e merge.success ];then
               $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
             }
             if(defined($transcript_id) && defined($oId) && defined($gene_id)){
-              print $score{$transcript_id}*1000+$len{$transcript_id}," $gene_id $oId\n" if(defined($score{$transcript_id}) || defined($len{$transcript_id}));
+              print $bitscore{$transcript_id}+$has_start{$transcript_id}*2," $gene_id $oId $has_start{$transcript_id}\n" if(defined($bitscore{$transcript_id}) || defined($has_start{$transcript_id}));
             }
           }
         }
       }' $GENOME.unused.blastp | \
     sort -nrk1,1 -S 10% |\
     perl -ane '{
-        $max_prot_at_locus=1;
+        $max_prot_at_locus=2;
         #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
         #then we allow for more extra proteins per locus
-        $max_prot_at_locus=2 if(int('$NUM_PROT_SPECIES')<=2);
+        $max_prot_at_locus=3 if(int('$NUM_PROT_SPECIES')<=2);
         if($h{$F[1]} < $max_prot_at_locus){
           $h{$F[1]}+=1;
           $hn{$F[2]}=1;
