@@ -102,6 +102,7 @@ while(my $line=<FILE>){
       $transcript_cds_start{$geneID}=$protein_start{$protID};
       $transcript_cds_end{$geneID}=$protein_end{$protID};
       $transcript_class{$geneID}=$class_code;
+      $transcript_origin{$geneID}=$gff_fields[1];
       $transcripts_cds_loci{$locID}.="$geneID ";
     }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$geneID}=$line;
@@ -216,7 +217,7 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
-        $transcript_class{$g}="n" if($transcript_class{$g} eq "j");
+        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       }
     }
     if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
@@ -229,7 +230,7 @@ for my $g(keys %transcript_cds){
         $cds_end_on_transcript=$i;
       }else{
         print "DEBUG failed to find new stop codon downstream\n";
-        $transcript_class{$g}="n" if($transcript_class{$g} eq "j");
+        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       }
     }
 
@@ -303,6 +304,7 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
+        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       }
     }
     if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
@@ -315,6 +317,7 @@ for my $g(keys %transcript_cds){
         $cds_end_on_transcript=$i;
       }else{
         print "DEBUG failed to find new stop codon downstream\n";
+        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       } 
     } 
 
