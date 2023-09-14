@@ -217,7 +217,6 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
-        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       }
     }
     if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
@@ -230,7 +229,6 @@ for my $g(keys %transcript_cds){
         $cds_end_on_transcript=$i;
       }else{
         print "DEBUG failed to find new stop codon downstream\n";
-        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       }
     }
 
@@ -304,7 +302,6 @@ for my $g(keys %transcript_cds){
         $cds_start_on_transcript=$i;
       }else{
         print "DEBUG failed to find new start codon upstream\n";
-        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       }
     }
     if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seqs{$g})-1){
@@ -317,7 +314,6 @@ for my $g(keys %transcript_cds){
         $cds_end_on_transcript=$i;
       }else{
         print "DEBUG failed to find new stop codon downstream\n";
-        $transcript_class{$g}="n" if($transcript_class{$g} eq "j" || $transcript_origin{$g} eq "EviAnn");
       } 
     } 
 
