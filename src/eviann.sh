@@ -349,7 +349,7 @@ if [ ! -e merge.success ];then
     mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
     rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
     makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb1.out 2>&1 && \
-    blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
+    blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true  -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
     mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp && \
     #here we compute the score for each protein -- the score is bitscore*1000+length plus 100 if the protein starts with "M"
     perl -ane '{
@@ -395,7 +395,7 @@ if [ ! -e merge.success ];then
         $max_prot_at_locus=1;
         #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
         #then we allow for more extra proteins per locus
-        $max_prot_at_locus=4 if(int('$NUM_PROT_SPECIES')<=2);
+        $max_prot_at_locus=2 if(int('$NUM_PROT_SPECIES')<=2);
         if($h{$F[1]} < $max_prot_at_locus){
           $h{$F[1]}+=1;
           $hn{$F[2]}=1;
@@ -461,13 +461,13 @@ if [ ! -e merge.success ];then
 #now we have additional proteins produces by transdecoder, let's use them all
     gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.gtf -o $GENOME.all && \
     rm -f $GENOME.all.{loci,stats,tracking} && \
-    gffread $GENOME.palign.fixed.gff $GENOME.{j,u}.cds.gff >  $GENOME.palign.all.gff && \
+    gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
     mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
   else
-    gffread $GENOME.palign.fixed.gff $GENOME.{j,u}.cds.gff >  $GENOME.palign.all.gff && \
+    gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
