@@ -265,7 +265,8 @@ if [ ! -e split.success ];then
       (cd $f.dir && ln -sf $f.proteins.gff $f.evidence.gff)
     fi
     #extract proteins fasta - -for some reason this is better than simply supplying aligned proteins gff
-    ufasta extract -f <(awk -F '=' '{print $NF}' $f.dir/$f.proteins.gff) $PROTEINFILE | ufasta format > $f.dir/$f.proteins.fa.tmp && mv $f.dir/$f.proteins.fa.tmp $f.dir/$f.proteins.fa      
+    ufasta format $PROTEINFILE > $f.dir/$f.proteins.fa.tmp && mv $f.dir/$f.proteins.fa.tmp $f.dir/$f.proteins.fa
+    #ufasta extract -f <(awk -F '=' '{print $NF}' $f.dir/$f.proteins.gff) $PROTEINFILE | ufasta format > $f.dir/$f.proteins.fa.tmp && mv $f.dir/$f.proteins.fa.tmp $f.dir/$f.proteins.fa      
     #finally if there are transcripts from related species, add them as fasta ESTs
     if [ -s tissue0.bam ];then
       mv $f.dir/$f.transcripts.fa $f.dir/$f.transcripts.fa.bak && \
