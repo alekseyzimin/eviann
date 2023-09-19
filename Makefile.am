@@ -13,5 +13,20 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 	$(V_YAGGO)$(YAGGO) -o $@ $<
 YAGGO_SOURCES = # Append all file to be built by yaggo
 
-dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz src/eugene.sh src/my_maker_functional_fasta src/my_maker_functional_gff src/combine_gene_protein_gff.pl src/eviann.sh src/eviprot.sh src/fix_suspect_introns.pl src/fix_splice_junctions.pl  src/add_cds_to_gff.pl src/filter_by_local_abundance.pl src/exonerate src/makeblastdb src/blastp src/tblastn src/gffread src/gffcompare src/trmap src/stringtie
+dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
+	src/eugene.sh src/my_maker_functional_fasta \
+	src/my_maker_functional_gff \
+	src/combine_gene_protein_gff.pl \
+	src/eviann.sh \
+	src/eviprot.sh \
+	src/fix_suspect_introns.pl \
+	src/fix_splice_junctions.pl  \
+	src/add_cds_to_gff.pl \
+	src/filter_by_local_abundance.pl \
+	src/exonerate \
+	src/makeblastdb src/blastp src/tblastn \
+	src/gffread src/gffcompare src/trmap \
+	src/stringtie \
+	src/TransDecoder.LongOrfs src/TransDecoder.Predict \
+	src/PerlLib/DelimParser.pm src/PerlLib/Fasta_retriever.pm  src/PerlLib/GFF3_utils2.pm  src/PerlLib/GTF_utils2.pm src/PerlLib/Nuc_translator.pm src/PerlLib/overlapping_nucs.ph src/PerlLib/Process_cmd.pm src/PerlLib/Fasta_reader.pm  src/PerlLib/Gene_obj.pm src/PerlLib/GTF.pm src/PerlLib/Longest_orf.pm src/PerlLib/Overlap_piler.pm src/PerlLib/Pipeliner.pm src/PerlLib/PWM.pm
 
