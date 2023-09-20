@@ -196,7 +196,56 @@ for my $g(keys %transcript_cds){
       $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-
+#checking for in-frame stop codons
+    my $in_frame_stop=0;
+    my $frame0_start=$cds_start_on_transcript;
+    my $frame1_start=$cds_start_on_transcript+1;
+    my $frame2_start=$cds_start_on_transcript+2;
+    my $frame0_end=$cds_end_on_transcript;
+    my $frame1_end=$cds_end_on_transcript-2;
+    my $frame2_end=$cds_end_on_transcript-1;
+    for($i=$frame0_start;$i<$frame0_end;$i+=3){
+      if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA"){
+        $in_frame_stop=$i;
+	$frame0_end=$i-3;
+        last;
+      }
+    }
+    if($in_frame_stop){#check another frame
+      print "DEBUG found in-frame stop at $in_frame_stop switching to $cds_start_on_transcript $cds_end_on_transcript\n";
+      $in_frame_stop=0;
+      for($i=$frame1_start;$i<$frame1_end;$i+=3){
+        if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA"){
+          $in_frame_stop=$i;
+	  $frame1_end=$i-3;
+          last;
+        }
+      }
+      if($in_frame_stop){#check the last frame
+	print "DEBUG found in-frame stop at $in_frame_stop switching to $cds_start_on_transcript $cds_end_on_transcript\n";
+        $in_frame_stop=0;
+	for($i=$frame2_start;$i<$frame2_end;$i+=3){
+	  if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA"){
+	    $in_frame_stop=$i;
+            $frame2_end=$i-3;
+	    last;
+	  }
+	}
+	if($in_frame_stop){#pick the longest frame
+          if($frame0_end >= $frame1_end && $frame0_end >= $frame2_end){
+	    $cds_start_on_transcript=$frame0_start;
+	    $cds_end_on_transcript=$frame0_end;
+          }elsif($frame1_end >= $frame0_end && $frame1_end >= $frame2_end){
+            $cds_start_on_transcript=$frame1_start;
+            $cds_end_on_transcript=$frame1_end;
+          }else{
+            $cds_start_on_transcript=$frame2_start;
+            $cds_end_on_transcript=$frame2_end;
+          } 
+	  print "DEBUG found in-frame stop at $in_frame_stop switching to the longest frame $cds_start_on_transcript $cds_end_on_transcript\n";
+	}
+      }
+    }
 #now we look at the start codon
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
@@ -283,6 +332,57 @@ for my $g(keys %transcript_cds){
       $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
+#checking for in-frame stop codons
+    my $in_frame_stop=0;
+    my $frame0_start=$cds_start_on_transcript; 
+    my $frame1_start=$cds_start_on_transcript+1;
+    my $frame2_start=$cds_start_on_transcript+2;
+    my $frame0_end=$cds_end_on_transcript; 
+    my $frame1_end=$cds_end_on_transcript-2;
+    my $frame2_end=$cds_end_on_transcript-1;
+    for($i=$frame0_start;$i<$frame0_end;$i+=3){
+      if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA"){
+        $in_frame_stop=$i;
+        $frame0_end=$i-3;
+        last;
+      }
+    }  
+    if($in_frame_stop){#check another frame
+      print "DEBUG found in-frame stop at $in_frame_stop switching to $cds_start_on_transcript $cds_end_on_transcript\n";
+      $in_frame_stop=0;
+      for($i=$frame1_start;$i<$frame1_end;$i+=3){
+        if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA"){
+          $in_frame_stop=$i;
+          $frame1_end=$i-3;
+          last;
+        }
+      }
+      if($in_frame_stop){#check the last frame
+        print "DEBUG found in-frame stop at $in_frame_stop switching to $cds_start_on_transcript $cds_end_on_transcript\n";
+        $in_frame_stop=0;
+        for($i=$frame2_start;$i<$frame2_end;$i+=3){
+          if(uc(substr($transcript_seqs{$g},$i,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$i,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$i,3)) eq "TGA"){
+            $in_frame_stop=$i;
+            $frame2_end=$i-3;
+            last;
+          }
+        }
+        if($in_frame_stop){#pick the longest frame
+          if($frame0_end >= $frame1_end && $frame0_end >= $frame2_end){
+            $cds_start_on_transcript=$frame0_start;
+            $cds_end_on_transcript=$frame0_end;
+          }elsif($frame1_end >= $frame0_end && $frame1_end >= $frame2_end){
+            $cds_start_on_transcript=$frame1_start;
+            $cds_end_on_transcript=$frame1_end;
+          }else{ 
+            $cds_start_on_transcript=$frame2_start;
+            $cds_end_on_transcript=$frame2_end;
+          } 
+          print "DEBUG found in-frame stop at $in_frame_stop switching to the longest frame $cds_start_on_transcript $cds_end_on_transcript\n";
+        }
+      }
+    }
+
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
