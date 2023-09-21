@@ -100,7 +100,9 @@ while(my $line=<FILE>){
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
       $transcript_cds_start{$geneID}=$protein_start{$protID};
+      $transcript_cds_start_codon{$geneID}="NO";
       $transcript_cds_end{$geneID}=$protein_end{$protID};
+      $transcript_cds_end_codon{$geneID}="NO";
       $transcript_class{$geneID}=$class_code;
       $transcript_origin{$geneID}=$gff_fields[1];
       $transcripts_cds_loci{$locID}.="$geneID ";
@@ -237,6 +239,8 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript+1;
+    $transcript_cds_start_codon{$g}=$first_codon;
+    $transcript_cds_end_codon{$g}=$last_codon;
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
   }else{#reverse orientation
@@ -307,6 +311,8 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript+1;
+    $transcript_cds_start_codon{$g}=$first_codon;
+    $transcript_cds_end_codon{$g}=$last_codon;
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
   }
 }
@@ -368,7 +374,7 @@ for my $locus(keys %transcripts_cds_loci){
       $locus_end=$transcript_end if($transcript_end>$locus_end);
 #output transcript
       $transcript_index++;
-      push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;ProteinID=$protID");
+      push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;ProteinID=$protID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_stop_codon{$t}");
 #output exons
       my $i=1;
       my $first_j=0;
