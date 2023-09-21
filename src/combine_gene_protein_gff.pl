@@ -569,11 +569,11 @@ sub fix_start_stop_codon{
     my $i;
     my $found=0;
     for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      $found=1 if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+      $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
     } 
-    if($found){
+    if($found>0){
       print "DEBUG found new start codon upstream at $i\n";
-      $cds_start_on_transcript=$i;
+      $cds_start_on_transcript=$found;
     }else{ 
       print "DEBUG failed to find new start codon, looking dowstream\n";
       for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
