@@ -126,7 +126,7 @@ PROTEIN=`basename $PROTEINFILE`
 #checking is dependencies are installed
 for prog in $(echo "ufasta hisat2 minimap2 stringtie gffread blastp tblastn makeblastdb gffcompare TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog on the PATH... " && \
-  which $prog > /dev/null && echo "OK" || error_exit "$prog not found the the PATH, please install the appropriate package";
+  which $prog || error_exit "$prog not found the the PATH, please install the appropriate package";
 done
 
 #unpack uniprot

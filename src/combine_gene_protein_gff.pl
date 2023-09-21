@@ -199,6 +199,11 @@ for my $g(keys %transcript_cds){
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
 
+    if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
+      $transcript_class{$g}="n";
+      next;
+    }
+
 #checking for in-frame stop codons
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
@@ -208,11 +213,6 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-
-    if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
-      $transcript_class{$g}="n";
-      next;
-    }
 
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
@@ -270,6 +270,11 @@ for my $g(keys %transcript_cds){
     }
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
 
+    if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
+      $transcript_class{$g}="n";
+      next;
+    }
+
 #checking for in-frame stop codons
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
@@ -279,11 +284,6 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-
-    if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
-      $transcript_class{$g}="n";
-      next;
-    }
 
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
@@ -567,10 +567,11 @@ sub fix_start_stop_codon{
 
   if(not(uc($first_codon) eq "ATG")){
     my $i;
+    my $found=0;
     for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      last if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+      $found=1 if(uc(substr($transcript_seq,$i,3)) eq "ATG");
     } 
-    if($i>=0){
+    if($found){
       print "DEBUG found new start codon upstream at $i\n";
       $cds_start_on_transcript=$i;
     }else{ 
