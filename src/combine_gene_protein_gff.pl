@@ -205,15 +205,22 @@ for my $g(keys %transcript_cds){
     }
 
 #checking for in-frame stop codons
-    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
+    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
+      }
+    }else{
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
+      }
     }
 #now we look at the start codon
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-
+    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
 #translating back to genome coords
@@ -276,10 +283,17 @@ for my $g(keys %transcript_cds){
     }
 
 #checking for in-frame stop codons
-    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
-    }
+    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
+      }
+    }else{
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g}); 
+      }
+    } 
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
@@ -570,13 +584,14 @@ sub fix_start_stop_codon{
     my $found=0;
     for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
       $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+      #stop if found a stop
       last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
     } 
     if($found>0){
       print "DEBUG found new start codon upstream at $found\n";
       $cds_start_on_transcript=$found;
     }else{ 
-      print "DEBUG failed to find new start codon, looking dowstream\n";
+      print "DEBUG failed to find new start codon, looking downstream\n";
       for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
         last if(uc(substr($transcript_seq,$i,3)) eq "ATG");
       }
@@ -664,4 +679,26 @@ sub fix_in_frame_stops{
   }
   return($cds_start_on_transcript,$cds_end_on_transcript);
 }
+
+sub fix_in_frame_stops_keep_frame{
+  my $in_frame_stop=0;
+  my $cds_start_on_transcript=$_[0];
+  my $cds_end_on_transcript=$_[1];
+  my $transcript_seq=$_[2];
+  my $frame0_start=$cds_start_on_transcript;
+  my $frame0_end=$cds_end_on_transcript;
+  for($i=$frame0_start;$i<$frame0_end;$i+=3){
+    if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA"){
+      $in_frame_stop=$i;
+      $frame0_end=$i-3;
+      last;
+    }
+  }
+  if($in_frame_stop){
+    print "DEBUG found in-frame stop at $in_frame_stop not switching\n";
+    $cds_end_on_transcript=$frame0_end;
+  }
+  return($cds_start_on_transcript,$cds_end_on_transcript);
+}
+
   
