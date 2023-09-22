@@ -570,9 +570,10 @@ sub fix_start_stop_codon{
     my $found=0;
     for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
       $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+      last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
     } 
     if($found>0){
-      print "DEBUG found new start codon upstream at $i\n";
+      print "DEBUG found new start codon upstream at $found\n";
       $cds_start_on_transcript=$found;
     }else{ 
       print "DEBUG failed to find new start codon, looking dowstream\n";
