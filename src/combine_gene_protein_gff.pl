@@ -220,7 +220,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
+    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
 #translating back to genome coords
