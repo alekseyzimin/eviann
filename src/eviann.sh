@@ -391,7 +391,7 @@ if [ ! -e merge.success ];then
               $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
             }
             if(defined($transcript_id) && defined($oId) && defined($gene_id)){
-              print $bitscore{$transcript_id}*1000+$has_start{$transcript_id}," $gene_id $oId $has_start{$transcript_id}\n" if(defined($has_start{$transcript_id}) || (defined($bitscore{$transcript_id}) && $bitscore{$transcript_id}>500));
+              print $bitscore{$transcript_id}*1000+$has_start{$transcript_id}," $gene_id $oId $has_start{$transcript_id}\n" if(defined($has_start{$transcript_id}) || (defined($bitscore{$transcript_id}) && $bitscore{$transcript_id}>200));
             }
           }
         }

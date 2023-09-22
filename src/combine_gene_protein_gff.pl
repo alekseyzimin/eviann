@@ -204,24 +204,40 @@ for my $g(keys %transcript_cds){
       next;
     }
 
-#checking for in-frame stop codons
-    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
-      }
-    }else{
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
-      }
-    }
-#now we look at the start codon
+    my $cds_start_on_transcript_original=$cds_start_on_transcript;
+    my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-    
+
+#checking for in-frame stop codons
+    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
+          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        } 
+      }
+    }else{
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
+          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        }
+      }
+    }
+#fixing start/stop    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+
+#check to see if we truncated the cds -- maybe it is a special protein?
+    if($cds_end_on_transcript-$cds_start_on_transcript+1 < 10){
+      $cds_end_on_transcript=$cds_end_on_transcript_original;
+      $cds_start_on_transcript=$cds_start_on_transcript_original;
+      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
+      $transcript_class{$g}="n";
+    }
 
 #translating back to genome coords
     my $sequence_covered=0;
@@ -282,24 +298,41 @@ for my $g(keys %transcript_cds){
       next;
     }
 
-#checking for in-frame stop codons
-    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g});
-      }
-    }else{
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.5){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript+(int((length($transcript_seqs{$g})-$cds_end_on_transcript-6)/3)-1)*3,$transcript_seqs{$g}); 
-      }
-    } 
-
+    my $cds_start_on_transcript_original=$cds_start_on_transcript;
+    my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
+#checking for in-frame stop codons
+    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
+          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        }
+      }
+    }else{
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
+          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+        }
+      }
+    }
+ 
+#fixing start/stop
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+
+#check to see if we truncated the cds -- maybe it is a special protein?
+    if($cds_end_on_transcript-$cds_start_on_transcript+1 < 10){
+      $cds_end_on_transcript=$cds_end_on_transcript_original;
+      $cds_start_on_transcript=$cds_start_on_transcript_original;
+      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
+      $transcript_class{$g}="n";
+    } 
 
 #translating start and end to genome coords
     my $sequence_covered=0;
@@ -695,7 +728,7 @@ sub fix_in_frame_stops_keep_frame{
     }
   }
   if($in_frame_stop){
-    print "DEBUG found in-frame stop at $in_frame_stop not switching\n";
+    print "DEBUG found in-frame stop at $in_frame_stop not switching frame\n";
     $cds_end_on_transcript=$frame0_end;
   }
   return($cds_start_on_transcript,$cds_end_on_transcript);
