@@ -315,6 +315,7 @@ fi
 
 if [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
+  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
 #we first estimate the redundancy of proteins -- this can tell us how many species were used for protein references
   gffcompare -p PCONS -SDT $GENOME.$PROTEIN.palign.gff -o count && \
   NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))+0.5),"\n";}' count.combined.gtf` && \
@@ -423,8 +424,6 @@ if [ ! -e merge.success ];then
   if [ -s $GENOME.u.gff ];then
     log "Looking for ORFs in transcripts with no protein matches"
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
-    makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
-    gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
     blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS |\
@@ -470,6 +469,18 @@ if [ ! -e merge.success ];then
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
+    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
+    mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
+    mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
+    rm -rf $GENOME.broken_cds.fa.transdecoder* && \
+    TransDecoder.LongOrfs -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+    blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS |\
+    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.broken_cds.blastp.tmp && \
+    mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
+    TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
+    if [ -s $GENOME.broken_cds.fa.transdecoder.gff3 ];then
+      
+
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
     mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
   else

@@ -22,6 +22,7 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/fix_suspect_introns.pl \
 	src/fix_splice_junctions.pl  \
 	src/add_cds_to_gff.pl \
+	src/check_cds.pl \
 	src/filter_by_local_abundance.pl \
 	src/exonerate \
 	src/makeblastdb src/blastp src/tblastn \
