@@ -133,7 +133,8 @@ done
 export UNIPROT=$PWD/uniprot_sprot.nonred.85.fasta
 if [ ! -s $PWD/uniprot_sprot.nonred.85.fasta ];then
   log "Unpacking Uniprot database"
-  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > $PWD/uniprot_sprot.nonred.85.fasta || error_exit "Uniprot database is not found in $MYPATH, please checl your installation"
+  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz && \
+  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 || error_exit "Uniprot database is not found in $MYPATH, please check your installation"
 fi
 
 #checking inputs
@@ -315,7 +316,6 @@ fi
 
 if [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
-  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb2.out 2>&1 && \
 #we first estimate the redundancy of proteins -- this can tell us how many species were used for protein references
   gffcompare -p PCONS -SDT $GENOME.$PROTEIN.palign.gff -o count && \
   NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))+0.5),"\n";}' count.combined.gtf` && \
@@ -349,7 +349,6 @@ if [ ! -e merge.success ];then
     ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
     mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
     rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
-    makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb1.out 2>&1 && \
     blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true  -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
     mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp && \
     #here we compute the score for each protein -- the score is bitscore*1000+length plus 100 if the protein starts with "M"
@@ -457,11 +456,12 @@ if [ ! -e merge.success ];then
     else
       echo "#gff" > $GENOME.u.cds.gff
     fi
-    rm -rf $GENOME.lncRNA.fa pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{bed,cds,pep,gff3} uniprot.p??
+    rm -rf $GENOME.lncRNA.fa pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep,gff3}
   else
     echo "#gff" > $GENOME.u.cds.gff 
   fi
   fi && touch merge.u.success && \
+  log "Working on final merge"
   if [ -s $GENOME.best_unused_proteins.gff ];then
 #now we have additional proteins produces by transdecoder, let's use them all
     gffcompare -T -D $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.gtf -o $GENOME.all && \
@@ -469,6 +469,7 @@ if [ ! -e merge.success ];then
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
+    log "Checking and fixing broken ORFs"
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
@@ -478,16 +479,33 @@ if [ ! -e merge.success ];then
     perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.broken_cds.blastp.tmp && \
     mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
     TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
-    if [ -s $GENOME.broken_cds.fa.transdecoder.gff3 ];then
-      
-
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
-    mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u}.gff.tmp
+    if [ -s $GENOME.broken_cds.fa.transdecoder ];then
+      awk -F '\t' '{if(NF>8) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+      mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
+    fi && \
+    rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+    log "Checking and fixing broken ORFs"
+    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
+    mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
+    mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
+    rm -rf $GENOME.broken_cds.fa.transdecoder* && \
+    TransDecoder.LongOrfs -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+    blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS |\
+    perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.broken_cds.blastp.tmp && \
+    mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
+    TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
+    if [ -s $GENOME.broken_cds.fa.transdecoder ];then
+      awk -F '\t' '{if(NF>8) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+      mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
+    fi && \
+    rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
     mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   touch merge.success && rm -f functional.success merge.{unused,j,u}.success
@@ -496,7 +514,6 @@ fi
 if [ -e merge.success ] && [ ! -e functional.success ];then
   log "Performing functional annotation" && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
-  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb3.out 2>&1 && \
   blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp1.out 2>&1 && \
   mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
@@ -527,7 +544,7 @@ if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes"
   ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
   ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
-  makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb4.out 2>&1 && \
+  makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb.sex2mex.out 2>&1 && \
   blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp.tmp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp2.out 2>&1 && \
   mv $GENOME.sex2mex.blastp.tmp $GENOME.sex2mex.blastp && \
   perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && \

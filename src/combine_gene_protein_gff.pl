@@ -157,7 +157,7 @@ while(my $line=<FILE>){
   chomp($line);
   my ($geneID, $cds_start,$cds_stop)=split(/\s+/,$line);
   $transcript_cds_start_on_transcript{$geneID}=$cds_start;
-  $transcript_cds_stop_on_transcript{$geneID}=$cds_stop;
+  $transcript_cds_stop_on_transcript{$geneID}=$cds_stop-3;
 }
 
 #we make the transcript sequences for protein coding transcripts
@@ -182,16 +182,17 @@ for my $g(keys %transcript_cds){
   my $tend=$gff_fields_t[4];
   print "\nDEBUG protein $transcript_cds{$g} transript $g length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
-    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
+    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
-    my $cds_start_on_transcript=-1;
-    my $cds_end_on_transcript=-1;
+    my $cds_start_on_transcript=0;
+    my $cds_end_on_transcript=0;
     my $cds_length=0;
     if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
       $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
       $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript+1;
     }else{
+      print "DEBUG computing CDS start and stop position on the transcript\n";
       my @gff_fields=();
       my @gff_fields_prev=();
       for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
@@ -248,7 +249,7 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
 #check to see if we truncated the cds -- maybe it is a special protein?
-    if($cds_end_on_transcript-$cds_start_on_transcript+1 < 10){
+    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*.1){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
@@ -283,10 +284,10 @@ for my $g(keys %transcript_cds){
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
   }else{#reverse orientation
-    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
+    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
 #we need to determine the position or the CDS start on the transcript, minding the introns
-    my $cds_start_on_transcript=-1;
-    my $cds_end_on_transcript=-1;
+    my $cds_start_on_transcript=0;
+    my $cds_end_on_transcript=0;
     my $cds_length=0;
     if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
       $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
@@ -350,7 +351,7 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
 #check to see if we truncated the cds -- maybe it is a special protein?
-    if($cds_end_on_transcript-$cds_start_on_transcript+1 < 10){
+    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*.1){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
