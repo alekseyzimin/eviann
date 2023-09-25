@@ -478,7 +478,7 @@ if [ ! -e merge.success ];then
     perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.broken_cds.blastp.tmp && \
     mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
     TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
-    if [ -s $GENOME.broken_cds.fa.transdecoder ];then
+    if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
       awk -F '\t' '{if(NF>8) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
@@ -535,7 +535,7 @@ fi
 #  touch partial_detect.success && \
 #  rm -rf pseudo_detect.success && \
 #  if [ $DEBUG -lt 1 ];then
-#    rm -rf uniprot.p?? $GENOME.proteins.fasta $GENOME.transcripts.fasta
+#    rm -rf $GENOME.proteins.fasta $GENOME.transcripts.fasta
 #  fi
 #fi
 
