@@ -46,6 +46,8 @@ function usage {
  echo "-m <max intron size, default: 100000>"
  echo "--debug <debug flag, if used intermediate output files will be kept>"
  echo "-v <verbose flag>"
+ echo "--version version"
+ echo ""
  echo "-r AND one or more of the -p -u or -e must be supplied."
 }
 
@@ -105,6 +107,9 @@ do
             ;;
         -v|--verbose)
             set -x
+            ;;
+        --version)
+            echo "version 1.0.2"
             ;;
         --debug)
             DEBUG=1
