@@ -228,22 +228,12 @@ for my $g(keys %transcript_cds){
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
 #checking for in-frame stop codons
-    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
-          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        } 
-      }
-    }else{
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
-          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        }
-      }
+    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      } 
     }
 #fixing start/stop    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
@@ -329,24 +319,14 @@ for my $g(keys %transcript_cds){
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
 #checking for in-frame stop codons
-    if($transcript_class{$g} eq "k" || $transcript_class{$g} eq "="){
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
-          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        }
-      }
-    }else{
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
-          ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-        }
+    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#if the transcript is severely truncated -- then we probably got the start wrong
+      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
+      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.25){#give up if still truncated
+        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
       }
     }
- 
+
 #fixing start/stop
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
 
@@ -635,7 +615,7 @@ sub fix_start_stop_codon{
   my $transcript_seq=$_[2];
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
-
+  print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
   if(not(uc($first_codon) eq "ATG")){
     my $i;
     my $found=0;
@@ -660,9 +640,9 @@ sub fix_start_stop_codon{
       }
     }
   }
-  if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seq)-1){
+  if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA")){
     my $i;
-    for($i=$cds_end_on_transcript+3;$i<length($transcript_seq);$i+=3){
+    for($i=$cds_start_on_transcript+3;$i<length($transcript_seq);$i+=3){
       last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
     } 
     if($i<length($transcript_seq)){
@@ -675,68 +655,6 @@ sub fix_start_stop_codon{
   return($cds_start_on_transcript,$cds_end_on_transcript);
 }
 
-sub fix_in_frame_stops{
-  my $in_frame_stop=0;  
-  my $cds_start_on_transcript=$_[0];
-  my $cds_end_on_transcript=$_[1];
-  my $transcript_seq=$_[2];
-  my $frame0_start=$cds_start_on_transcript;
-  my $frame1_start=$cds_start_on_transcript+1;
-  my $frame2_start=$cds_start_on_transcript+2;
-  my $frame0_end=$cds_end_on_transcript;
-  my $frame1_end=$cds_end_on_transcript-2;
-  my $frame2_end=$cds_end_on_transcript-1;
-  for($i=$frame0_start;$i<$frame0_end;$i+=3){
-    if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA"){
-      $in_frame_stop=$i;
-      $frame0_end=$i-3;
-      last;
-    }
-  }
-  if($in_frame_stop){#check another frame
-    print "DEBUG found in-frame stop at $in_frame_stop switching to $frame1_start $frame1_end\n";
-    $in_frame_stop=0;
-    for($i=$frame1_start;$i<$frame1_end;$i+=3){
-      if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA"){
-        $in_frame_stop=$i;
-        $frame1_end=$i-3;
-        last;
-      }
-    } 
-    if($in_frame_stop){#check the last frame
-      print "DEBUG found in-frame stop at $in_frame_stop switching to $frame2_start $frame2_end\n";
-      $in_frame_stop=0;
-      for($i=$frame2_start;$i<$frame2_end;$i+=3){
-        if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA"){
-          $in_frame_stop=$i;
-          $frame2_end=$i-3;
-          last;
-        }
-      }
-      if($in_frame_stop){#pick the longest frame
-        if($frame0_end >= $frame1_end && $frame0_end >= $frame2_end){
-          $cds_start_on_transcript=$frame0_start;
-          $cds_end_on_transcript=$frame0_end;
-        }elsif($frame1_end >= $frame0_end && $frame1_end >= $frame2_end){
-          $cds_start_on_transcript=$frame1_start;
-          $cds_end_on_transcript=$frame1_end;
-        }else{
-          $cds_start_on_transcript=$frame2_start;
-          $cds_end_on_transcript=$frame2_end;
-        }
-        print "DEBUG found in-frame stop at $in_frame_stop switching to the longest frame $cds_start_on_transcript $cds_end_on_transcript\n";
-      }else{
-        $cds_start_on_transcript=$frame2_start;
-        $cds_end_on_transcript=$frame2_end;
-      }
-    }else{#pick this frame
-      $cds_start_on_transcript=$frame1_start;
-      $cds_end_on_transcript=$frame1_end;
-    }
-  }
-  return($cds_start_on_transcript,$cds_end_on_transcript);
-}
-
 sub fix_in_frame_stops_keep_frame{
   my $in_frame_stop=0;
   my $cds_start_on_transcript=$_[0];
@@ -744,6 +662,7 @@ sub fix_in_frame_stops_keep_frame{
   my $transcript_seq=$_[2];
   my $frame0_start=$cds_start_on_transcript;
   my $frame0_end=$cds_end_on_transcript;
+  print "DEBUG checking for in frame stop starting $cds_start_on_transcript $cds_end_on_transcript\n";
   for($i=$frame0_start;$i<$frame0_end;$i+=3){
     if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA"){
       $in_frame_stop=$i;
@@ -754,6 +673,8 @@ sub fix_in_frame_stops_keep_frame{
   if($in_frame_stop){
     print "DEBUG found in-frame stop at $in_frame_stop not switching frame\n";
     $cds_end_on_transcript=$frame0_end;
+  }else{
+    print "DEBUG no in frame stop\n";
   }
   return($cds_start_on_transcript,$cds_end_on_transcript);
 }
