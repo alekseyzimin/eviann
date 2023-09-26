@@ -526,7 +526,8 @@ if [ -e merge.success ] && [ ! -e functional.success ];then
   my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
   my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-  touch functional.success && rm -rf partial_detect.success || error_exit "Functional annotation failed"
+  rm -rf $GENOME.transcripts.fasta $GENOME.proteins.fasta && \
+  touch functional.success && rm -rf pseudo_detect.success || error_exit "Functional annotation failed"
 fi 
 
 #if [ ! -e partial_detect.success ] && [ -e functional.success ];then
@@ -556,6 +557,7 @@ if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
   mv $GENOME.sex2mex.blastp.tmp $GENOME.sex2mex.blastp && \
   perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && \
   mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
+  rm -f $GENOME.functional_note.gff && \
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta
   fi && \
@@ -571,7 +573,6 @@ if [ -e functional.success ] && [ -e pseudo_detect.success ];then
   echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
   echo -n "Number of functional protein coding transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |grep Similar |wc -l
   echo -n "Number of proteins: "; grep '^>' $GENOME.functional_note.proteins.fasta |wc -l
-  rm -rf $GENOME.transcripts.fasta $GENOME.proteins.fasta $GENOME.gff $GENOME.functional_note.gff
 else
   error_exit "Something went wrong, please check your data"
 fi
