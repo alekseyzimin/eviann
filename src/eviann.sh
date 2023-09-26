@@ -1,7 +1,7 @@
 #!/bin/bash
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
 GENOME="genome.fa"
-PROTEINFILE="uniprot_sprot.nonred.85.fasta"
+PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="genome.fa"
 RNASEQ_PAIRED="paired"
 RNASEQ_UNPAIRED="unpaired"
@@ -10,7 +10,7 @@ export BATCH_SIZE=1000000
 export MAX_INTRON=100000
 export MIN_TPM=0.25
 export DEBUG=0
-UNIPROT="uniprot_sprot.nonred.85.fasta"
+UNIPROT="$PWD/uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
 PID=$$
@@ -110,6 +110,7 @@ do
             ;;
         --version)
             echo "version 1.0.2"
+            exit 0
             ;;
         --debug)
             DEBUG=1
@@ -135,11 +136,13 @@ for prog in $(echo "ufasta hisat2 minimap2 stringtie gffread blastp tblastn make
 done
 
 #unpack uniprot
-export UNIPROT=$PWD/uniprot_sprot.nonred.85.fasta
-if [ ! -s $PWD/uniprot_sprot.nonred.85.fasta ];then
+if [ ! -s $UNIPROT ];then
   log "Unpacking Uniprot database"
-  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz && \
-  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 || error_exit "Uniprot database is not found in $MYPATH, please check your installation"
+  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
+  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta && \
+  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1
+else
+  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1
 fi
 
 #checking inputs
