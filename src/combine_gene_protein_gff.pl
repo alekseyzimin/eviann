@@ -443,14 +443,26 @@ for my $locus(keys %transcripts_cds_loci){
         }
         $i++;
       }
+#assign UTRs based on strand
+      my $first_UTR="five_prime_UTR";
+      my $first_UTR_label="5UTR";
+      my $second_UTR="three_prime_UTR";
+      my $second_UTR_label="3UTR";
+      if($gff_fields[6] eq "-"){
+        $first_UTR="three_prime_UTR";
+        $first_UTR_label="3UTR";
+        $second_UTR="five_prime_UTR";
+        $second_UTR_label="5UTR";
+      }
+
+#output first UTR 
       $i=1;
-#output 5'UTR 
       for(my $j=$first_j;$j<=$transcript_cds_start_index;$j++){
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
         if($j==$transcript_cds_start_index){
-          push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t$gff_fields[3]\t".($start_cds-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index") if($start_cds>$gff_fields[3]);
+          push(@output,$gff_fields[0]."\tEviAnn\t$first_UTR\t$gff_fields[3]\t".($start_cds-1)."\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:$first_UTR_label:$i;Parent=$parent$transcript_index") if($start_cds>$gff_fields[3]);
         }else{
-          push(@output,$gff_fields[0]."\tEviAnn\tfive_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:5UTR:$i;Parent=$parent$transcript_index");
+          push(@output,$gff_fields[0]."\tEviAnn\t$first_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:$first_UTR_label:$i;Parent=$parent$transcript_index");
         }
         $i++;
       }
@@ -471,14 +483,14 @@ for my $locus(keys %transcripts_cds_loci){
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
         push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
       }
-#output 3'UTR
+#output second UTR
       $i=1;
       for(my $j=$transcript_cds_end_index;$j<=$last_j;$j++){
         my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
         if($j==$transcript_cds_end_index){
-          push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".($end_cds+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index") if($end_cds<$gff_fields[4]);
+          push(@output,$gff_fields[0]."\tEviAnn\t$second_UTR\t".($end_cds+1)."\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:$second_UTR_label:$i;Parent=$parent$transcript_index") if($end_cds<$gff_fields[4]);
         }else{
-          push(@output,$gff_fields[0]."\tEviAnn\tthree_prime_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:3UTR:$i;Parent=$parent$transcript_index");
+          push(@output,$gff_fields[0]."\tEviAnn\t$second_UTR\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:$second_UTR_label:$i;Parent=$parent$transcript_index");
         }
         $i++
       }
