@@ -24,7 +24,7 @@ my $scf="";
 my $seq="";
 my %used_proteins;
 my %suspect_proteins;
-my $ext_length=33;
+my $ext_length=99;
 my $output_prefix=$ARGV[0];
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
@@ -201,7 +201,7 @@ for my $g(keys %transcript_cds){
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
   my $tend=$gff_fields_t[4];
-  print "\nDEBUG protein $transcript_cds{$g} transript $g length ",length($transcript_seqs{$g}),"\n";
+  print "\nDEBUG protein $transcript_cds{$g} transcript $g length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
@@ -670,12 +670,13 @@ for my $locus(keys %transcripts_only_loci){
 
 #output unused proteins
 #we will then look at them, pick only one per locus that best matches uniprot and join them in at the second pass
+my $fake_utr=9;
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
-  my $ptstart=$gff_fields_p[3]-$ext_length>0 ? $gff_fields_p[3]-$ext_length:1;
-  my $ptend=$gff_fields_p[4]+$ext_length<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+$ext_length:length($genome_seqs{$gff_fields_p[0]});
+  my $ptstart=$gff_fields_p[3]-$fake_utr>0 ? $gff_fields_p[3]-$fake_utr:1;
+  my $ptend=$gff_fields_p[4]+$fake_utr<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+$fake_utr:length($genome_seqs{$gff_fields_p[0]});
 
   print OUTFILE4 "$gff_fields_p[0]\tEviAnn\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
@@ -739,9 +740,9 @@ sub fix_start_stop_codon_ext{
     #check the extension for AG -- acceptor sites, if found, do not extend
     if(index(uc($transcript_5pext),"AG")==-1){#no acceptor site in the exrtension
       $cds_start_on_transcript=0;
-      print "DEBUG extend 5p extension $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
+      print "DEBUG extend 5p $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
     }else{#hit an acceptor site, no change
-      print "DEBUG reject 5p extension $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
+      print "DEBUG reject 5p $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
       $transcript_5pext="";
     }
   }
@@ -753,9 +754,9 @@ sub fix_start_stop_codon_ext{
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
     if(index(uc($transcript_3pext),"GT")==-1){
       $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
-      print "DEBUG extend 3p extension $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+      print "DEBUG extend 3p $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
     }else{
-      print "DEBUG reject 3p extension $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+      print "DEBUG reject 3p $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
       $transcript_3pext="";
       $cds_end_on_transcript+=length($transcript_5pext);
     }
