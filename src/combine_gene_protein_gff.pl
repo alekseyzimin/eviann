@@ -211,7 +211,7 @@ for my $g(keys %transcript_cds){
     if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
       $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
       $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript+1;
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }else{
       print "DEBUG computing CDS start and stop position on the transcript\n";
       my @gff_fields=();
@@ -265,36 +265,38 @@ for my $g(keys %transcript_cds){
     #try to extend
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g});
 
+      if(length($transcript_seqs_5pext{$g})>0 || length($transcript_seqs_3pext{$g})>0){
 #updating the transcript
-      $transcript_seqs{$g}=$transcript_seqs_5pext{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext{$g};
+        $transcript_seqs{$g}=$transcript_seqs_5pext{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext{$g};
 
 #updating the transcript records
-      @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-      my $ori=$gff_fields[6];
-      if($ori eq "+"){
-        if(length($transcript_seqs_5pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-          $gff_fields[3]-=length($transcript_seqs_5pext{$g});
-          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+        @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+        my $ori=$gff_fields[6];
+        if($ori eq "+"){
+          if(length($transcript_seqs_5pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+            $gff_fields[3]-=length($transcript_seqs_5pext{$g});
+            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+          }
+          if(length($transcript_seqs_3pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+            $gff_fields[4]+=length($transcript_seqs_3pext{$g});
+            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+          }   
+        }else{
+          if(length($transcript_seqs_3pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+            $gff_fields[3]-=length($transcript_seqs_3pext{$g});
+            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+          }
+          if(length($transcript_seqs_5pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+            $gff_fields[4]+=length($transcript_seqs_5pext{$g});
+            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+          }  
         }
-        if(length($transcript_seqs_3pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-          $gff_fields[4]+=length($transcript_seqs_3pext{$g});
-          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-        }   
-      }else{
-        if(length($transcript_seqs_3pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-          $gff_fields[3]-=length($transcript_seqs_3pext{$g});
-          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
-        }
-        if(length($transcript_seqs_5pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-          $gff_fields[4]+=length($transcript_seqs_5pext{$g});
-          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-        }  
-      }   
-    }else{ 
+      }
+    }else{#no need to extend 
       $transcript_seqs_5pext{$g}="";
       $transcript_seqs_3pext{$g}="";
     }
@@ -342,10 +344,10 @@ for my $g(keys %transcript_cds){
     my $cds_start_on_transcript=0;
     my $cds_end_on_transcript=0;
     my $cds_length=0;
-    if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
+    if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){#from transdecoder
       $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
       $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript+1;
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }else{
       my @gff_fields=();
       my @gff_fields_prev=();
@@ -397,36 +399,38 @@ for my $g(keys %transcript_cds){
     if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))){
     #try to extend
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g});
-#updating the transcript
-      $transcript_seqs{$g}=$transcript_seqs_5pext{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext{$g};
 
+#updating the transcript if extended
+      if(length($transcript_seqs_5pext{$g})>0 || length($transcript_seqs_3pext{$g})>0){
+        $transcript_seqs{$g}=$transcript_seqs_5pext{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext{$g};
 #updating the transcript records
-      @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-      my $ori=$gff_fields[6];
-      if($ori eq "+"){
-        if(length($transcript_seqs_5pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-          $gff_fields[3]-=length($transcript_seqs_5pext{$g});
-          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+        @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+        my $ori=$gff_fields[6];
+        if($ori eq "+"){
+          if(length($transcript_seqs_5pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+            $gff_fields[3]-=length($transcript_seqs_5pext{$g});
+            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+          }
+          if(length($transcript_seqs_3pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+            $gff_fields[4]+=length($transcript_seqs_3pext{$g});
+            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+          }   
+        }else{
+          if(length($transcript_seqs_3pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+            $gff_fields[3]-=length($transcript_seqs_3pext{$g});
+            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+          }
+          if(length($transcript_seqs_5pext{$g})>0){
+            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+            $gff_fields[4]+=length($transcript_seqs_5pext{$g});
+            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+          } 
         }
-        if(length($transcript_seqs_3pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-          $gff_fields[4]+=length($transcript_seqs_3pext{$g});
-          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-        }   
-      }else{
-        if(length($transcript_seqs_3pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-          $gff_fields[3]-=length($transcript_seqs_3pext{$g});
-          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
-        }
-        if(length($transcript_seqs_5pext{$g})>0){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-          $gff_fields[4]+=length($transcript_seqs_5pext{$g});
-          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-        } 
       }
-    }else{
+    }else{#no need to extend
       $transcript_seqs_5pext{$g}="";
       $transcript_seqs_3pext{$g}="";
     }
@@ -731,18 +735,30 @@ sub fix_start_stop_codon_ext{
     $cds_start_on_transcript=$cds_start_on_transcript_ext-$ext_length;
     print "DEBUG no 5p extension $cds_start_on_transcript_ext\n";
   }else{
-    $cds_start_on_transcript=0;
     $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
-    print "DEBUG extend 5p extension $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
+    #check the extension for AG -- acceptor sites, if found, do not extend
+    if(index(uc($transcript_5pext),"AG")==-1){#no acceptor site in the exrtension
+      $cds_start_on_transcript=0;
+      print "DEBUG extend 5p extension $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
+    }else{#hit an acceptor site, no change
+      print "DEBUG reject 5p extension $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
+      $transcript_5pext="";
+    }
   }
   if($cds_end_on_transcript_ext<$ext_length+length($transcript_seq)){
     $transcript_3pext="";
     print "DEBUG no 3p extension $cds_end_on_transcript_ext\n";
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
   }else{
-    $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
-    print "DEBUG extend 3p extension $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+    if(index(uc($transcript_3pext),"GT")==-1){
+      $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
+      print "DEBUG extend 3p extension $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+    }else{
+      print "DEBUG reject 3p extension $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+      $transcript_3pext="";
+      $cds_end_on_transcript+=length($transcript_5pext);
+    }
   }
   return($cds_start_on_transcript,$cds_end_on_transcript,$transcript_5pext,$transcript_3pext);
 }
