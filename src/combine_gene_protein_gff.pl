@@ -773,28 +773,26 @@ sub fix_start_stop_codon{
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
-  if(not(uc($first_codon) eq "ATG")){
-    my $i;
-    my $found=0;
-    for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
-      #stop if found a stop
-      last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
-    } 
-    if($found>0){
-      print "DEBUG found new start codon upstream at $found\n";
-      $cds_start_on_transcript=$found;
-    }else{ 
-      print "DEBUG failed to find new start codon, looking downstream\n";
-      for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
-        last if(uc(substr($transcript_seq,$i,3)) eq "ATG");
-      }
-      if($i<$cds_end_on_transcript){
-        print "DEBUG found new start codon downstream at $i\n";
-        $cds_start_on_transcript=$i;
-      }else{
-        print "DEBUG failed to find new start codon\n";
-      }
+  my $i;
+  my $found=-1;
+  for($i=$cds_start_on_transcript;$i>=0;$i-=3){
+    $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+#stop if found a stop
+    last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
+  } 
+  if($found>-1){
+    print "DEBUG found new start codon upstream at $found\n";
+    $cds_start_on_transcript=$found;
+  }else{ 
+    print "DEBUG failed to find new start codon, looking downstream\n";
+    for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
+      last if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+    }
+    if($i<$cds_end_on_transcript){
+      print "DEBUG found new start codon downstream at $i\n";
+      $cds_start_on_transcript=$i;
+    }else{
+      print "DEBUG failed to find new start codon\n";
     }
   }
   if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA")){
