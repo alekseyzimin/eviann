@@ -360,7 +360,27 @@ rm -rf /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa ' >> /dev/shm/tmp$MYPID/ru
 chmod 0755 /dev/shm/tmp$MYPID/run_exonerate.sh && \
 (cd /dev/shm/tmp$MYPID && ls | grep .taskfile$ |xargs -P $NUM_THREADS -I {} ./run_exonerate.sh {} )
 (cd /dev/shm/tmp$MYPID && ls | grep .taskfile.gff$ | xargs cat ) | \
-perl -e '{while($line=<STDIN>){chomp($line);@f=split(/\t/,$line);next if($f[2] eq "similarity"); if($#f==2){$offset=$f[1]}else{print join("\t",@f[0..2]),"\t",$f[3]+$offset,"\t",$f[4]+$offset,"\t",join("\t",@f[5..7]); if($f[2] eq "gene"){@ff=split(/\s+/,$f[-1]);$id=$ff[4];print "\tID=$id;geneID=$id\n";}else{print "\tID=cds-$id;Parent=$id\n";}}}}' > $GENOMEN.$PROTEINN.palign.gff.tmp && mv $GENOMEN.$PROTEINN.palign.gff.tmp $GENOMEN.$PROTEINN.palign.gff && \
+perl -e '{
+  while($line=<STDIN>){
+    chomp($line);
+    @f=split(/\t/,$line);
+    next if($f[2] eq "similarity"); 
+    if($#f==2){
+      $offset=$f[1];
+    }else{
+      print join("\t",@f[0..2]),"\t",$f[3]+$offset,"\t",$f[4]+$offset,"\t",join("\t",@f[5..7]);
+      if($f[2] eq "gene"){
+        @ff=split(/\s+/,$f[-1]);
+        $id=$ff[4];
+        print "\tID=$id;geneID=$id;$ff[9]=$ff[10];$ff[12]=$ff[13]\n";
+      }else{
+        print "\tID=cds-$id;Parent=$id;$ff[6]=$ff[7];$ff[9]=$ff[10]";
+        print ";$ff[12]=$ff[13]" if($ff[12] eq "frameshifts");
+        print "\n";
+      }
+    }
+  }
+}' > $GENOMEN.$PROTEINN.palign.gff.tmp && mv $GENOMEN.$PROTEINN.palign.gff.tmp $GENOMEN.$PROTEINN.palign.gff && \
 rm -rf /dev/shm/tmp$MYPID && \
 touch protein2genome.exonerate_gff.success && \
 log "Output gff is in $GENOMEN.$PROTEINN.palign.gff"
