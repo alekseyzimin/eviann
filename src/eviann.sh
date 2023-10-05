@@ -351,30 +351,26 @@ if [ ! -e merge.success ];then
   if [ ! -e merge.unused.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Checking unused protein only loci against Uniprot" && \
-    gffcompare -p PCONS -SDAT <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) -o $GENOME.unused_proteins.dedup && \
-    rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
+    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) > $GENOME.unused_proteins.combined.gff && \
     #here we compute the score for each protein -- the score is the alignemtn similarity listed in palign file
     perl -F'\t' -ane '{
       if($F[2] eq "gene"){
         $similarity{$1}=$4*100+$3 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
       }
     }END{
-      open(FILE,"'$GENOME'.unused_proteins.dedup.combined.gtf");
+      open(FILE,"'$GENOME'.unused_proteins.combined.gff");
       while($line=<FILE>){
         chomp($line);
         @f=split(/\t/,$line);
         if($f[2] eq "transcript"){
-          @ff=split(/;/,$f[8]);
           undef($transcript_id);
-          undef($oId);
           undef($gene_id);
-          for(my $i=0;$i<=$#ff;$i++){
-            $transcript_id=$1 if($ff[$i]=~/transcript_id "(.+)"/);
-            $oId=$1 if($ff[$i]=~/oId "(.+)"/);
-            $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
+          if($f[8]=~/ID=(\S+);locus=(\S+)$/){
+            $transcript_id=$1;
+            $gene_id=$2;
           }
-          if(defined($transcript_id) && defined($oId) && defined($gene_id)){
-            print "$similarity{$oId} $gene_id $oId\n";
+          if(defined($transcript_id) && defined($gene_id)){
+            print "$similarity{$transcript_id} $gene_id $transcript_id\n";
           }
         }
       }
