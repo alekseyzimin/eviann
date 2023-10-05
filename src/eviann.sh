@@ -370,7 +370,7 @@ if [ ! -e merge.success ];then
             $gene_id=$2;
           }
           if(defined($transcript_id) && defined($gene_id)){
-            print "$similarity{$transcript_id} $gene_id $transcript_id\n";
+            print "$similarity{$transcript_id} $gene_id $transcript_id\n" if($similarity{$transcript_id}>9600);
           }
         }
       }
