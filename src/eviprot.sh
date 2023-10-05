@@ -373,10 +373,16 @@ perl -e '{
         @ff=split(/\s+/,$f[-1]);
         $id=$ff[4];
         print "\tID=$id;geneID=$id;$ff[9]=$ff[10];$ff[12]=$ff[13]\n";
-      }else{
-        print "\tID=cds-$id;Parent=$id;$ff[6]=$ff[7];$ff[9]=$ff[10]";
+        $counter=1;
+      }elsif($f[2] eq "exon"){
+        @ff=split(/\s+/,$f[-1]);
+        print "\tID=$f[2]-$id-$counter;Parent=$id;$ff[6]=$ff[7];$ff[9]=$ff[10]";
         print ";$ff[12]=$ff[13]" if($ff[12] eq "frameshifts");
         print "\n";
+        $counter++;
+      }else{
+        print "\tID=$f[2]-$id-$counter;Parent=$id\n";
+        $counter++;
       }
     }
   }

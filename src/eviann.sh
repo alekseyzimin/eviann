@@ -353,37 +353,14 @@ if [ ! -e merge.success ];then
     log "Checking unused protein only loci against Uniprot" && \
     gffcompare -p PCONS -SDAT <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) -o $GENOME.unused_proteins.dedup && \
     rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
-    gffread -y $GENOME.unused_proteins.faa.1.tmp <(sed 's/exon/cds/' $GENOME.unused_proteins.dedup.combined.gtf) -g $GENOMEFILE && \
-    ufasta one $GENOME.unused_proteins.faa.1.tmp | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $GENOME.unused_proteins.faa.2.tmp && \
-    mv $GENOME.unused_proteins.faa.2.tmp $GENOME.unused_proteins.faa && \
-    rm -f $GENOME.unused_proteins.faa.{1,2}.tmp && \
-    blastp -db uniprot -query $GENOME.unused_proteins.faa -out  $GENOME.unused.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true  -max_hsps 1 -num_threads $NUM_THREADS 1>blastp0.out 2>&1 && \
-    mv $GENOME.unused.blastp.tmp $GENOME.unused.blastp && \
-    #here we compute the score for each protein -- the score is bitscore*1000+length plus 100 if the protein starts with "M"
-    perl -ane '{
-        $name=$F[0];
-        $bitscore{$name}=$F[-1];
+    #here we compute the score for each protein -- the score is the alignemtn similarity listed in palign file
+    perl -F'\t' -ane '{
+       if($F[2] eq "gene"){
+          undef($geneID);
+          my $geneID=$1 if($F[8]=~/^ID=(\S+);/ );
+          $similarity{$geneID}=$1 if($F[8]=~/similarity=(\S+)$/ && defined($geneID));
+        }
       }END{
-        my $seq="";
-        my $name="";
-        open(FILE,"'$GENOME'.unused_proteins.faa");
-        while($line=<FILE>){
-          chomp($line);
-          if($line=~/^>/){
-            if(length($seq)>0){
-              $len{$name}=length($seq);
-              $has_start{$name}=length($seq) if($seq =~ /^M/);
-            }
-            $name=substr($line,1);
-            $seq="";
-          }else{
-            $seq.=$line;
-          }
-        }
-        if(length($seq)>0){
-          $has_start{$name}=length($seq) if($seq =~ /^M/);
-          $len{$name}=length($seq);
-        }
         open(FILE,"'$GENOME'.unused_proteins.dedup.combined.gtf");
         while($line=<FILE>){
           chomp($line);
@@ -399,11 +376,11 @@ if [ ! -e merge.success ];then
               $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
             }
             if(defined($transcript_id) && defined($oId) && defined($gene_id)){
-              print $bitscore{$transcript_id}*1000+$has_start{$transcript_id}," $gene_id $oId $has_start{$transcript_id}\n" if(defined($has_start{$transcript_id}) || (defined($bitscore{$transcript_id}) && $bitscore{$transcript_id}>200));
+              print "similarity{$oId} $gene_id $oId\n";
             }
           }
         }
-      }' $GENOME.unused.blastp | \
+      }' $GENOME.$PROTEIN.palign.gff | \
     sort -nrk1,1 -S 10% |\
     perl -ane '{
         $max_prot_at_locus=1;
