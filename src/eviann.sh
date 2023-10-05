@@ -355,50 +355,48 @@ if [ ! -e merge.success ];then
     rm -f $GENOME.unused_proteins.dedup.{loci,tracking,stats} $GENOME.unused_proteins.dedup
     #here we compute the score for each protein -- the score is the alignemtn similarity listed in palign file
     perl -F'\t' -ane '{
-       if($F[2] eq "gene"){
-          undef($geneID);
-          my $geneID=$1 if($F[8]=~/^ID=(\S+);/ );
-          $similarity{$geneID}=$1 if($F[8]=~/similarity=(\S+)$/ && defined($geneID));
-        }
-      }END{
-        open(FILE,"'$GENOME'.unused_proteins.dedup.combined.gtf");
-        while($line=<FILE>){
-          chomp($line);
-          @f=split(/\t/,$line);
-          if($f[2] eq "transcript"){
-            @ff=split(/;/,$f[8]);
-            undef($transcript_id);
-            undef($oId);
-            undef($gene_id);
-            for(my $i=0;$i<=$#ff;$i++){
-              $transcript_id=$1 if($ff[$i]=~/transcript_id "(.+)"/);
-              $oId=$1 if($ff[$i]=~/oId "(.+)"/);
-              $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
-            }
-            if(defined($transcript_id) && defined($oId) && defined($gene_id)){
-              print "similarity{$oId} $gene_id $oId\n";
-            }
+      if($F[2] eq "gene"){
+        $similarity{$1}=$4*100+$3 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
+      }
+    }END{
+      open(FILE,"'$GENOME'.unused_proteins.dedup.combined.gtf");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\t/,$line);
+        if($f[2] eq "transcript"){
+          @ff=split(/;/,$f[8]);
+          undef($transcript_id);
+          undef($oId);
+          undef($gene_id);
+          for(my $i=0;$i<=$#ff;$i++){
+            $transcript_id=$1 if($ff[$i]=~/transcript_id "(.+)"/);
+            $oId=$1 if($ff[$i]=~/oId "(.+)"/);
+            $gene_id=$1 if($ff[$i]=~/gene_id "(.+)"/);
+          }
+          if(defined($transcript_id) && defined($oId) && defined($gene_id)){
+            print "$similarity{$oId} $gene_id $oId\n";
           }
         }
-      }' $GENOME.$PROTEIN.palign.gff | \
+      }
+    }' $GENOME.$PROTEIN.palign.gff | \
     sort -nrk1,1 -S 10% |\
     perl -ane '{
-        $max_prot_at_locus=1;
-        #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
-        #then we allow for more extra proteins per locus
-        $max_prot_at_locus=2 if(int('$NUM_PROT_SPECIES')<=2);
-        if($h{$F[1]} < $max_prot_at_locus){
-          $h{$F[1]}+=1;
-          $hn{$F[2]}=1;
-        }
-      }END{
-        open(FILE,"'$GENOME'.unused_proteins.gff");
-        while($line=<FILE>){
-          chomp($line);
-          @f=split(/=/,$line);
-          print "$line\n" if(defined($hn{$f[-1]}));
-        }
-      }' > $GENOME.best_unused_proteins.gff
+      $max_prot_at_locus=1;
+#if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
+#then we allow for more extra proteins per locus
+      $max_prot_at_locus=2 if(int('$NUM_PROT_SPECIES')<=2);
+      if($h{$F[1]} < $max_prot_at_locus){
+        $h{$F[1]}+=1;
+        $hn{$F[2]}=1;
+      }
+    }END{
+      open(FILE,"'$GENOME'.unused_proteins.gff");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/=/,$line);
+        print "$line\n" if(defined($hn{$f[-1]}));
+      }
+    }' > $GENOME.best_unused_proteins.gff
   else
     echo "" > $GENOME.best_unused_proteins.gff
   fi 
