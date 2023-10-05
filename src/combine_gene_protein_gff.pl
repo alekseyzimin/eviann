@@ -617,7 +617,7 @@ for my $locus(keys %transcripts_cds_loci){
   push(@outputLOCchr,$gff_fields[0]);
   push(@outputLOCbeg,$locus_start);
   push(@outputLOCend,$locus_end);
-  print $gff_fields[0]." ".($locus_start+$dir_factor),"\n",$gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)};
+  #print $gff_fields[0]." ".($locus_start+$dir_factor),"\n",$gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)};
 }
 
 #finally output "intergenic" transcripts
