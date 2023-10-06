@@ -381,10 +381,10 @@ if [ ! -e merge.success ];then
 #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
 #then we allow for more extra proteins per locus
       $max_prot_at_locus=2 if(int('$NUM_PROT_SPECIES')<=2);
-      if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && $F[0]>$hs{$F[1]}*.999)){
-        $h{$F[1]}+=1;
+      if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>9800))){
+        $h{$F[1]}+=1;#this is the number of proteins per locus
         $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-        $hn{$F[2]}=1;
+        $hn{$F[2]}=1;#we mark the proteins to keep
       }
     }END{
       open(FILE,"'$GENOME'.unused_proteins.gff");
@@ -469,7 +469,7 @@ if [ ! -e merge.success ];then
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
-    log "Checking and fixing broken ORFs"
+    log "Checking for and repairing broken ORFs"
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
