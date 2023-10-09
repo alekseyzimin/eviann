@@ -18,6 +18,7 @@ my %suspect_proteins;
 my $output_prefix=$ARGV[0];
 open(OUTFILE1,">$output_prefix".".good_cds.fa.tmp");
 open(OUTFILE2,">$output_prefix".".broken_cds.fa.tmp");
+open(OUTFILE3,">$output_prefix".".broken_ref.txt.tmp");
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 #here we read in the aligned CDS features
@@ -201,6 +202,8 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
     if($cds_start_on_transcript==-1 && $cds_end_on_transcript==-1){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
+      my @pn=split(/:/,$transcript_cds{$g});
+      print OUTFILE3 "$pn[0]\n";
       print "DEBUG broken CDS $g\n";
     }else{
 
@@ -272,6 +275,8 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
     if($cds_start_on_transcript==-1 && $cds_end_on_transcript==-1){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
+      my @pn=split(/:/,$transcript_cds{$g});
+      print OUTFILE3 "$pn[0]\n";
       print "DEBUG broken CDS $g\n";
     }else{
 #fixing start/stop    

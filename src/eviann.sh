@@ -452,9 +452,13 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
+    mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
+    ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp &&\
+    mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa && \
     rm -rf $GENOME.broken_cds.fa.transdecoder* && \
     TransDecoder.LongOrfs -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out |\
+    makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
+    blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out |\
     perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.broken_cds.blastp.tmp && \
     mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
     TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
@@ -473,9 +477,13 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
+    mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
+    ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp &&\
+    mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa && \
     rm -rf $GENOME.broken_cds.fa.transdecoder* && \
     TransDecoder.LongOrfs -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp3.out |\
+    makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
+    blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen"  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp3.out |\
     perl -F'\t' -ane '{print join("\t",@F[0..11]),"\n";}' > $GENOME.broken_cds.blastp.tmp && \
     mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
     TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
