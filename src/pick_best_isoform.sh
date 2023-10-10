@@ -1,6 +1,6 @@
 #!/bin/bash
 PREFIX=$1;
-ufasta one  ../$PREFIX.functional_note.proteins.fasta | \
+ufasta one  $PREFIX.functional_note.proteins.fasta | \
 awk '{if($1 ~/^>/){pn=substr($1,2);if($2 ~ /Similar/){s=10000}else{s=0}}else{print pn" "s+length($1)}}' |\
 sort -nrk2,2 -S10% |\
 perl -ane '{
@@ -10,7 +10,7 @@ perl -ane '{
     $hh{$F[0]}=1;
   }
 }END{
-  open(FILE,"../'$PREFIX'.functional_note.pseudo_label.gff");
+  open(FILE,"'$PREFIX'.functional_note.pseudo_label.gff");
   while($line=<FILE>){
     chomp($line);
     @f=split(/\t/,$line);

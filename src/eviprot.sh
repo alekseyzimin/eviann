@@ -235,7 +235,7 @@ perl -e '{
           if($cluster_size >$prev_length*$match_ratio){
             #print "OUTPUT cluster $start $end $new_seq\n";
             push(@filenames,"$new_seq.$prot.$start.taskfile");
-            push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot.$new_seq.$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+            push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot:$new_seq:$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
           }
         }#for
         for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
