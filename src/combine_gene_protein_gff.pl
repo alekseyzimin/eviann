@@ -96,7 +96,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "=" || ($class_code eq "j" && $protein_start{$protID}>=$tstart && $protein_end{$protID}<=$tend)){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "=" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n") && ($protein_start{$protID} > $tstart-1000  && $protein_end{$protID} < $tend+1000))){#equal intron chain or contains protein
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
@@ -241,7 +241,7 @@ for my $g(keys %transcript_cds){
     }
 
     if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
-      $transcript_class{$g}="n";
+      $transcript_class{$g}="NA";
       next;
     }
 
@@ -309,7 +309,7 @@ for my $g(keys %transcript_cds){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
-      $transcript_class{$g}="n";
+      $transcript_class{$g}="NA";
       next;
     }
 
@@ -338,7 +338,7 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="n" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
   }else{#reverse orientation
@@ -376,7 +376,7 @@ for my $g(keys %transcript_cds){
     }
 
     if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
-      $transcript_class{$g}="n";
+      $transcript_class{$g}="NA";
       next;
     }
 
@@ -442,7 +442,7 @@ for my $g(keys %transcript_cds){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
-      $transcript_class{$g}="n";
+      $transcript_class{$g}="NA";
       next;
     }
 
@@ -472,7 +472,7 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="n" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
   }
 }
@@ -495,11 +495,12 @@ for my $locus(keys %transcripts_cds_loci){
   my %output_proteins_for_locus=();
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
   for my $source("StringTie","EviAnnP"){
-     for my $class ("=","k","j"){  
+     for my $class ("=","k","j","m","n"){  
       for my $t(@transcripts_at_loci){
         next if(not($transcript_class{$t} eq $class));
         next if(not($transcript_source{$t} eq $source));
-        next if($source eq "EviAnnP" && $output_count>5);
+        next if($source eq "EviAnnP" && $output_count>5);#if we already have transcripts at this locus, do not add protein-only
+        next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort
         $output_count++;
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
         my $protID=$transcript_cds{$t};
@@ -781,23 +782,35 @@ sub fix_start_stop_codon{
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
   my $i;
-  my $found=-1;
+  my $foundR=-1;
+  my $foundU=-1;
   for($i=$cds_start_on_transcript;$i>=0;$i-=3){
-    $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+    #$foundU=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG" && not(substr($transcript_seq,$i,3) eq "atg"));
+    $foundU=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+    $foundR=$i if(substr($transcript_seq,$i,3) eq "atg");
 #stop if found a stop
     last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
   } 
-  if($found>-1){
-    print "DEBUG found new start codon upstream at $found\n";
-    $cds_start_on_transcript=$found;
+  if($foundU>-1){
+    print "DEBUG found new start codon upstream at $foundU\n";
+    $cds_start_on_transcript=$foundU;
+  }elsif($foundR>-1){
+    print "DEBUG found new repeat start codon upstream at $foundR\n";
+    $cds_start_on_transcript=$foundR;
   }else{ 
     print "DEBUG failed to find new start codon, looking downstream\n";
     for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
-      last if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+      $foundU=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG" && $foundU==-1);
+      #$foundU=$i if((uc(substr($transcript_seq,$i,3)) eq "ATG" && not(substr($transcript_seq,$i,3) eq "atg"))  && $foundU==-1);
+      $foundR=$i if((substr($transcript_seq,$i,3) eq "atg" )&&($foundR==-1));
+      last if($foundU>-1 || $foundR>-1);
     }
-    if($i<$cds_end_on_transcript){
-      print "DEBUG found new start codon downstream at $i\n";
-      $cds_start_on_transcript=$i;
+    if($foundU>-1){
+      print "DEBUG found new start codon upstream at $foundU\n";
+      $cds_start_on_transcript=$foundU;
+    }elsif($foundR>-1){
+      print "DEBUG found new repeat start codon upstream at $foundR\n";
+      $cds_start_on_transcript=$foundR;
     }else{
       print "DEBUG failed to find new start codon\n";
     }

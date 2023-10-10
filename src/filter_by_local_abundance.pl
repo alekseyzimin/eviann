@@ -17,7 +17,7 @@ if($gtf_fields[2] eq "transcript"){
     print "$id\n";
   }elsif($class eq "u" && defined($id)){#no protein, keep
     $transcripts_at_xloc_same_cds{"$xloc:u"}.="$id:$class ";
-  }elsif(defined($id) && defined($xloc) && defined($protein) && ($class eq "j" || $class eq "k" || $class eq "=")){#protein defined, examine
+  }elsif(defined($id) && defined($xloc) && defined($protein) && ($class eq "j" || $class eq "k" || $class eq "=" || $class eq "n" || $class eq "m")){#protein defined, examine
     $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
     #print "DEBUG $xloc:$protein $id\n";
   }
