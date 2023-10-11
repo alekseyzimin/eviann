@@ -86,7 +86,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "=" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n") && ($protein_start{$protID} > $tstart-1000  && $protein_end{$protID} < $tend+1000))){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "=" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n") && ($protein_start{$protID} > $tstart-500  && $protein_end{$protID} < $tend+500))){#equal intron chain or contains protein
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
