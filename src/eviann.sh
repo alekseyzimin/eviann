@@ -175,15 +175,15 @@ if [ ! -e align.success ];then
   log "Aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $ALT_EST ];then
-    echo "if [ ! -s tissue0.bam ];then minimap2 -a -u f -x splice:hq -t $NUM_THREADS -G $MAX_INTRON $GENOMEFILE $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam; fi;" >> hisat2.sh
+    echo "if [ ! -s tissue0.bam ];then minimap2 -a -u f -x splice:hq -t $NUM_THREADS -G $MAX_INTRON $GENOMEFILE $ALT_EST 2>tissue0.err | $MYPATH/samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam; fi;" >> hisat2.sh
   fi
   if [ -s $RNASEQ_PAIRED ];then
     awk 'BEGIN{n=1}{
       if(NF==3 && $NF == "fasta"){
-        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
       }else{ 
         if(NF==2 || (NF==3 && $NF == "fastq")){
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
         }
       }
     }' $RNASEQ_PAIRED >> hisat2.sh
@@ -195,10 +195,10 @@ if [ ! -e align.success ];then
     fi
     awk 'BEGIN{n=int("'$START'");}{
     if(NF==2 && $NF == "fasta"){
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }else{
       if(NF==1 || (NF==2 && $NF == "fastq")){
-        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
       }
     }}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
@@ -334,7 +334,8 @@ if [ ! -e merge.success ];then
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
-  filter_by_local_abundance.pl < $GENOME.protref.annotated.gtf > $GENOME.transcripts_to_keep.txt.tmp && \
+  cat $GENOME.palign.fixed.gff | filter_by_class_code.pl $GENOME.protref.annotated.gtf | \
+  filter_by_local_abundance.pl > $GENOME.transcripts_to_keep.txt.tmp && \
   mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
   mv $GENOME.protref.annotated.gtf $GENOME.protref.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.annotated.gtf.bak > $GENOME.protref.annotated.gtf.tmp && \
@@ -344,7 +345,7 @@ if [ ! -e merge.success ];then
 #here we combine the transcripts and protein matches; we will use only protein CDS's that are contained in the transcripts;some transcripts do not get annotated, we only use "=", "k","j" and "u"
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,j,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
-  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.fixed.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.annotated.gtf)) $GENOMEFILE 1>combine.out 2>&1 && \
+  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
@@ -447,8 +448,10 @@ if [ ! -e merge.success ];then
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
-    log "Checking for and repairing broken ORFs"
-    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf) ) $GENOMEFILE 1>check_cds.out 2>&1 && \
+    log "Checking for and repairing broken ORFs" && \
+    cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
+    mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
+    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -465,14 +468,16 @@ if [ ! -e merge.success ];then
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf) ) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
     mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
-    log "Checking for and repairing broken ORFs"
-    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf )) $GENOMEFILE 1>check_cds.out 2>&1 && \
+    log "Checking for and repairing broken ORFs" && \
+    cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
+    mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
+    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -489,7 +494,7 @@ if [ ! -e merge.success ];then
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf)) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
     mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   touch merge.success && rm -f functional.success merge.{unused,j,u}.success

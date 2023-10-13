@@ -492,7 +492,7 @@ for my $locus(keys %transcripts_cds_loci){
   my %output_proteins_for_locus=();
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
   for my $source("StringTie","EviAnnP"){
-     for my $class ("=","k","j","m","n"){  
+     for my $class ("=","k","c","j","m","n"){  
       for my $t(@transcripts_at_loci){
         next if(not($transcript_class{$t} eq $class));
         next if(not($transcript_source{$t} eq $source));

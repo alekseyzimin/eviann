@@ -54,22 +54,16 @@ open(FILE,$ARGV[0]);
 my $printflag=0;
 while(my $line=<FILE>){
   chomp($line);
-  my @gff_fields=split(/\t/,$line);
-  my @attributes=split(";",$gff_fields[8]);
-  if($gff_fields[2] eq "transcript"){
-    $locID=substr($attributes[1],7);#this is the gene_id
-    $geneID=substr($attributes[0],3);#this is the transcript_id
-    $tstart=$gff_fields[3];
-    $tend=$gff_fields[4];
-    $tori=$gff_fields[6];
-    my $class_code="";
-    my $protID="";
-    foreach my $attr(@attributes){
-      $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
-      $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
-    }
+  my @gtf_fields=split(/\t/,$line);
+  if($gtf_fields[2] eq "transcript"){
+    my $tstart=$gtf_fields[3];
+    my $tend=$gtf_fields[4];
+    my $geneID=$1 if($gtf_fields[8] =~ /transcript_id \"(\S+)\";/);
+    my $protID=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\";/);
+    my $class_code=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\";/);
+
     if($class_code eq "k" || $class_code eq "=" || $class_code eq "u" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n" || $class_code eq "c") && ($protein_start{$protID} > $tstart-$ext_length  && $protein_end{$protID} < $tend+$ext_length))){#equal intron chain or contains protein
-      die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
+      die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})) && not($class_code eq "u"));
       $printflag=1;
     }else{#likely messed up protein?
       $printflag=0;
