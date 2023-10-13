@@ -17,7 +17,7 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
-my $ext_length=501;
+my $ext_length=501;#this controls how much of an extension fir the transcripts we allow for protein alignments that go boyond the transcript boundaries
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 #here we read in the aligned CDS features
@@ -62,7 +62,7 @@ while(my $line=<FILE>){
     my $protID=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\";/);
     my $class_code=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\";/);
 
-    if($class_code eq "k" || $class_code eq "=" || $class_code eq "u" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n" || $class_code eq "c") && ($protein_start{$protID} > $tstart-$ext_length  && $protein_end{$protID} < $tend+$ext_length))){#equal intron chain or contains protein
+    if($class_code eq "k" || $class_code eq "=" || $class_code eq "u" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n" ) && ($protein_start{$protID} > $tstart-$ext_length  && $protein_end{$protID} < $tend+$ext_length))){
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})) && not($class_code eq "u"));
       $printflag=1;
     }else{#likely messed up protein?

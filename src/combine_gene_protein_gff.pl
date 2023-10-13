@@ -103,9 +103,9 @@ while(my $line=<FILE>){
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
       $transcript_source{$geneID}=$gff_fields[1];
-      $transcript_cds_start{$geneID}=$protein_start{$protID}>=$tstart ? $protein_start{$protID} : $tstart;
+      $transcript_cds_start{$geneID}=$protein_start{$protID};
       $transcript_cds_start_codon{$geneID}="MISSING";
-      $transcript_cds_end{$geneID}=$protein_end{$protID}<=$tend ? $protein_end{$protID} : $tend;;
+      $transcript_cds_end{$geneID}=$protein_end{$protID};
       $transcript_cds_end_codon{$geneID}="MISSING";
       $transcript_class{$geneID}=$class_code;
       $transcript_origin{$geneID}=$gff_fields[1];
@@ -497,7 +497,7 @@ for my $locus(keys %transcripts_cds_loci){
         next if(not($transcript_class{$t} eq $class));
         next if(not($transcript_source{$t} eq $source));
         next if($source eq "EviAnnP" && $output_count>5);#if we already have transcripts at this locus, do not add protein-only
-        next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort
+        next if(($class eq "m" || $class eq "n" || $class eq "c") && $output_count>0);#these are low confidence, we use them as last resort
         $output_count++;
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
         my $protID=$transcript_cds{$t};
