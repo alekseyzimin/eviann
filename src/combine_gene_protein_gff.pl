@@ -23,8 +23,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my %suspect_proteins;
-my $ext_length=99;
+my $ext_length=501;
 my $output_prefix=$ARGV[0];
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
@@ -96,23 +95,21 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "=" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n") && ($protein_start{$protID} > $tstart-500  && $protein_end{$protID} < $tend+500))){#equal intron chain or contains protein
+    if($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
+      $transcript_u{$geneID}=$line;
+      $transcripts_only_loci{$locID}.="$geneID ";
+    }else{
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
       $transcript_source{$geneID}=$gff_fields[1];
-      $transcript_cds_start{$geneID}=$protein_start{$protID};
+      $transcript_cds_start{$geneID}=$protein_start{$protID}>=$tstart ? $protein_start{$protID} : $tstart;
       $transcript_cds_start_codon{$geneID}="MISSING";
-      $transcript_cds_end{$geneID}=$protein_end{$protID};
+      $transcript_cds_end{$geneID}=$protein_end{$protID}<=$tend ? $protein_end{$protID} : $tend;;
       $transcript_cds_end_codon{$geneID}="MISSING";
       $transcript_class{$geneID}=$class_code;
       $transcript_origin{$geneID}=$gff_fields[1];
       $transcripts_cds_loci{$locID}.="$geneID ";
-    }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
-      $transcript_u{$geneID}=$line;
-      $transcripts_only_loci{$locID}.="$geneID ";
-    }else{#likely messed up protein?
-      $suspect_proteins{$protID}=1;
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}));
@@ -683,7 +680,6 @@ for my $locus(keys %transcripts_only_loci){
 my $fake_utr=9;
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
-  #next if(defined($suspect_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
   my $ptstart=$gff_fields_p[3]-$fake_utr>0 ? $gff_fields_p[3]-$fake_utr:1;
   my $ptend=$gff_fields_p[4]+$fake_utr<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+$fake_utr:length($genome_seqs{$gff_fields_p[0]});

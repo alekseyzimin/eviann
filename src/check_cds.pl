@@ -14,7 +14,6 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my %suspect_proteins;
 my $output_prefix=$ARGV[0];
 open(OUTFILE1,">$output_prefix".".good_cds.fa.tmp");
 open(OUTFILE2,">$output_prefix".".broken_cds.fa.tmp");
@@ -86,7 +85,10 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
-    if($class_code eq "k" || $class_code eq "=" || (($class_code eq "m" || $class_code eq "j" ||$class_code eq "n") && ($protein_start{$protID} > $tstart-500  && $protein_end{$protID} < $tend+500))){#equal intron chain or contains protein
+    if($class_code eq "u"){
+      $transcript_u{$geneID}=$line;
+      $transcripts_only_loci{$locID}.="$geneID ";
+    }else{
       $transcript{$geneID}=$line;
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
       $transcript_cds{$geneID}=$protID;
@@ -97,11 +99,6 @@ while(my $line=<FILE>){
       $transcript_class{$geneID}=$class_code;
       $transcript_origin{$geneID}=$gff_fields[1];
       $transcripts_cds_loci{$locID}.="$geneID ";
-    }elsif($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
-      $transcript_u{$geneID}=$line;
-      $transcripts_only_loci{$locID}.="$geneID ";
-    }else{#likely messed up protein?
-      $suspect_proteins{$protID}=1;
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}));

@@ -344,7 +344,7 @@ if [ ! -e merge.success ];then
 #here we combine the transcripts and protein matches; we will use only protein CDS's that are contained in the transcripts;some transcripts do not get annotated, we only use "=", "k","j" and "u"
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,j,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
-  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf )  $GENOMEFILE 1>combine.out 2>&1 && \
+  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.fixed.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.annotated.gtf)) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
@@ -448,7 +448,7 @@ if [ ! -e merge.success ];then
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     log "Checking for and repairing broken ORFs"
-    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf) ) $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -465,14 +465,14 @@ if [ ! -e merge.success ];then
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf) ) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
     mv $GENOME.k.gff.tmp $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     rm -f $GENOME.protref.all.{loci,stats,tracking} && \
     log "Checking for and repairing broken ORFs"
-    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf )) $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -489,7 +489,7 @@ if [ ! -e merge.success ];then
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.all.annotated.gtf ) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.all.gff | filter_by_class_code.pl <(gffread -F $GENOME.protref.all.annotated.gtf)) $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
     mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   touch merge.success && rm -f functional.success merge.{unused,j,u}.success
