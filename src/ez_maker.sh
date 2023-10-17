@@ -34,7 +34,9 @@ exit 1
 }
 
 function usage {
- echo "Usage: eugene.sh [options]"
+ echo "EZ Maker2 pipeline makes running Maker2+SNAP convenient and fast on a single MP server"
+ echo ""
+ echo "Usage: ez_maker.sh [options]"
  echo "Options:"
  echo "-t <number of threads, default:1>"
  echo "-g <MANDATORY:genome fasta file with full path>"
@@ -55,7 +57,6 @@ log () {
     dddd=$(date)
     echo -e "${GC}[$dddd]${NC} $@"
 }
-
 
 function error_exit {
     dddd=$(date)
