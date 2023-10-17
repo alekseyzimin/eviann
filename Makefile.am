@@ -14,7 +14,8 @@ V_YAGGO_0 = @echo "  YAGGO " $@;
 YAGGO_SOURCES = # Append all file to be built by yaggo
 
 dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
-	src/eugene.sh src/my_maker_functional_fasta \
+	src/ez_maker.sh \
+	src/my_maker_functional_fasta \
 	src/my_maker_functional_gff \
 	src/combine_gene_protein_gff.pl \
 	src/eviann.sh \
