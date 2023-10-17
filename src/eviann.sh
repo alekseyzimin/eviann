@@ -148,15 +148,17 @@ fi
 #checking inputs
 mkdir -p tttt && cd tttt
 if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ]  && [ ! -s $ALT_EST ];then
-  cd .. && error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e.  Paths for ALL files must be ABSOLUTE."
+  cd .. && rm -rf tttt && error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e.  Paths for ALL files must be ABSOLUTE."
 fi
 if [ ! -s $UNIPROT ];then
-  cd  .. && error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa> with an ABSOLUTE Path"
+  cd  .. && rm -rf tttt && error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa> with an ABSOLUTE Path"
 fi
 if [ ! -s $PROTEINFILE ];then
-  echo "Warning: proteins from related species are not specified, using Uniprot proteins as fallback option" && \
+  echo "Warning: proteins from related species are not specified, or file $PROTEINFILE is missing using Uniprot proteins as fallback option" && \
+  cd .. && \
   export PROTEINFILE=$PWD/uniprot_sprot.nonred.85.fasta && \
-  export PROTEIN=uniprot_sprot.nonred.85.fasta
+  export PROTEIN=uniprot_sprot.nonred.85.fasta && \
+  cd tttt 
 fi
 cd .. && rm -rf tttt
 
