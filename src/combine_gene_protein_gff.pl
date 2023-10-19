@@ -534,7 +534,10 @@ for my $locus(keys %transcripts_cds_loci){
 #output transcript
         $transcript_index++;
         print "DEBUG output transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
-        push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;ProteinID=$protID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t}");
+        my $evidence_type="complete";
+        $evidence_type="protein_only" if($source eq "EviAnnP");
+        $evidence_type="transcript_only" if($protID =~ /^XLOC_/);
+        push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;ProteinID=$protID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Evidence=$evidence_type");
 #output exons
         my $i=1;
         my $first_j=0;
