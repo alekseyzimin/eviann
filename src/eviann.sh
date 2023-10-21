@@ -328,7 +328,7 @@ if [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
 #we first estimate the redundancy of proteins -- this can tell us how many species were used for protein references
   gffcompare -p PCONS -SDT $GENOME.$PROTEIN.palign.gff -o count && \
-  NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))+0.5),"\n";}' count.combined.gtf` && \
+  NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))),"\n";}' count.combined.gtf` && \
   rm -f count.combined.gtf  count.{loci,stats,tracking} && \
 #now we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
@@ -373,21 +373,28 @@ if [ ! -e merge.success ];then
             $gene_id=$2;
           }
           if(defined($transcript_id) && defined($gene_id)){
-            print "$similarity{$transcript_id} $gene_id $transcript_id\n" if($similarity{$transcript_id}>9600);
+            print "$similarity{$transcript_id} $gene_id $transcript_id\n";
           }
         }
       }
     }' $GENOME.$PROTEIN.palign.gff | \
     sort -nrk1,1 -S 10% |\
-    perl -ane '{
+    perl -ane 'BEGIN{
       $max_prot_at_locus=1;
+      $similarity_threshold=9600;
 #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
 #then we allow for more extra proteins per locus
-      $max_prot_at_locus=2 if(int('$NUM_PROT_SPECIES')<=2);
-      if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>9800))){
-        $h{$F[1]}+=1;#this is the number of proteins per locus
-        $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-        $hn{$F[2]}=1;#we mark the proteins to keep
+      if(int('$NUM_PROT_SPECIES')<2){
+        $max_prot_at_locus=2;
+        $similarity_threshold=8000;
+      }
+    }{
+      if($F[0]>$similarity_threshold){
+        if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>9800))){
+          $h{$F[1]}+=1;#this is the number of proteins per locus
+          $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+          $hn{$F[2]}=1;#we mark the proteins to keep
+        }
       }
     }END{
       open(FILE,"'$GENOME'.unused_proteins.gff");
