@@ -354,7 +354,36 @@ if [ ! -e merge.success ];then
   if [ ! -e merge.unused.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Filtering unused protein only loci" && \
-    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) > $GENOME.unused_proteins.combined.gff && \
+    gffread -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
+    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
+    mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
+    rm -f $GENOME.unused.faa && \
+    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
+    perl -F'\t' -ane 'BEGIN{
+      open(FILE,"'$GENOME'.protein_count.txt");
+      while($line=<FILE>){
+        chomp($line);
+        my ($name,$c)=split(/\s+/,$line);
+        $count{$name}=$c;
+      }
+    }{
+      undef($transcript_id);
+      if($F[2] eq "transcript"){
+        if($F[8]=~/ID=(\S+);locus=(\S+)$/){
+          $transcript_id=$1;
+          $gene_id=$2;
+          $printstr=join("\t",@F);
+          chomp($printstr);
+          print "$printstr;count=$count{$transcript_id}\n" if(defined($count{$transcript_id}));
+        }
+      }elsif($F[2] eq "CDS"){
+        $transcript_id=$1; 
+        if($F[8]=~/Parent=(\S+)$/){
+          $transcript_id=$1;
+          print if(defined($count{$transcript_id}));
+        }
+      }
+    }' > $GENOME.unused_proteins.combined.gff && \
     #here we compute the score for each protein -- the score is the alignemtn similarity listed in palign file
     perl -F'\t' -ane '{
       if($F[2] eq "gene"){
@@ -368,12 +397,14 @@ if [ ! -e merge.success ];then
         if($f[2] eq "transcript"){
           undef($transcript_id);
           undef($gene_id);
-          if($f[8]=~/ID=(\S+);locus=(\S+)$/){
+          undef($count);
+          if($f[8]=~/ID=(\S+);locus=(\S+);count=(\S+)$/){
             $transcript_id=$1;
             $gene_id=$2;
+            $count=$3;
           }
           if(defined($transcript_id) && defined($gene_id)){
-            print "$similarity{$transcript_id} $gene_id $transcript_id\n";
+            print $similarity{$transcript_id}+100*$count," $gene_id $transcript_id\n";
           }
         }
       }
