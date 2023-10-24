@@ -412,7 +412,7 @@ if [ ! -e merge.success ];then
     sort -nrk1,1 -S 10% |\
     perl -ane 'BEGIN{
       $max_prot_at_locus=1;
-      $similarity_threshold=96;
+      $similarity_threshold=95;
 #if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
 #then we allow for more extra proteins per locus
       if(int('$NUM_PROT_SPECIES')<2){
@@ -421,7 +421,7 @@ if [ ! -e merge.success ];then
       }
     }{
       if($F[0]>$similarity_threshold){
-        if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>98))){
+        if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>99))){
           $h{$F[1]}+=1;#this is the number of proteins per locus
           $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
           $hn{$F[2]}=1;#we mark the proteins to keep
