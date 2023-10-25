@@ -326,11 +326,7 @@ fi
 
 if [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
-#we first estimate the redundancy of proteins -- this can tell us how many species were used for protein references
-  gffcompare -p PCONS -SDT $GENOME.$PROTEIN.palign.gff -o count && \
-  NUM_PROT_SPECIES=`perl -F'\t' -ane '{if($F[2] eq "transcript"){if($F[8]=~/.+gene_id "(.+)"; oId .+/){$n++;$h{$1}=1;}}}END{print int($n/scalar(keys(%h))),"\n";}' count.combined.gtf` && \
-  rm -f count.combined.gtf  count.{loci,stats,tracking} && \
-#now we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
+#we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
@@ -354,8 +350,8 @@ if [ ! -e merge.success ];then
   if [ ! -e merge.unused.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Filtering unused protein only loci" && \
-    gffread -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
-    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
+    gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
+    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
@@ -384,7 +380,7 @@ if [ ! -e merge.success ];then
         }
       }
     }' > $GENOME.unused_proteins.combined.gff && \
-    #here we compute the score for each protein -- the score is the alignemtn similarity listed in palign file
+    #here we compute the score for each protein -- the score is the alignment similarity listed in palign file
     perl -F'\t' -ane '{
       if($F[2] eq "gene"){
         $similarity{$1}=$4 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
@@ -413,15 +409,9 @@ if [ ! -e merge.success ];then
     perl -ane 'BEGIN{
       $max_prot_at_locus=1;
       $similarity_threshold=95;
-#if NUM_PROT_SPECIES is 2 or less then it look like we are given a protein homology file for a single species
-#then we allow for more extra proteins per locus
-      if(int('$NUM_PROT_SPECIES')<2){
-        $max_prot_at_locus=2;
-        $similarity_threshold=90;
-      }
     }{
       if($F[0]>$similarity_threshold){
-        if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+1 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>99))){
+        if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+2 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>99))){
           $h{$F[1]}+=1;#this is the number of proteins per locus
           $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
           $hn{$F[2]}=1;#we mark the proteins to keep

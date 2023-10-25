@@ -680,7 +680,7 @@ for my $locus(keys %transcripts_only_loci){
 
 #output unused proteins
 #we will then look at them, pick only one per locus that best matches uniprot and join them in at the second pass
-my $fake_utr=9;
+my $fake_utr=0;
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
