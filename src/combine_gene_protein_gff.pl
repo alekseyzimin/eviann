@@ -335,8 +335,9 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");
-    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
+    $transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
 
   }else{#reverse orientation
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
@@ -469,8 +470,9 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");
-    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
+    $transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
   }
 }
 
@@ -738,9 +740,15 @@ sub fix_start_stop_codon_ext{
   my $transcript_5pext=$_[3];
   my $transcript_3pext=$_[4];
   my $ext_length=length($transcript_5pext);
+  #we do not do 5' extension if the first codon is start
+  my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
+  my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
   print "DEBUG extending start and stop starting at $cds_start_on_transcript $cds_end_on_transcript\n";
   my ($cds_start_on_transcript_ext,$cds_end_on_transcript_ext)=fix_start_stop_codon($cds_start_on_transcript+$ext_length,$cds_end_on_transcript+$ext_length,$transcript_5pext.$transcript_seq.$transcript_3pext);
-  if($cds_start_on_transcript_ext>$ext_length-1){
+  if(uc($first_codon) eq "ATG"){#ignore the extension
+    $transcript_5pext="";
+    print "DEBUG no 5p extension needed $cds_start_on_transcript_ext\n";
+  }elsif($cds_start_on_transcript_ext>$ext_length-1){
     $transcript_5pext="";
     $cds_start_on_transcript=$cds_start_on_transcript_ext-$ext_length;
     print "DEBUG no 5p extension $cds_start_on_transcript_ext\n";
@@ -755,7 +763,11 @@ sub fix_start_stop_codon_ext{
       $transcript_5pext="";
     }
   }
-  if($cds_end_on_transcript_ext<$ext_length+length($transcript_seq)){
+  if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"){
+    print "DEBUG no 3p extension needed $cds_end_on_transcript_ext\n";
+    $transcript_3pext="";
+    $cds_end_on_transcript+=length($transcript_5pext);
+  }elsif($cds_end_on_transcript_ext<$ext_length+length($transcript_seq)){
     $transcript_3pext="";
     print "DEBUG no 3p extension $cds_end_on_transcript_ext\n";
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
