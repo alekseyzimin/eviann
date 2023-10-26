@@ -407,11 +407,11 @@ if [ ! -e merge.success ];then
     }' $GENOME.$PROTEIN.palign.gff | \
     sort -nrk1,1 -S 10% |\
     perl -ane 'BEGIN{
-      $max_prot_at_locus=1;
-      $similarity_threshold=95;
+      $max_prot_at_locus=5;
+      $similarity_threshold=90;
     }{
       if($F[0]>$similarity_threshold){
-        if($h{$F[1]} < $max_prot_at_locus || ($h{$F[1]} < $max_prot_at_locus+2 && ($F[0]>$hs{$F[1]}*.98 && $F[0]>99))){
+        if($h{$F[1]} < 1 || ($h{$F[1]} < $max_prot_at_locus && $F[0]>$hs{$F[1]}*.98)){
           $h{$F[1]}+=1;#this is the number of proteins per locus
           $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
           $hn{$F[2]}=1;#we mark the proteins to keep
@@ -421,8 +421,15 @@ if [ ! -e merge.success ];then
       open(FILE,"'$GENOME'.unused_proteins.gff");
       while($line=<FILE>){
         chomp($line);
-        @f=split(/=/,$line);
-        print "$line\n" if(defined($hn{$f[-1]}));
+        @f=split(/\t/,$line);
+        $id="";
+        if($f[2] eq "gene"){
+          $f[2]="transcript";
+          $id=$1 if($f[8]=~ /ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)$/);
+        }elsif($f[2] eq "exon" || $f[2] eq "cds"){
+          $id=$1 if($f[8]=~ /Parent=(\S+)$/);
+        }
+        print join("\t",@f),"\n" if(defined($hn{$id}));
       }
     }' > $GENOME.best_unused_proteins.gff
   else
