@@ -351,7 +351,7 @@ if [ ! -e merge.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Filtering unused protein only loci" && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
-    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
+    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else if($1 ~ /^M/){print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
