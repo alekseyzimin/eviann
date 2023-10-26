@@ -407,17 +407,25 @@ if [ ! -e merge.success ];then
     }' $GENOME.$PROTEIN.palign.gff | \
     sort -nrk1,1 -S 10% |\
     perl -ane 'BEGIN{
-      $max_prot_at_locus=5;
-      $similarity_threshold=90;
+      $max_prot_at_locus=3;
+      $avg=0;
+      $count=0;
     }{
-      if($F[0]>$similarity_threshold){
-        if($h{$F[1]} < 1 || ($h{$F[1]} < $max_prot_at_locus && $F[0]>$hs{$F[1]}*.98)){
-          $h{$F[1]}+=1;#this is the number of proteins per locus
-          $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-          $hn{$F[2]}=1;#we mark the proteins to keep
+      push(@lines,"$F[0] $F[1] $F[2]");
+      $avg+=$F[0];
+      $count++;
+    }END{
+      $similarity_threshold=$avg/$count;
+      for(my $i=0;$i<=$#lines;$i++){
+        @F=split(/\s/,$lines[$i]);
+        if($F[0]>$similarity_threshold){
+          if($h{$F[1]} < 1 || ($h{$F[1]} < $max_prot_at_locus && $F[0]>$hs{$F[1]}*.98)){
+            $h{$F[1]}+=1;#this is the number of proteins per locus
+            $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+            $hn{$F[2]}=1;#we mark the proteins to keep
+          }
         }
       }
-    }END{
       open(FILE,"'$GENOME'.unused_proteins.gff");
       while($line=<FILE>){
         chomp($line);
