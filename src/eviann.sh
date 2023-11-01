@@ -383,7 +383,7 @@ if [ ! -e merge.success ];then
     #here we compute the score for each protein -- the score is the alignment similarity listed in palign file
     perl -F'\t' -ane '{
       if($F[2] eq "gene"){
-        $similarity{$1}=$4 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
+        $similarity{$1}=$4+$3/100-1 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
       }
     }END{
       open(FILE,"'$GENOME'.unused_proteins.combined.gff");
@@ -404,10 +404,9 @@ if [ ! -e merge.success ];then
           }
         }
       }
-    }' $GENOME.$PROTEIN.palign.gff | \
+    }' $GENOME.unused_proteins.gff | \
     sort -nrk1,1 -S 10% |\
     perl -ane 'BEGIN{
-      $max_prot_at_locus=3;
       $avg=0;
       $count=0;
     }{
@@ -419,7 +418,7 @@ if [ ! -e merge.success ];then
       for(my $i=0;$i<=$#lines;$i++){
         @F=split(/\s/,$lines[$i]);
         if($F[0]>$similarity_threshold){
-          if($h{$F[1]} < 1 || ($h{$F[1]} < $max_prot_at_locus && $F[0]>$hs{$F[1]}*.98)){
+          if($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99){
             $h{$F[1]}+=1;#this is the number of proteins per locus
             $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
             $hn{$F[2]}=1;#we mark the proteins to keep
