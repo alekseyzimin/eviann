@@ -381,7 +381,23 @@ if [ ! -e merge.success ];then
       }
     }' > $GENOME.unused_proteins.combined.gff && \
     #here we compute the score for each protein -- the score is the alignment similarity listed in palign file
-    perl -F'\t' -ane '{
+    perl -F'\t' -ane 'BEGIN{
+      open(FILE,"'$GENOMEFILE'");
+      $seq="";
+      $cn="";
+      while($line=<FILE>){
+        chomp($line);
+        if($line=~/^>/){
+          my @f=split(/\s+/,$line);
+          $contigs{$cn}=$seq if(length($seq)>0);
+          $seq="";
+          $cn=substr($f[0],1);
+        }else{
+          $seq.=$line;
+        }
+      }
+      $contigs{$cn}=$seq;
+    }{
       if($F[2] eq "gene"){
         $similarity{$1}=$4+$3/100-1 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
       }
@@ -399,7 +415,24 @@ if [ ! -e merge.success ];then
             $gene_id=$2;
             $count=$3;
           }
-          if(defined($transcript_id) && defined($gene_id)){
+          $codon_count=0;
+          $start=$f[3];
+          $end=$f[4];
+          $ori=$f[6];
+          if($ori eq "+"){
+            $startcodon=uc(substr($contigs{$f[0]},$start-1,3));
+            $stopcodon=uc(substr($contigs{$f[0]},$end,3));
+          }else{
+            $seq=substr($contigs{$f[0]},$end-3,3);
+            $seq=~tr/acgtACGT/tgcaTGCA/;
+            $startcodon=uc(reverse($seq));
+            $seq=substr($contigs{$f[0]},$start-4,3);
+            $seq=~tr/acgtACGT/tgcaTGCA/;
+            $stopcodon=uc(reverse($seq));
+          }
+          $codon_count++ if($startcodon eq "ATG"); 
+          $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
+          if(defined($transcript_id) && defined($gene_id) && $codon_count==2){
             print 100-(100-$similarity{$transcript_id})/$count," $gene_id $transcript_id\n";
           }
         }
@@ -418,7 +451,7 @@ if [ ! -e merge.success ];then
       for(my $i=0;$i<=$#lines;$i++){
         @F=split(/\s/,$lines[$i]);
         if($F[0]>$similarity_threshold){
-          if($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99){
+          if($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.95){
             $h{$F[1]}+=1;#this is the number of proteins per locus
             $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
             $hn{$F[2]}=1;#we mark the proteins to keep
