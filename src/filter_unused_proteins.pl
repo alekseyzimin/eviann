@@ -78,8 +78,8 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   if(($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
     $h{$F[1]}+=1;#this is the number of proteins per locus
-      $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-      $hn{$F[2]}=1;#we mark the proteins to keep
+    $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+    $hn{$F[2]}=1;#we mark the proteins to keep
   }
 }
 

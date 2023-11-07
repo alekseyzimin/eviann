@@ -481,7 +481,8 @@ for my $g(keys %transcript_cds){
 print OUTFILE1 "##gff-version 3\n# EviAnn automated annotation\n";
 for my $locus(keys %transcripts_cds_loci){
   my @output=();
-  my $output_count=0;
+  my $output_hc_count=0;
+  my $output_p_count=0;
   my $gene_feature="";
   my @transcripts_at_loci=split(/\s+/,$transcripts_cds_loci{$locus});
   my @gff_fields=split(/\t/,$transcript{$transcripts_at_loci[0]});
@@ -491,19 +492,18 @@ for my $locus(keys %transcripts_cds_loci){
   $geneID=substr($attributes[1],7);#this is the XLOC
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
-  my %output_proteins_for_locus=();
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
   for my $source("StringTie","EviAnnP"){
-     for my $class ("=","k","c","j","m","n"){  
+     for my $class ("=","k","j","m","n"){  
       for my $t(@transcripts_at_loci){
         next if(not($transcript_class{$t} eq $class));
         next if(not($transcript_source{$t} eq $source));
-        #next if($source eq "EviAnnP" && $output_count>5);#if we already have transcripts at this locus, do not add protein-only
-        next if(($class eq "m" || $class eq "n" || $class eq "c") && $output_count>0);#these are low confidence, we use them as last resort
-        $output_count++;
+        next if($source eq "EviAnnP" && $output_hc_count>0 && $output_p_count>0);#allow one extra protein-only count if more than one hc transcript
+        next if(($class eq "m" || $class eq "n") && $output_hc_count>0);#these are low confidence, we use them as last resort
+        $output_hc_count++ if($class eq "=" || $class eq "k" || $class eq "j");
+        $output_p_count++ if($source eq "EviAnnP");
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
         my $protID=$transcript_cds{$t};
-        $output_proteins_for_locus{$protID}=1;
         $used_proteins{$protID}=1;
         my $note="";
         my @gff_fields_t=split(/\t/,$transcript{$t});
