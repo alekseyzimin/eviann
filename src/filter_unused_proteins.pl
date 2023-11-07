@@ -64,7 +64,7 @@ while($line=<STDIN>){
     }
     $codon_count++ if($startcodon eq "ATG"); 
     $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
-    if(defined($transcript_id) && defined($gene_id) && $codon_count>0){
+    if(defined($transcript_id) && defined($gene_id) && $codon_count==2){
       my $score=100-(100-$similarity{$transcript_id})/$tcount;
       push(@scores,"$score $gene_id $transcript_id");
       $avg+=$score;
@@ -74,12 +74,15 @@ while($line=<STDIN>){
 }
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
 my $similarity_threshold=$avg/$count;
+my %h=();
+my %hs=();
+my %hn=();
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
-  if(($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
-    $h{$F[1]}+=1;#this is the number of proteins per locus
+  if(($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
+    $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-    $hn{$F[2]}=1;#we mark the proteins to keep
+    $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
 
@@ -94,6 +97,6 @@ while($line=<FILE>){
   }elsif($f[2] eq "exon" || $f[2] eq "cds"){
     $id=$1 if($f[8]=~ /Parent=(\S+)$/);
   }
-  print join("\t",@f),"\n" if(defined($hn{$id}));
+  print join("\t",@f),"\n" if(defined($h{$id}));
 }
 
