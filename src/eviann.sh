@@ -340,9 +340,9 @@ if [ ! -e merge.success ];then
   mv $GENOME.protref.annotated.gtf.tmp $GENOME.protref.annotated.gtf && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.gtf > $GENOME.abundanceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.gtf.tmp $GENOME.abundanceFiltered.gtf && \
-#here we combine the transcripts and protein matches; we will use only protein CDS's that are contained in the transcripts;some transcripts do not get annotated, we only use "=", "k","j" and "u"
+#here we combine the transcripts and protein matches; 
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
-#this produces files $GENOME.{k,j,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
+#this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
@@ -351,7 +351,7 @@ if [ ! -e merge.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Filtering unused protein only loci" && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
-    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else if($1 ~ /^M/){print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
+    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
@@ -379,7 +379,7 @@ if [ ! -e merge.success ];then
           print if(defined($count{$transcript_id}));
         }
       }
-    }' | filter_unused_proteins.pl $GENOMEFILE  $GENOME.unused_proteins.gff > $GENOME.best_unused_proteins.gff.tmp && \
+    }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff
   else
     echo "" > $GENOME.best_unused_proteins.gff

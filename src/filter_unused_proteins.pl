@@ -32,7 +32,7 @@ while($line=<FILE>){
 
 #combined file on STDIN
 my $avg=0;
-my $count=0;
+my $count=1;
 while($line=<STDIN>){
   chomp($line);
   my @f=split(/\t/,$line);
@@ -64,7 +64,7 @@ while($line=<STDIN>){
     }
     $codon_count++ if($startcodon eq "ATG"); 
     $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
-    if(defined($transcript_id) && defined($gene_id) && $codon_count==2){
+    if(defined($transcript_id) && defined($gene_id) && $codon_count>0){
       my $score=100-(100-$similarity{$transcript_id})/$tcount;
       push(@scores,"$score $gene_id $transcript_id");
       $avg+=$score;
