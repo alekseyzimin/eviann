@@ -433,7 +433,8 @@ if [ ! -e merge.success ];then
           $codon_count++ if($startcodon eq "ATG"); 
           $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
           if(defined($transcript_id) && defined($gene_id) && $codon_count==2){
-            print 100-(100-$similarity{$transcript_id})/$count," $gene_id $transcript_id\n";
+            my $score=100-(100-$similarity{$transcript_id})/$count;
+            print "$score $gene_id $transcript_id\n";
           }
         }
       }
@@ -449,13 +450,11 @@ if [ ! -e merge.success ];then
     }END{
       $similarity_threshold=$avg/$count;
       for(my $i=0;$i<=$#lines;$i++){
-        @F=split(/\s/,$lines[$i]);
-        if($F[0]>$similarity_threshold){
-          if($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.95){
-            $h{$F[1]}+=1;#this is the number of proteins per locus
-            $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-            $hn{$F[2]}=1;#we mark the proteins to keep
-          }
+        my @F=split(/\s+/,$lines[$i]);
+        if(($h{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
+          $h{$F[1]}+=1;#this is the number of proteins per locus
+          $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+          $hn{$F[2]}=1;#we mark the proteins to keep
         }
       }
       open(FILE,"'$GENOME'.unused_proteins.gff");

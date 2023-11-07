@@ -498,7 +498,7 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next if(not($transcript_class{$t} eq $class));
         next if(not($transcript_source{$t} eq $source));
-        next if($source eq "EviAnnP" && $output_count>5);#if we already have transcripts at this locus, do not add protein-only
+        #next if($source eq "EviAnnP" && $output_count>5);#if we already have transcripts at this locus, do not add protein-only
         next if(($class eq "m" || $class eq "n" || $class eq "c") && $output_count>0);#these are low confidence, we use them as last resort
         $output_count++;
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
