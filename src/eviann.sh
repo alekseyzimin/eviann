@@ -109,7 +109,7 @@ do
             set -x
             ;;
         --version)
-            echo "version 1.0.2"
+            echo "version 1.0.6"
             exit 0
             ;;
         --debug)
