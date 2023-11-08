@@ -498,8 +498,7 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next if(not($transcript_class{$t} eq $class));
         next if(not($transcript_source{$t} eq $source));
-        next if($source eq "EviAnnP" && $output_hc_count>0 && $output_p_count>0);#allow one extra protein-only count if more than one hc transcript
-        next if(($class eq "m" || $class eq "n") && $output_hc_count>0);#these are low confidence, we use them as last resort
+        next if(($class eq "m" || $class eq "n") && ($output_hc_count>0 || $source eq "EviAnnP"));#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
         $output_hc_count++ if($class eq "=" || $class eq "k" || $class eq "j");
         $output_p_count++ if($source eq "EviAnnP");
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";

@@ -45,7 +45,7 @@ while($line=<STDIN>){
     if($f[8]=~/ID=(\S+);locus=(\S+);count=(\S+)$/){
       $transcript_id=$1;
       $gene_id=$2;
-      $tcount=$3;
+      $pcount=$3;
     }
     $codon_count=0;
     my $start=$f[3];
@@ -64,8 +64,8 @@ while($line=<STDIN>){
     }
     $codon_count++ if($startcodon eq "ATG"); 
     $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
-    if(defined($transcript_id) && defined($gene_id) && $codon_count==2){
-      my $score=100-(100-$similarity{$transcript_id})/$tcount;
+    if(defined($transcript_id) && defined($gene_id) && $codon_count>1){
+      my $score=100-(100-$similarity{$transcript_id})/$pcount;
       push(@scores,"$score $gene_id $transcript_id");
       $avg+=$score;
       $count++;
