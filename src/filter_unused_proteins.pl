@@ -2,6 +2,7 @@
 #this code scores and filters unused protein alignments
 my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
+my $liftover=$ARGV[2];
 my %similarity;
 my %contigs;
 
@@ -74,6 +75,7 @@ while($line=<STDIN>){
 }
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
 my $similarity_threshold=$avg/$count;
+$similarity_threshold=0 if($liftover>0);
 my %h=();
 my %hs=();
 my %hn=();

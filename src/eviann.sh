@@ -17,6 +17,7 @@ PID=$$
 export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
+LIFTOVER=0
 GC=
 RC=
 NC=
@@ -44,6 +45,7 @@ function usage {
  echo "-e <fasta file with transcripts from related species>"
  echo "-r <fasta file of protein sequences from related species>"
  echo "-m <max intron size, default: 100000>"
+ echo "-l <liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species>"
  echo "--debug <debug flag, if used intermediate output files will be kept>"
  echo "-v <verbose flag>"
  echo "--version version"
@@ -96,6 +98,10 @@ do
         -s|--swissprot)
             UNIPROT="$2"
             shift
+            ;;
+        -l|--liftover)
+            LIFTOVER=1
+            log "Liftover mode ON"
             ;;
         -u|--unpaired)
             RNASEQ_UNPAIRED="$2"
@@ -279,7 +285,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq 1 ];then
     # a single tissue, we add 1 for the number of samples and the TPMs
-    cat tissue*.bam.sorted.bam.gtf | perl -F'\t' -ane '{
+    cat tissue*.bam.sorted.bam.gtf | grep -v '^#' | perl -F'\t' -ane '{
       if($F[2] eq "transcript"){
         if($F[8]=~/transcript_id \"(\S+)\";/){
           $transcript=$1;
@@ -383,7 +389,7 @@ if [ ! -e merge.success ];then
           print if(defined($count{$transcript_id}));
         }
       }
-    }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff > $GENOME.best_unused_proteins.gff.tmp && \
+    }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff
   else
     echo "" > $GENOME.best_unused_proteins.gff
