@@ -406,7 +406,7 @@ if [ ! -e merge.success ];then
     mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
-      add_cds_to_gff.pl $GENOME.lncRNA.fa.transdecoder.gff3 <  $GENOME.u.gff | \
+      add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if(!($9~/internal/)){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
       perl -F'\t' -ane 'BEGIN{
         open(FILE,"'$GENOME'.lncRNA.u.blastp");
         while($line=<FILE>){
@@ -460,7 +460,7 @@ if [ ! -e merge.success ];then
     mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
     TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
-      awk -F '\t' '{if(NF>8) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+      awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
@@ -486,7 +486,7 @@ if [ ! -e merge.success ];then
     mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
     TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.broken_cds.fa.transdecoder ];then
-      awk -F '\t' '{if(NF>8) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+      awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
