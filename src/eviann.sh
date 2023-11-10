@@ -18,6 +18,7 @@ export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
 LIFTOVER=0
+FUNCTIONAL=0
 GC=
 RC=
 NC=
@@ -38,17 +39,18 @@ exit 1
 function usage {
  echo "Usage: eviann.sh [options]"
  echo "Options:"
- echo "-t <number of threads, default:1>"
- echo "-g <MANDATORY:genome fasta file with full path>"
- echo "-p <file containing list of filenames of paired Illumina reads from RNAseq experiments, one pair of /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
- echo "-u <file containing list of filenames of unpaired Illumina reads from RNAseq experiments, one /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
- echo "-e <fasta file with transcripts from related species>"
- echo "-r <fasta file of protein sequences from related species>"
- echo "-m <max intron size, default: 100000>"
- echo "-l <liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species>"
- echo "--debug <debug flag, if used intermediate output files will be kept>"
- echo "-v <verbose flag>"
- echo "--version version"
+ echo "-t <int: number of threads, default:1>"
+ echo "-g <string: MANDATORY:genome fasta file with full path>"
+ echo "-p <string: file containing list of filenames of paired Illumina reads from RNAseq experiments, one pair of /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
+ echo "-u <string: file containing list of filenames of unpaired Illumina reads from RNAseq experiments, one /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
+ echo "-e <string: fasta file with transcripts from related species>"
+ echo "-r <string: fasta file of protein sequences from related species>"
+ echo "-m <int: max intron size, default: 100000>"
+ echo "-l <flag: liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
+ echo "-f <flag: perform functional annotation, default: not set>"
+ echo "--debug <flag: debug, if used intermediate output files will be kept, default: not set>"
+ echo "-v <flag: verbose run, defalut: not set>"
+ echo "--version report version"
  echo ""
  echo "-r AND one or more of the -p -u or -e must be supplied."
 }
@@ -106,6 +108,10 @@ do
         -u|--unpaired)
             RNASEQ_UNPAIRED="$2"
             shift
+            ;;
+        -f|--functional)
+            FUNCTIONAL=1
+            log "Will perform functional annotation"
             ;;
         -m|--max-intron)
             MAX_INTRON="$2"
@@ -493,56 +499,46 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
     mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
+  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   touch merge.success && rm -f functional.success merge.{unused,j,u}.success
 fi
 
-if [ -e merge.success ] && [ ! -e functional.success ];then
-  log "Performing functional annotation" && \
-  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
-  blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
-  mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
-  my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.gff > $GENOME.functional_note.gff.tmp && mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
-  my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
-  my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-  rm -rf $GENOME.transcripts.fasta $GENOME.proteins.fasta && \
-  touch functional.success && rm -rf pseudo_detect.success || error_exit "Functional annotation failed"
-fi 
-
-#if [ ! -e partial_detect.success ] && [ -e functional.success ];then
-#  log "Eliminating non-functional partial proteins"
-#  ufasta one $GENOME.functional_note.proteins.all.fasta | awk '{if($1~/^>/){if($0 ~ "function unknown"){rn=substr($1,2)}else{rn=""}}else if($1 !~ /^M/ && rn != ""){print rn}}' > $GENOME.non_functional_partial_proteins.txt.tmp && \
-#  mv $GENOME.non_functional_partial_proteins.txt.tmp $GENOME.non_functional_partial_proteins.txt && \
-#  ufasta extract -v -f $GENOME.non_functional_partial_proteins.txt $GENOME.functional_note.proteins.all.fasta > $GENOME.functional_note.proteins.fasta.tmp && \
-#  mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta &&\
-#  ufasta extract -v -f $GENOME.non_functional_partial_proteins.txt $GENOME.functional_note.transcripts.all.fasta > $GENOME.functional_note.transcripts.fasta.tmp && \
-#  mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta &&\
-#  perl -ane '{$h{$F[0]}=1}END{open(FILE,"'$GENOME'.functional_note.all.gff");while($line=<FILE>){chomp($line);@gff_fields=split(/\t/,$line);if($gff_fields[8]=~/^ID=(XLOC_\d+-mRNA-\d+).+/){print $line,"\n" if(not(defined($h{$1})));}else{print $line,"\n"}}}' $GENOME.non_functional_partial_proteins.txt | \
-#  awk -F '\t' 'BEGIN{prev=""}{if($3=="gene"){geneline=$0}else{if(geneline !=""){print geneline;geneline="";}print $0;}}' > $GENOME.functional_note.gff.tmp && \
-#  mv $GENOME.functional_note.gff.tmp $GENOME.functional_note.gff && \
-#  touch partial_detect.success && \
-#  rm -rf pseudo_detect.success && \
-#  if [ $DEBUG -lt 1 ];then
-#    rm -rf $GENOME.proteins.fasta $GENOME.transcripts.fasta
-#  fi
-#fi
-
-if [ -e functional.success ] && [ ! -e pseudo_detect.success ];then
+if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes"
-  ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
-  ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.functional_note.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
+  ufasta extract -v -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
+  ufasta extract -f <(awk '{if($3=="gene" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb.sex2mex.out 2>&1 && \
   blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp.tmp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp5.out 2>&1 && \
   mv $GENOME.sex2mex.blastp.tmp $GENOME.sex2mex.blastp && \
-  perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.functional_note.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.functional_note.pseudo_label.gff.tmp && \
-  mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
-  rm -f $GENOME.functional_note.gff && \
+  perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "gene" && defined($pseudo{substr($id,3)."-mRNA-1"})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
+  mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta
   fi && \
   touch pseudo_detect.success || error_exit "Detection of pseudogenes failed"
 fi
 
-if [ -e functional.success ] && [ -e pseudo_detect.success ];then
+if [ -e merge.success ] && [ -e pseudo_detect.success ] && [ ! -e functional.success ];then
+  if [ $FUNCTIONAL -lt 1 ];then
+    log "Output annotation GFF is in $GENOME.pseudo_label.gff, proteins are in  $GENOME.proteins.fasta, transcripts are in $GENOME.transcripts.fasta"
+    echo "Annotation summary:"
+    echo -n "Number of genes: ";awk '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
+    echo -n "Number of processed pseudo genes: ";awk '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
+    echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
+    echo -n "Number of proteins: "; grep '^>' $GENOME.proteins.fasta |wc -l
+  else
+    log "Performing functional annotation" && \
+    blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
+    mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
+    my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
+    my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
+    my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
+    rm -rf $GENOME.transcripts.fasta $GENOME.proteins.fasta $GENOME.pseudo_label.gff
+    touch functional.success && rm -rf pseudo_detect.success || error_exit "Functional annotation failed"
+  fi
+fi 
+
+if [ -e functional.success ];then
   log "Output annotation GFF is in $GENOME.functional_note.pseudo_label.gff, proteins are in  $GENOME.functional_note.proteins.fasta, transcripts are in $GENOME.functional_note.transcripts.fasta"
   echo "Annotation summary:"
   echo -n "Number of genes: ";awk '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
@@ -551,8 +547,6 @@ if [ -e functional.success ] && [ -e pseudo_detect.success ];then
   echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
   echo -n "Number of functional protein coding transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |grep Similar |wc -l
   echo -n "Number of proteins: "; grep '^>' $GENOME.functional_note.proteins.fasta |wc -l
-else
-  error_exit "Something went wrong, please check your data"
 fi
 
 
