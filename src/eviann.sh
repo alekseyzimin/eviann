@@ -500,7 +500,7 @@ if [ ! -e merge.success ];then
     mv $GENOME.k.gff $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
-  touch merge.success && rm -f functional.success merge.{unused,j,u}.success
+  touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,j,u}.success
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then

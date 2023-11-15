@@ -340,20 +340,11 @@ head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILEN.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILEN.faa && \
 PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
-exonerate --model protein2genome  -Q protein -T dna -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > /dev/shm/tmp$MYPID/run_exonerate.sh
+exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > /dev/shm/tmp$MYPID/run_exonerate.sh
 echo -n $MAX_INTRON >> /dev/shm/tmp$MYPID/run_exonerate.sh
 echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff 2>/dev/null | tee exonerate.out |\
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
 grep "^$GENOME" >> $TASKFILE.gff && \
-ALNLEN=`awk '\''{if($3=="cds") n+=$5-$4}END{print int(n/3)}'\'' $TASKFILE.gff` && \
-if [ $ALNLEN -lt $(($PROTLEN-2)) ] || [ $ALNLEN -gt $(($PROTLEN+2)) ];then
-  tail -n 1 $TASKFILE > $TASKFILE.gff && \
-  exonerate --model protein2genome -Q protein --refine full -T dna -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' >> /dev/shm/tmp$MYPID/run_exonerate.sh && \
-  echo -n $MAX_INTRON >> /dev/shm/tmp$MYPID/run_exonerate.sh && \
-  echo ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff 2>/dev/null | tee exonerate.out |\
-  awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
-  grep "^$GENOME" >> $TASKFILE.gff
-fi 
 rm $TASKFILE
 fi
 rm -rf /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa ' >> /dev/shm/tmp$MYPID/run_exonerate.sh && \
