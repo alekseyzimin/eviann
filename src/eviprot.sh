@@ -123,17 +123,23 @@ ufasta sizes -H $PROTEINN | \
 perl -ane 'BEGIN{$fn="'$PROTEINN'";$index=1;$batch_size=int("'$BATCH_SIZE'");open(FILE,">$fn.$index.batch");$n=0;}{if($n > $batch_size){close(FILE);$index++;open(FILE,">$fn.$index.batch");$n=$F[1];}else{$n+=$F[1];}print FILE $F[0],"\n";}' && \
 NUM_BATCHES=`ls $PROTEINN.*.batch |wc -l` && \
 echo "#!/bin/bash" > run_tblastn.sh && \
+echo "if [ ! -e tblastn.\$1.out ]; then" >> run_tblastn.sh && \
 echo "ufasta extract -f \$1 $PROTEINN > \$1.fa && \\" >>  run_tblastn.sh && \
 echo -n "tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -task tblastn-fast -max_intron_length $MAX_INTRON -lcase_masking -soft_masking true -num_threads " >> run_tblastn.sh && \
 echo -n $(($NUM_THREADS/4+1)) >> run_tblastn.sh && \
-echo " -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=75) print \$0}' > tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
+echo " -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=75) print \$0}' > tblastn.\$1.out.tmp && mv tblastn.\$1.out.tmp tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
+echo "fi" >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \
 ls $PROTEINN.*.batch |xargs -P $NUM_THREADS -I {} ./run_tblastn.sh {} 
-rm -f $PROTEINN.*.batch $PROTEINN.*.batch.fa run_tblastn.sh && \
-log "Concatenating outputs" && \
-cat tblastn.$PROTEINN.*.batch.out | \
-sort -S 10% > $PROTEINN.tblastn.tmp && \
-mv $PROTEINN.tblastn.tmp ../$PROTEINN.tblastn && \
+NUM_BATCHES_DONE=`ls tblastn.$PROTEINN.*.batch.out |wc -l` && \
+if [ $NUM_BATCHES -eq $NUM_BATCHES_DONE ];then
+  log "Concatenating outputs" && \
+  cat tblastn.$PROTEINN.*.batch.out | \
+  sort -S 10% > $PROTEINN.tblastn.tmp && \
+  mv $PROTEINN.tblastn.tmp ../$PROTEINN.tblastn
+else
+  cd .. && error_exit "Alignment of proteins failed, please rerun eviprot"
+fi
 cd .. && \
 rm -rf protein_align.tmp && \
 touch protein2genome.protein_align.success && rm -f protein2genome.exonerate_gff.success

@@ -166,7 +166,7 @@ if [ ! -s $UNIPROT ];then
   cd  .. && rm -rf tttt && error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa> with an ABSOLUTE Path"
 fi
 if [ ! -s $PROTEINFILE ];then
-  echo "Warning: proteins from related species are not specified, or file $PROTEINFILE is missing using Uniprot proteins as fallback option" && \
+  echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
   cd .. && \
   export PROTEINFILE=$PWD/uniprot_sprot.nonred.85.fasta && \
   export PROTEIN=uniprot_sprot.nonred.85.fasta && \
