@@ -346,7 +346,7 @@ PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
 exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > /dev/shm/tmp$MYPID/run_exonerate.sh
 echo -n $MAX_INTRON >> /dev/shm/tmp$MYPID/run_exonerate.sh
-echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff 2>/dev/null | tee exonerate.out |\
+echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget 2>/dev/null | tee exonerate.out |\
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
 grep "^$GENOME" >> $TASKFILE.gff && \
 rm $TASKFILE
