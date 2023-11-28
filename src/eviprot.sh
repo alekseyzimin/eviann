@@ -195,121 +195,72 @@ perl -e '{
     if($f[0] eq $prot){
       push(@lines,$line);
     }else{
-      if(not($prot eq "")){
-        @filenames=();
-        @filecontents=();
-        #we first sort lines by bitscore in reverse
-        @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @lines;
-        #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
-        $prev_length=0;
-        for(my $i=0;$i<=$#lines_all_sorted;$i++){
-          next if($lines_all_sorted[$i] eq "");
-          @ff=split(/\t/,$lines_all_sorted[$i]);
-          @lines_filter=();
-          push(@lines_filter,$lines_all_sorted[$i]);
-          #print "NEW center $i $lines_all_sorted[$i]\n";
-          $lines_all_sorted[$i]="";
-          $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
-          $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
-          my $new_seq=$ff[1];
-          my $new_ori="+";
-          $new_ori="-" if($ff[8]>$ff[9]);
-          #here we build a cluster of matches
-          $cluster_size=$ff[3]*$ff[2];
-          for(my $j=0;$j<=$#lines_all_sorted;$j++){
-            next if($lines_all_sorted[$j] eq "");
-            @ffc=split(/\t/,$lines_all_sorted[$j]);
-            next if(not($ffc[1] eq  $new_seq));
-            $lori="+";
-            $lori="-" if($ffc[8]>$ffc[9]);
-            next if(not($lori eq  $new_ori));
-	    $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
-	    $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
-            if($endl > $start-$max_intron && $startl < $end+$max_intron){
-              $cluster_size+=$ffc[3]*$ffc[2];
-              push(@lines_filter,$lines_all_sorted[$j]);
-              $lines_all_sorted[$j]="";
-	      $start = $startl if($startl < $start);
-              $end = $endl if($endl > $end);
-            }
-          }
-          $start = ($start-$padding)>=0 ? $start-$padding :0;
-          $prev_length=$cluster_size if($prev_length==0 || $cluster_size>$prev_length);
-          #print "CLUSTER $cluster_size PREV $prev_length $start $end $new_seq\n";
-          if($cluster_size >$prev_length*$match_ratio){
-            #print "OUTPUT cluster $start $end $new_seq\n";
-            push(@filenames,"$new_seq.$prot.$start.taskfile");
-            push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot:$new_seq:$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
-          }
-        }#for
-        for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
-          open(OUTFILE,">$pathprefix$filenames[$k]");
-          print OUTFILE $filecontents[$k];
-          close(OUTFILE);
-        }
-      }#if
+      cluster_alignments(@lines) if(not($prot eq ""));
       @lines=();
       push(@lines,$line);
       $prot=$f[0];
     }#if
   } #while
-  #the last one
-      if(not($prot eq "")){
-        @filenames=();
-        @filecontents=();
-        #we first sort lines by bitscore in reverse
-        @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @lines;
-        #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
-        $prev_length=0;
-        for(my $i=0;$i<=$#lines_all_sorted;$i++){
-          next if($lines_all_sorted[$i] eq "");
-          @ff=split(/\t/,$lines_all_sorted[$i]);
-          @lines_filter=();
-          push(@lines_filter,$lines_all_sorted[$i]);
-          #print "NEW center $i $lines_all_sorted[$i]\n";
-          $lines_all_sorted[$i]="";
-          $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
-          $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
-          my $new_seq=$ff[1];
-          my $new_ori="+";
-          $new_ori="-" if($ff[8]>$ff[9]);
-          #here we build a cluster of matches
-          $cluster_size=$ff[3]*$ff[2];
-          for(my $j=0;$j<=$#lines_all_sorted;$j++){
-            next if($lines_all_sorted[$j] eq "");
-            @ffc=split(/\t/,$lines_all_sorted[$j]);
-            next if(not($ffc[1] eq  $new_seq));
-            $lori="+";
-            $lori="-" if($ffc[8]>$ffc[9]);
-            next if(not($lori eq  $new_ori));
-            $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
-            $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
-            if($endl > $start-$max_intron && $startl < $end+$max_intron){
-              $cluster_size+=$ffc[3]*$ffc[2];
-              push(@lines_filter,$lines_all_sorted[$j]);
-              $lines_all_sorted[$j]="";
-              $start = $startl if($startl < $start);
-              $end = $endl if($endl > $end);
-            }
-          }
-          $start = ($start-$padding)>=0 ? $start-$padding :0;
-          $prev_length=$cluster_size if($prev_length==0 || $cluster_size>$prev_length);
-          #print "CLUSTER $cluster_size PREV $prev_length $start $end $new_seq\n";
-          if($cluster_size >$prev_length*$match_ratio){
-            #print "OUTPUT cluster $start $end $new_seq\n";
-            push(@filenames,"$new_seq.$prot.$start.taskfile");
-            push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot:$new_seq:$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
-          }
-        }#for
-        for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
-          open(OUTFILE,">$pathprefix$filenames[$k]");
-          print OUTFILE $filecontents[$k];
-          close(OUTFILE);
+#the last one
+  cluster_alignments(@lines) if(not($prot eq ""));
+
+  sub cluster_alignments{
+    my @input_lines=@_;
+    my @filenames=();
+    my @filecontents=();
+#we first sort lines by bitscore in reverse
+    my @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @input_lines;
+#print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
+    my $prev_length=0;
+    for(my $i=0;$i<=$#lines_all_sorted;$i++){
+      next if($lines_all_sorted[$i] eq "");
+      my @ff=split(/\t/,$lines_all_sorted[$i]);
+      my @lines_filter=();
+      push(@lines_filter,$lines_all_sorted[$i]);
+#print "NEW center $i $lines_all_sorted[$i]\n";
+      $lines_all_sorted[$i]="";
+      $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
+      $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+      my $new_seq=$ff[1];
+      my $new_ori="+";
+      $new_ori="-" if($ff[8]>$ff[9]);
+#here we build a cluster of matches
+      $cluster_size=$ff[3]*$ff[2];
+      for(my $j=0;$j<=$#lines_all_sorted;$j++){
+        next if($lines_all_sorted[$j] eq "");
+        @ffc=split(/\t/,$lines_all_sorted[$j]);
+        next if(not($ffc[1] eq  $new_seq));
+        $lori="+";
+        $lori="-" if($ffc[8]>$ffc[9]);
+        next if(not($lori eq  $new_ori));
+        $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
+        $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
+        if($endl > $start-$max_intron && $startl < $end+$max_intron){
+          $cluster_size+=$ffc[3]*$ffc[2];
+          push(@lines_filter,$lines_all_sorted[$j]);
+          $lines_all_sorted[$j]="";
+          $start = $startl if($startl < $start);
+          $end = $endl if($endl > $end);
         }
-      }#if
+      }
+      $start = ($start-$padding)>=0 ? $start-$padding :0;
+      $prev_length=$cluster_size if($prev_length==0 || $cluster_size>$prev_length);
+#print "CLUSTER $cluster_size PREV $prev_length $start $end $new_seq\n";
+      if($cluster_size >$prev_length*$match_ratio){
+#print "OUTPUT cluster $start $end $new_seq\n";
+        push(@filenames,"$new_seq.$prot.$start.taskfile");
+        push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot:$new_seq:$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+      }
+    }#for
+    for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
+      open(OUTFILE,">$pathprefix$filenames[$k]");
+      print OUTFILE $filecontents[$k];
+      close(OUTFILE);
+    }
+  }
 }' && \
-log "Running exonerate on the filtered sequences" && \
-echo '   A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  Z  X  *
+    log "Running exonerate on the filtered sequences" && \
+    echo '   A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  Z  X  *
 A  5 -2 -2 -2 -1 -1 -1  0 -2 -2 -2 -1 -1 -3 -1  1  0 -3 -2  0 -2 -1 -1 -4
 R -2  6 -1 -2 -4  1 -1 -3  0 -3 -3  2 -2 -4 -2 -1 -1 -4 -3 -3 -1  0 -1 -4
 N -2 -1  6  1 -3  0 -1 -1  0 -4 -4  0 -3 -4 -3  0  0 -4 -3 -4  5  0 -1 -4
