@@ -45,6 +45,7 @@ echo "-p <string: proteins fasta file>"
 echo "-t <int: number of threads, default: 16>"
 echo "-m <int: max intron size, default: 200000>"
 echo "--version report version" 
+echo "-h|-u this message"
 echo ""
 echo "External dependencies: must have ufasta, makeblastdb, tblastn and exonerate available on the PATH"
 which tblastn
@@ -100,18 +101,24 @@ do
             ;;
         *)
             echo "Unknown option $1"
+            usage
             exit 1        # unknown option
             ;;
     esac
     shift
 done
 
+#getting absolute paths
+GENOME=`realpath $GENOME`
+PROTEIN=`realpath $PROTEIN`
+
+#getting filenames
 PROTEINN=`basename $PROTEIN`;
 GENOMEN=`basename $GENOME`
 
 #remove duplicates from protein sequences
 if [ -s $PROTEIN ];then
-  ufasta one $PROTEIN | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $PROTEINN.uniq.faa
+  ufasta one $PROTEIN | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $PROTEINN.uniq.faa && \
   PROTEIN=$PROTEINN.uniq.faa
 else
   error_exit "Query protein file $PROTEIN is empty or does not exist"

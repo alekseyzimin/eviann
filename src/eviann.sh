@@ -1,6 +1,5 @@
 #!/bin/bash
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
-GENOME="genome.fa"
 PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="genome.fa"
 RNASEQ_PAIRED="paired"
@@ -133,14 +132,25 @@ do
             ;;
         *)
             echo "Unknown option $1"
+            usage
             exit 1        # unknown option
             ;;
     esac
     shift
 done
 
+#get absolute paths
+GENOMEFILE=`realpath $GENOME`
+PROTEINFILE=`realpath $PROTEINFILE`
+RNASEQ_PAIRED=`realpath $RNASEQ_PAIRED`
+RNASEQ_UNPAIRED=`realpath RNASEQ_UNPAIRED`
+ALT_EST=`realpath $ALT_EST`
+UNIPROT=`realpath $UNIPROT`
+
+#get filenames to use as prefixes
 GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
+
 #checking is dependencies are installed
 for prog in $(echo "ufasta hisat2 minimap2 stringtie gffread blastp tblastn makeblastdb gffcompare TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog on the PATH... " && \
@@ -158,25 +168,19 @@ else
 fi
 
 #checking inputs
-mkdir -p tttt && cd tttt
 if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ]  && [ ! -s $ALT_EST ];then
-  cd .. && rm -rf tttt && error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e.  Paths for ALL files must be ABSOLUTE."
+  error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e"
 fi
 if [ ! -s $UNIPROT ];then
-  cd  .. && rm -rf tttt && error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa> with an ABSOLUTE Path"
+  error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa>"
 fi
 if [ ! -s $PROTEINFILE ];then
   echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
-  cd .. && \
-  export PROTEINFILE=$PWD/uniprot_sprot.nonred.85.fasta && \
-  export PROTEIN=uniprot_sprot.nonred.85.fasta && \
-  cd tttt 
+  export PROTEINFILE=$UNIPROT && \
+  export PROTEIN=`basename $UNIPROT`
 fi
-cd .. && rm -rf tttt
-
-#path to genome does not have to be absolute
 if [ ! -s $GENOMEFILE ];then
-  cd .. && error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
+  error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
 fi
 
 #first we align
