@@ -39,11 +39,12 @@ function error_exit {
 
 function usage {
 echo "Usage:"
-echo "protein2genome.sh [arguments]"
-echo "-a <assembly contigs or scaffolds>"
-echo "-p <proteins fasta file>"
-echo "-t <number of threads, default: 16>"
-echo "-m <max intron size, default: 200000>"
+echo "eviprot.sh [arguments]"
+echo "-a <string: assembly contigs or scaffolds>"
+echo "-p <string: proteins fasta file>"
+echo "-t <int: number of threads, default: 16>"
+echo "-m <int: max intron size, default: 200000>"
+echo "--version report version" 
 echo ""
 echo "External dependencies: must have ufasta, makeblastdb, tblastn and exonerate available on the PATH"
 which tblastn
@@ -88,6 +89,10 @@ do
             ;;
         -v|--verbose)
             set -x
+            ;;
+        --version)
+            echo "version 1.0.2"
+            exit 0
             ;;
         -h|--help|-u|--usage)
             usage
