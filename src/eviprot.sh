@@ -147,10 +147,15 @@ if [ ! -e protein2genome.exonerate_gff.success ] && [ -e protein2genome.protein_
 log "Filtering protein alignment file"
 mkdir -p /dev/shm/tmp$MYPID && \
 perl -e '{
-  $pathprefix="/dev/shm/tmp'$MYPID'/";
-  $prot="";
-  $seq="";
-  $padding=5000;
+  my $pathprefix="/dev/shm/tmp'$MYPID'/";
+  my $prot="";
+  my $seq="";
+  my $padding=5000;
+  my @filenames=();
+  my @filecontents=();
+  my @starts=();
+  my @ends=();
+  my @scores=();
 
   open(FILE,"'$GENOME'");
   $ctg="";
@@ -187,6 +192,7 @@ perl -e '{
   open(FILE,"'$PROTEINN'.tblastn");
   $max_intron=int("'$MAX_INTRON'");
   $max_matches=int("'$MAX_MATCHES'");
+  $max_matches=1 if($max_matches < 1);
   $match_ratio="'$MATCH_RATIO'"+0;
   while($line=<FILE>){
     chomp($line);
@@ -203,17 +209,35 @@ perl -e '{
   } #while
 #the last one
   cluster_alignments(@lines) if(not($prot eq ""));
+#final output
+#first we determine the best matches for each pair of start and end
+  my @cluster_scores=();
+  my @cluster_indices=();
+  for (my $i=0;$i<=$#scores;$i++){
+    $cluster_scores{"$starts[$i] $ends[$i]"}.="$scores[$i] ";
+    $cluster_indices{"$starts[$i] $ends[$i]"}.="$i ";
+  }
+  foreach my $c(keys %cluster_scores){
+    my @cscores=split(/\s+/,$cluster_scores{$c});
+    my @cindices=split(/\s+/,$cluster_indices{$c});
+    my @cindices_sorted=sort {$cscores[$b] <=> $cscores[$a]} @cindices;
+    for (my $i=0;$i<7 && $i<=$#cindices_sorted;$i++){
+      open(OUTFILE,">$pathprefix$filenames[@cindices_sorted[$i]]");
+      print OUTFILE $filecontents[@cindices_sorted[$i]];
+      close(OUTFILE);
+    }
+  }
 
   sub cluster_alignments{
     my @input_lines=@_;
-    my @filenames=();
-    my @filecontents=();
 #we first sort lines by bitscore in reverse
     my @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @input_lines;
 #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
     my $prev_length=0;
+    my $num_matches=0;
     for(my $i=0;$i<=$#lines_all_sorted;$i++){
       next if($lines_all_sorted[$i] eq "");
+      next if($num_matches >= $max_matches);
       my @ff=split(/\t/,$lines_all_sorted[$i]);
       my @lines_filter=();
       push(@lines_filter,$lines_all_sorted[$i]);
@@ -247,17 +271,16 @@ perl -e '{
       $prev_length=$cluster_size if($prev_length==0 || $cluster_size>$prev_length);
 #print "CLUSTER $cluster_size PREV $prev_length $start $end $new_seq\n";
       if($cluster_size >$prev_length*$match_ratio){
+        $num_matches++;
 #print "OUTPUT cluster $start $end $new_seq\n";
         push(@filenames,"$new_seq.$prot.$start.taskfile");
         push(@filecontents,">$new_seq\n".substr($sequence{$new_seq},$start,$end-$start+$padding)."\n>$prot:$new_seq:$start\n".$protsequence{$prot}."\n#\t$start\t".($end-$start+$padding)."\n");
+        push(@starts,$start);
+        push(@ends,$end);
+        push(@scores,$cluster_size)
       }
     }#for
-    for(my $k=0;$k<=$#filenames && $k<$max_matches;$k++){
-      open(OUTFILE,">$pathprefix$filenames[$k]");
-      print OUTFILE $filecontents[$k];
-      close(OUTFILE);
-    }
-  }
+  }#sub
 }' && \
     log "Running exonerate on the filtered sequences" && \
     echo '   A  R  N  D  C  Q  E  G  H  I  L  K  M  F  P  S  T  W  Y  V  B  Z  X  *
