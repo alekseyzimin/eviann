@@ -140,7 +140,7 @@ do
 done
 
 #get absolute paths
-GENOMEFILE=`realpath $GENOME`
+GENOMEFILE=`realpath $GENOMEFILE`
 PROTEINFILE=`realpath $PROTEINFILE`
 RNASEQ_PAIRED=`realpath $RNASEQ_PAIRED`
 RNASEQ_UNPAIRED=`realpath RNASEQ_UNPAIRED`
