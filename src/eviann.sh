@@ -232,7 +232,7 @@ if [ ! -e protein_align.success ];then
   log "Aligning proteins"
   eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
   if [ -s $GENOME.$PROTEIN.palign.gff ];then
-    touch protein_align.success
+    touch protein_align.success && rm -f merge.success
   fi
 fi
 
