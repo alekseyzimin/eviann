@@ -27,10 +27,9 @@ if tty -s < /dev/fd/1 2> /dev/null; then
     NC='\e[0m'
 fi
 
-trap abort 1 2 15
+trap abort 1 2 3 9 15
 function abort {
 log "Aborted"
-rm -rf /dev/shm/tmp_$PID
 kill -9 0
 exit 1
 }
@@ -234,7 +233,7 @@ fi
 
 if [ ! -e protein_align.success ];then
   log "Aligning proteins"
-  eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+  $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
   if [ -s $GENOME.$PROTEIN.palign.gff ];then
     touch protein_align.success && rm -f merge.success
   fi

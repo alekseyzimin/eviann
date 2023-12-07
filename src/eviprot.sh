@@ -18,10 +18,10 @@ if tty -s < /dev/fd/1 2> /dev/null; then
     NC='\e[0m'
 fi
 
-trap abort 1 2 15
+trap abort 1 2 3 9 15
 function abort {
 log "Aborted"
-rm -rf /dev/shm/tmp$MYPID
+rm -rf /dev/shm/tmp$MYPID &
 kill -9 0
 exit 1
 }
@@ -226,16 +226,16 @@ perl -e '{
   my @cluster_scores=();
   my @cluster_indices=();
   for (my $i=0;$i<=$#scores;$i++){
-    $cluster_scores{"$starts[$i] $ends[$i]"}.="$scores[$i] ";
     $cluster_indices{"$starts[$i] $ends[$i]"}.="$i ";
   }
-  foreach my $c(keys %cluster_scores){
-    my @cscores=split(/\s+/,$cluster_scores{$c});
+  foreach my $c(keys %cluster_indices){
     my @cindices=split(/\s+/,$cluster_indices{$c});
-    my @cindices_sorted=sort {$cscores[$b] <=> $cscores[$a]} @cindices;
-    for (my $i=0;$i<7 && $i<=$#cindices_sorted;$i++){
-      open(OUTFILE,">$pathprefix$filenames[@cindices_sorted[$i]]");
-      print OUTFILE $filecontents[@cindices_sorted[$i]];
+    my @cindices_sorted=sort {$scores[$b] <=> $scores[$a]} @cindices;
+    print "DEBUG cluster $cluster_indices{$c}\n";
+    for (my $i=0;$i<=$#cindices_sorted && $scores[$cindices_sorted[$i]]>=0.8*$scores[$cindices_sorted[0]];$i++){
+      print "DEBUG $i $scores[$cindices_sorted[$i]] $filenames[$cindices_sorted[$i]]\n";
+      open(OUTFILE,">$pathprefix$filenames[$cindices_sorted[$i]]");
+      print OUTFILE $filecontents[$cindices_sorted[$i]];
       close(OUTFILE);
     }
   }
@@ -261,7 +261,7 @@ perl -e '{
       my $new_ori="+";
       $new_ori="-" if($ff[8]>$ff[9]);
 #here we build a cluster of matches
-      $cluster_size=$ff[3]*$ff[2];
+      $cluster_size=$ff[11];
       for(my $j=0;$j<=$#lines_all_sorted;$j++){
         next if($lines_all_sorted[$j] eq "");
         @ffc=split(/\t/,$lines_all_sorted[$j]);
@@ -272,7 +272,7 @@ perl -e '{
         $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
         $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
         if($endl > $start-$max_intron && $startl < $end+$max_intron){
-          $cluster_size+=$ffc[3]*$ffc[2];
+          $cluster_size+=$ffc[11];
           push(@lines_filter,$lines_all_sorted[$j]);
           $lines_all_sorted[$j]="";
           $start = $startl if($startl < $start);
@@ -319,7 +319,7 @@ V  0 -3 -4 -4 -1 -3 -3 -4 -4  3  1 -3  1 -1 -3 -2  0 -3 -2  4 -4 -3 -1 -4
 B -2 -1  5  5 -4  0  1 -1 -1 -4 -4 -1 -3 -4 -2  0 -1 -5 -3 -4  5  0 -1 -4
 Z -1  0  0  1 -4  4  5 -3  0 -4 -3  1 -1 -4 -2  0 -1 -3 -3 -3  0  5 -1 -4
 X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -4
-* -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4  1' > /dev/shm/tmp$MYPID/blosum80.txt && \
+* -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4 -4  1' > ./blosum80.txt && \
 echo -n '#!/bin/bash
 TASKFILE=$1
 TASKFILEN=`basename $1`
@@ -330,17 +330,17 @@ head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILEN.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILEN.faa && \
 PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
 tail -n 1 $TASKFILE > $TASKFILE.gff && \
-exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > /dev/shm/tmp$MYPID/run_exonerate.sh
-echo -n $MAX_INTRON >> /dev/shm/tmp$MYPID/run_exonerate.sh
+exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > run_exonerate.sh
+echo -n $MAX_INTRON >> run_exonerate.sh
 echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget 2>/dev/null | tee exonerate.out |\
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
 grep "^$GENOME" >> $TASKFILE.gff && \
 rm $TASKFILE
 fi
-rm -rf /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa ' >> /dev/shm/tmp$MYPID/run_exonerate.sh && \
-chmod 0755 /dev/shm/tmp$MYPID/run_exonerate.sh && \
-(cd /dev/shm/tmp$MYPID && ls | grep .taskfile$ |xargs -P $NUM_THREADS -I {} ./run_exonerate.sh {} )
-(cd /dev/shm/tmp$MYPID && ls | grep .taskfile.gff$ | xargs cat ) | \
+rm -rf /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa ' >> run_exonerate.sh && \
+chmod 0755 run_exonerate.sh && \
+ls /dev/shm/tmp$MYPID |awk '{print "/dev/shm/tmp'$MYPID'/"$1}' | grep taskfile$ |xargs -P $NUM_THREADS -I {} ./run_exonerate.sh {} 
+ls /dev/shm/tmp$MYPID |awk '{print "/dev/shm/tmp'$MYPID'/"$1}' | grep taskfile.gff$ | xargs cat | \
 perl -e '{
   while($line=<STDIN>){
     chomp($line);
