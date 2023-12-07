@@ -231,9 +231,9 @@ perl -e '{
   foreach my $c(keys %cluster_indices){
     my @cindices=split(/\s+/,$cluster_indices{$c});
     my @cindices_sorted=sort {$scores[$b] <=> $scores[$a]} @cindices;
-    print "DEBUG cluster $cluster_indices{$c}\n";
+    #print "DEBUG cluster $cluster_indices{$c}\n";
     for (my $i=0;$i<=$#cindices_sorted && $scores[$cindices_sorted[$i]]>=0.8*$scores[$cindices_sorted[0]];$i++){
-      print "DEBUG $i $scores[$cindices_sorted[$i]] $filenames[$cindices_sorted[$i]]\n";
+      #print "DEBUG $i $scores[$cindices_sorted[$i]] $filenames[$cindices_sorted[$i]]\n";
       open(OUTFILE,">$pathprefix$filenames[$cindices_sorted[$i]]");
       print OUTFILE $filecontents[$cindices_sorted[$i]];
       close(OUTFILE);
