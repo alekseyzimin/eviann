@@ -323,24 +323,26 @@ X -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -4
 echo -n '#!/bin/bash
 TASKFILE=$1
 TASKFILEN=`basename $1`
-if [ -s $TASKFILE ] ;then
+if [ -s $TASKFILE ] && [ ! -s  exonerate_alignments.tmp/$TASKFILEN.gff ];then
 GENOME=`head -n 1 $TASKFILE | cut -c 2-`
 head -n 2 $TASKFILE > /dev/shm/$TASKFILEN.fa && \
 head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILEN.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILEN.faa && \
 PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
-tail -n 1 $TASKFILE > $TASKFILE.gff && \
+tail -n 1 $TASKFILE  > exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
 exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > run_exonerate.sh
 echo -n $MAX_INTRON >> run_exonerate.sh
 echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget 2>/dev/null | tee exonerate.out |\
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
-grep "^$GENOME" >> $TASKFILE.gff && \
-rm $TASKFILE
+grep "^$GENOME" >>  exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
+rm $TASKFILE && \
+mv  exonerate_alignments.tmp/$TASKFILEN.gff.tmp  exonerate_alignments.tmp/$TASKFILEN.gff || rm -f  exonerate_alignments.tmp/$TASKFILEN.gff.tmp
 fi
 rm -rf /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa ' >> run_exonerate.sh && \
 chmod 0755 run_exonerate.sh && \
+mkdir -p exonerate_alignments.tmp && \
 ls /dev/shm/tmp$MYPID |awk '{print "/dev/shm/tmp'$MYPID'/"$1}' | grep taskfile$ |xargs -P $NUM_THREADS -I {} ./run_exonerate.sh {} 
-ls /dev/shm/tmp$MYPID |awk '{print "/dev/shm/tmp'$MYPID'/"$1}' | grep taskfile.gff$ | xargs cat | \
+ls  exonerate_alignments.tmp | grep taskfile.gff$ | awk '{print "exonerate_alignments.tmp/"$1}'| xargs cat | \
 perl -e '{
   while($line=<STDIN>){
     chomp($line);
@@ -368,6 +370,7 @@ perl -e '{
     }
   }
 }' > $GENOMEN.$PROTEINN.palign.gff.tmp && mv $GENOMEN.$PROTEINN.palign.gff.tmp $GENOMEN.$PROTEINN.palign.gff && \
+rm -rf exonerate_alignments.tmp && \
 rm -rf /dev/shm/tmp$MYPID && \
 touch protein2genome.exonerate_gff.success && \
 log "Output gff is in $GENOMEN.$PROTEINN.palign.gff"
