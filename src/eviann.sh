@@ -551,7 +551,7 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ] && [ ! -e functional.suc
     my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
     my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
     my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-    rm -rf $GENOME.transcripts.fasta $GENOME.proteins.fasta $GENOME.pseudo_label.gff
+    rm -rf blastp4.out 
     touch functional.success && rm -rf pseudo_detect.success || error_exit "Functional annotation failed"
   fi
 fi 
