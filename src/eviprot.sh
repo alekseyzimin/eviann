@@ -251,6 +251,7 @@ perl -e '{
       next if($lines_all_sorted[$i] eq "");
       next if($num_matches >= $max_matches);
       my @ff=split(/\t/,$lines_all_sorted[$i]);
+      next if($ff[3] < length($protsequence{$ff[0]})*0.1);
       my @lines_filter=();
       push(@lines_filter,$lines_all_sorted[$i]);
 #print "NEW center $i $lines_all_sorted[$i]\n";
