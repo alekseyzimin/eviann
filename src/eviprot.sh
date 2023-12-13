@@ -333,7 +333,7 @@ PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
 tail -n 1 $TASKFILE  > exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
 exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > run_exonerate.sh
 echo -n $MAX_INTRON >> run_exonerate.sh
-echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget --seedrepeat 10 2>/dev/null | tee exonerate.out |\
+echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget --seedrepeat 10 2>/dev/null |\
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
 grep "^$GENOME" >>  exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
 rm $TASKFILE && \
@@ -371,9 +371,8 @@ perl -e '{
     }
   }
 }' > $GENOMEN.$PROTEINN.palign.gff.tmp && mv $GENOMEN.$PROTEINN.palign.gff.tmp $GENOMEN.$PROTEINN.palign.gff && \
-rm -rf exonerate_alignments.tmp && \
-rm -rf /dev/shm/tmp$MYPID && \
+rm -rf exonerate_alignments.tmp ./run_exonerate.sh blosum80.txt /dev/shm/tmp$MYPID && \
 touch protein2genome.exonerate_gff.success && \
-log "Output gff is in $GENOMEN.$PROTEINN.palign.gff"
+log "Output protein alignments are in $GENOMEN.$PROTEINN.palign.gff"
 fi
 
