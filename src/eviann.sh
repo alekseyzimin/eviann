@@ -124,6 +124,7 @@ do
             ;;
         --debug)
             DEBUG=1
+            log "DEBUG mode on, will not clean up intermediate files"
             ;;
         -h|--help|-u|--usage)
             usage
