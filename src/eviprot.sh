@@ -244,6 +244,7 @@ perl -e '{
     my @input_lines=@_;
 #we first sort lines by bitscore in reverse
     my @lines_all_sorted = sort {(split(/\t/,$b))[11] <=> (split(/\t/,$a))[11]} @input_lines;
+    my @lines_all_sorted_coord = sort {(split(/\t/,$a))[8] <=> (split(/\t/,$b))[8]} @input_lines;
 #print "ALL LINES:\n",join("\n",@lines_all_sorted),"\n";
     my $prev_length=0;
     my $num_matches=0;
@@ -252,32 +253,101 @@ perl -e '{
       next if($num_matches >= $max_matches);
       my @ff=split(/\t/,$lines_all_sorted[$i]);
       next if($ff[3] < length($protsequence{$ff[0]})*0.1);
-      my @lines_filter=();
-      push(@lines_filter,$lines_all_sorted[$i]);
 #print "NEW center $i $lines_all_sorted[$i]\n";
-      $lines_all_sorted[$i]="";
       $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
       $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
+      $scf = $ff[1];
       my $new_seq=$ff[1];
       my $new_ori="+";
       $new_ori="-" if($ff[8]>$ff[9]);
 #here we build a cluster of matches
       $cluster_size=$ff[11];
-      for(my $j=0;$j<=$#lines_all_sorted;$j++){
-        next if($lines_all_sorted[$j] eq "");
-        @ffc=split(/\t/,$lines_all_sorted[$j]);
-        next if(not($ffc[1] eq  $new_seq));
-        $lori="+";
-        $lori="-" if($ffc[8]>$ffc[9]);
-        next if(not($lori eq  $new_ori));
-        $startl = $ffc[8] < $ffc[9] ? $ffc[8] : $ffc[9];
-        $endl = $ffc[8] < $ffc[9] ? $ffc[9] : $ffc[8];
-        if($endl > $start-$max_intron && $startl < $end+$max_intron){
-          $cluster_size+=$ffc[11];
-          push(@lines_filter,$lines_all_sorted[$j]);
-          $lines_all_sorted[$j]="";
-          $start = $startl if($startl < $start);
-          $end = $endl if($endl > $end);
+      my $center_coord=-1;
+#we find the coordinate of the starting line in the sorted lines by coordinate and then go find the boundaries in the protein coordnates
+      for(my $j=0;$j<=$#lines_all_sorted_coord;$j++){
+        if($lines_all_sorted_coord[$j] eq $lines_all_sorted[$i]){
+          $center_coord=$j;
+          $j=$#lines_all_sorted_coord+1;
+        }
+      }
+      next if($center_coord == -1);
+      #going into the negative direction
+      my $min_prot_coord = $new_ori eq "+" ? $ff[6] : $ff[7];
+      my $max_prot_coord = $new_ori eq "+" ? $ff[7] : $ff[6];      
+      if($center_coord>0){
+        for(my $j=$center_coord-1;$j>=0;$j--){
+          next if($lines_all_sorted_coord[$j] eq "");
+          @ffc=split(/\t/,$lines_all_sorted_coord[$j]);
+          next if(not($ffc[1] eq $scf));
+          my $lori="+";
+          $lori="-" if($ffc[8]>$ffc[9]);
+          next if(not($lori eq  $new_ori));
+          if($new_ori eq "+"){
+            if($start-$ffc[8]<$max_intron){
+              if($ffc[6]<$min_prot_coord){
+                $min_prot_coord=$ffc[6];
+                $start=$ffc[8];
+                $cluster_size+=$ffc[11];
+                $lines_all_sorted_coord[$j]="";
+              }else{
+                $j=-1;
+              }
+            }else{
+              $j=-1;
+            }
+          }else{
+            if($start-$ffc[9]<$max_intron){
+              if($ffc[7]>$max_prot_coord){
+                $max_prot_coord = $ffc[7];
+                $start=$ffc[9];
+                $cluster_size+=$ffc[11];
+                $lines_all_sorted_coord[$j]="";
+              }else{
+                $j=-1;
+              }
+            }else{
+              $j=-1;
+            }
+          }
+        }
+      }
+
+      #going into the positive direction
+      if($center_coord<$#lines_all_sorted_coord){
+        for(my $j=$center_coord+1;$j<=$#lines_all_sorted_coord;$j++){
+          next if($lines_all_sorted_coord[$j] eq "");
+          @ffc=split(/\t/,$lines_all_sorted_coord[$j]);
+          next if(not($ffc[1] eq $scf));
+          my $lori="+";
+          $lori="-" if($ffc[8]>$ffc[9]);
+          next if(not($lori eq  $new_ori));
+          if($new_ori eq "+"){
+            if($ffc[9]-$end<$max_intron){
+              if($ffc[7]>$max_prot_coord){
+                $max_prot_coord=$ffc[7];
+                $end=$ffc[9];
+                $cluster_size+=$ffc[11];
+                $lines_all_sorted_coord[$j]="";
+              }else{
+                $j=$#lines_all_sorted_coord+1;
+              }
+            }else{
+              $j=$#lines_all_sorted_coord+1;
+            }   
+          }else{
+            if($ffc[8]-$end<$max_intron){
+              if($ffc[6]<$min_prot_coord){
+                $min_prot_coord = $ffc[6];
+                $end=$ffc[8];
+                $lines_all_sorted_coord[$j]="";
+                $cluster_size+=$ffc[11];
+              }else{
+                $j=$#lines_all_sorted_coord+1;
+              }
+            }else{
+              $j=$#lines_all_sorted_coord+1;
+            }
+          }
         }
       }
       $start = ($start-$padding)>=0 ? $start-$padding :0;
