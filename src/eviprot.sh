@@ -256,7 +256,6 @@ perl -e '{
 #print "NEW center $i $lines_all_sorted[$i]\n";
       $start = $ff[8] < $ff[9] ? $ff[8] : $ff[9];
       $end = $ff[8] < $ff[9] ? $ff[9] : $ff[8];
-      $scf = $ff[1];
       my $new_seq=$ff[1];
       my $new_ori="+";
       $new_ori="-" if($ff[8]>$ff[9]);
@@ -278,7 +277,7 @@ perl -e '{
         for(my $j=$center_coord-1;$j>=0;$j--){
           next if($lines_all_sorted_coord[$j] eq "");
           @ffc=split(/\t/,$lines_all_sorted_coord[$j]);
-          next if(not($ffc[1] eq $scf));
+          next if(not($ffc[1] eq $new_seq));
           my $lori="+";
           $lori="-" if($ffc[8]>$ffc[9]);
           next if(not($lori eq  $new_ori));
@@ -317,7 +316,7 @@ perl -e '{
         for(my $j=$center_coord+1;$j<=$#lines_all_sorted_coord;$j++){
           next if($lines_all_sorted_coord[$j] eq "");
           @ffc=split(/\t/,$lines_all_sorted_coord[$j]);
-          next if(not($ffc[1] eq $scf));
+          next if(not($ffc[1] eq $new_seq));
           my $lori="+";
           $lori="-" if($ffc[8]>$ffc[9]);
           next if(not($lori eq  $new_ori));
