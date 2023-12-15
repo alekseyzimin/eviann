@@ -208,7 +208,8 @@ perl -e '{
   $match_ratio="'$MATCH_RATIO'"+0;
   while($line=<FILE>){
     chomp($line);
-    @f=split(/\t/,$line,3);
+    @f=split(/\t/,$line);
+    next if($f[2]<80);
     next if(not(defined($sequence{$f[1]})) || not(defined($protsequence{$f[0]})));
     if($f[0] eq $prot){
       push(@lines,$line);
