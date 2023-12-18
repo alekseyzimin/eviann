@@ -209,7 +209,6 @@ perl -e '{
   while($line=<FILE>){
     chomp($line);
     @f=split(/\t/,$line);
-    next if($f[2]<80);
     next if(not(defined($sequence{$f[1]})) || not(defined($protsequence{$f[0]})));
     if($f[0] eq $prot){
       push(@lines,$line);
@@ -233,7 +232,7 @@ perl -e '{
     my @cindices=split(/\s+/,$cluster_indices{$c});
     my @cindices_sorted=sort {$scores[$b] <=> $scores[$a]} @cindices;
     #print "DEBUG cluster $cluster_indices{$c}\n";
-    for (my $i=0;$i<=$#cindices_sorted && $scores[$cindices_sorted[$i]]>=0.8*$scores[$cindices_sorted[0]];$i++){
+    for (my $i=0;$i<=$#cindices_sorted && $scores[$cindices_sorted[$i]]>=0.8*$scores[$cindices_sorted[0]] && $i<25;$i++){
       #print "DEBUG $i $scores[$cindices_sorted[$i]] $filenames[$cindices_sorted[$i]]\n";
       open(OUTFILE,">$pathprefix$filenames[$cindices_sorted[$i]]");
       print OUTFILE $filecontents[$cindices_sorted[$i]];
@@ -272,8 +271,6 @@ perl -e '{
       }
       next if($center_coord == -1);
       #going into the negative direction
-      my $min_prot_coord = $new_ori eq "+" ? $ff[6] : $ff[7];
-      my $max_prot_coord = $new_ori eq "+" ? $ff[7] : $ff[6];      
       if($center_coord>0){
         for(my $j=$center_coord-1;$j>=0;$j--){
           next if($lines_all_sorted_coord[$j] eq "");
@@ -284,27 +281,17 @@ perl -e '{
           next if(not($lori eq  $new_ori));
           if($new_ori eq "+"){
             if($start-$ffc[8]<$max_intron){
-              if($ffc[6]<$min_prot_coord){
-                $min_prot_coord=$ffc[6];
-                $start=$ffc[8];
-                $cluster_size+=$ffc[11];
-                $lines_all_sorted_coord[$j]="";
-              }else{
-                $j=-1;
-              }
+              $start=$ffc[8];
+              $cluster_size+=$ffc[11];
+              $lines_all_sorted_coord[$j]="";
             }else{
               $j=-1;
             }
           }else{
             if($start-$ffc[9]<$max_intron){
-              if($ffc[7]>$max_prot_coord){
-                $max_prot_coord = $ffc[7];
-                $start=$ffc[9];
-                $cluster_size+=$ffc[11];
-                $lines_all_sorted_coord[$j]="";
-              }else{
-                $j=-1;
-              }
+              $start=$ffc[9];
+              $cluster_size+=$ffc[11];
+              $lines_all_sorted_coord[$j]="";
             }else{
               $j=-1;
             }
@@ -323,27 +310,17 @@ perl -e '{
           next if(not($lori eq  $new_ori));
           if($new_ori eq "+"){
             if($ffc[9]-$end<$max_intron){
-              if($ffc[7]>$max_prot_coord){
-                $max_prot_coord=$ffc[7];
-                $end=$ffc[9];
-                $cluster_size+=$ffc[11];
-                $lines_all_sorted_coord[$j]="";
-              }else{
-                $j=$#lines_all_sorted_coord+1;
-              }
+              $end=$ffc[9];
+              $cluster_size+=$ffc[11];
+              $lines_all_sorted_coord[$j]="";
             }else{
               $j=$#lines_all_sorted_coord+1;
             }   
           }else{
             if($ffc[8]-$end<$max_intron){
-              if($ffc[6]<$min_prot_coord){
-                $min_prot_coord = $ffc[6];
-                $end=$ffc[8];
-                $lines_all_sorted_coord[$j]="";
-                $cluster_size+=$ffc[11];
-              }else{
-                $j=$#lines_all_sorted_coord+1;
-              }
+              $end=$ffc[8];
+              $lines_all_sorted_coord[$j]="";
+              $cluster_size+=$ffc[11];
             }else{
               $j=$#lines_all_sorted_coord+1;
             }
