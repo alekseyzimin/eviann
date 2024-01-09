@@ -6,6 +6,7 @@ set -o pipefail
 export NUM_THREADS=16
 export MAX_INTRON=200000
 export MAX_MATCHES=2
+export MAX_MATCHES_LOCUS=50
 export MATCH_RATIO="0.6"
 export MYPID=$$
 BATCH_SIZE=250000
@@ -44,6 +45,8 @@ echo "-a <string: assembly contigs or scaffolds>"
 echo "-p <string: proteins fasta file>"
 echo "-t <int: number of threads, default: 16>"
 echo "-m <int: max intron size, default: 200000>"
+echo "-n <int: max matches for a protein, default: 2>"
+echo "-l <int: max matches at a locus, default: 50>"
 echo "--version report version" 
 echo "-h|-u this message"
 echo ""
@@ -82,6 +85,10 @@ do
             ;;
         -n|--num_matches)
             export MAX_MATCHES="$2";
+            shift
+            ;;
+        -l|--num_locus)
+            export MAX_MATCHES_LOCUS="$2";
             shift
             ;;
         -r|--ratio)
@@ -205,6 +212,9 @@ perl -e '{
   $max_intron=int("'$MAX_INTRON'");
   $max_matches=int("'$MAX_MATCHES'");
   $max_matches=1 if($max_matches < 1);
+  $max_matches_locus=int("'$MAX_MATCHES_LOCUS'");
+  $max_matches_locus=1 if($max_matches_locus < 1);
+
   $match_ratio="'$MATCH_RATIO'"+0;
   while($line=<FILE>){
     chomp($line);
@@ -232,7 +242,7 @@ perl -e '{
     my @cindices=split(/\s+/,$cluster_indices{$c});
     my @cindices_sorted=sort {$scores[$b] <=> $scores[$a]} @cindices;
     #print "DEBUG cluster $cluster_indices{$c}\n";
-    for (my $i=0;$i<=$#cindices_sorted && $scores[$cindices_sorted[$i]]>=0.8*$scores[$cindices_sorted[0]] && $i<50;$i++){
+    for (my $i=0;$i<=$#cindices_sorted && $scores[$cindices_sorted[$i]]>=0.8*$scores[$cindices_sorted[0]] && $i<$max_matches_locus;$i++){
       #print "DEBUG $i $scores[$cindices_sorted[$i]] $filenames[$cindices_sorted[$i]]\n";
       open(OUTFILE,">$pathprefix$filenames[$cindices_sorted[$i]]");
       print OUTFILE $filecontents[$cindices_sorted[$i]];
