@@ -473,6 +473,7 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
     mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
+    grep ^REGION check_cds.out |perl -ane '{$n++;@f=split("",uc($F[1]));for($i=0;$i<=$#f;$i++){if($f[$i] eq "A"){$freq[0][$i]++;}elsif($f[$i] eq "C"){$freq[1][$i]++;}elsif($f[$i] eq "G"){$freq[2][$i]++;}elsif($f[$i] eq "T"){$freq[3][$i]++;}}}END{print "A\tC\tG\tT\n";for($i=0;$i<=$#f;$i++){for($j=0;$j<=3;$j++){printf("%.2f\t",$freq[$j][$i]/$n);}print "\n"}}' > cds_matrix.txt && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -489,7 +490,7 @@ if [ ! -e merge.success ];then
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt cds_matrix.txt 1>combine.out 2>&1 && \
     gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff  && rm -f $GENOME.{u,unused_proteins}.gff.tmp
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
@@ -499,6 +500,7 @@ if [ ! -e merge.success ];then
     cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
     mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
+    grep ^REGION check_cds.out |perl -ane '{$n++;@f=split("",uc($F[1]));for($i=0;$i<=$#f;$i++){if($f[$i] eq "A"){$freq[0][$i]++;}elsif($f[$i] eq "C"){$freq[1][$i]++;}elsif($f[$i] eq "G"){$freq[2][$i]++;}elsif($f[$i] eq "T"){$freq[3][$i]++;}}}END{print "A\tC\tG\tT\n";for($i=0;$i<=$#f;$i++){for($j=0;$j<=3;$j++){printf("%.2f\t",$freq[$j][$i]/$n);}print "\n"}}' > cds_matrix.txt && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -515,12 +517,12 @@ if [ ! -e merge.success ];then
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi && \
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt cds_matrix.txt 1>combine.out 2>&1 && \
     gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.all.{combined,redundant}.gtf $GENOME.all $GENOME.palign.all.gff $GENOME.protref.all.annotated.class.gff $GENOME.protref.all.annotated.gtf $GENOME.protref.all $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} check_cds.out combine.out $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
+    rm -rf $GENOME.all.{combined,redundant}.gtf $GENOME.all $GENOME.palign.all.gff $GENOME.protref.all.annotated.class.gff $GENOME.protref.all.annotated.gtf $GENOME.protref.all $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
   fi && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,j,u}.success

@@ -159,6 +159,26 @@ while(my $line=<FILE>){
   $transcript_cds_stop_on_transcript{$geneID}=$cds_stop-3;
 }
 
+#we load the CDS start codon matrix
+open(FILE,$ARGV[4]);
+my $i=0;
+#skip header
+my $line=<FILE>;
+chomp($line);
+my @f=split(/\t/,$line);
+$letter_index{$f[0]}=0;
+$letter_index{$f[1]}=1;
+$letter_index{$f[2]}=2;
+$letter_index{$f[3]}=3;
+while(my $line=<FILE>){
+  chomp($line);
+  @f=split(/\t/,$line);
+  for(my $j=0;$j<=3;$j++){
+    $freq[$j][$i]=$f[$j];
+  }
+  $i++;
+}
+
 #we make the transcript sequences for protein coding transcripts
 for my $g(keys %transcript_gff){
   $transcript_seqs{$g}="";
@@ -794,35 +814,50 @@ sub fix_start_stop_codon{
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
   my $i;
-  my $foundR=-1;
-  my $foundU=-1;
+  my @found=();
+  my @fscores=();
   for($i=$cds_start_on_transcript;$i>=0;$i-=3){
-    #$foundU=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG" && not(substr($transcript_seq,$i,3) eq "atg"));
-    $foundU=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
-    $foundR=$i if(substr($transcript_seq,$i,3) eq "atg");
+    if(uc(substr($transcript_seq,$i,3)) eq "ATG"){
+      push(@found,$i);
+      my $score=0;
+      #if($i-6>=0){#score kozak-like sequence
+      #  print "DEBUG kozak ",uc(substr($transcript_seq,$i-6,10)),"\n";
+      #  for(my $j=0;$j<=9;$j++){
+      #    #print "Letter ",uc(substr($transcript_seq,$i-6+$j,1))," index ",$letter_index{uc(substr($transcript_seq,$i-6+$j,1))}," score ",$freq[$letter_index{uc(substr($transcript_seq,$i-6+$j,1))}][$j],"\n";
+      #    $score+=$freq[$letter_index{uc(substr($transcript_seq,$i-6+$j,1))}][$j];
+      #  }
+      #  $score+=10/($i+10);
+      #  print "DEBUG found candidate start at $i with score $score\n";
+      #}else{
+      #  $score=9;
+      #}
+      push(@fscores,$score);
+    }
 #stop if found a stop
     last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
   } 
-  if($foundU>-1){
-    print "DEBUG found new start codon upstream at $foundU\n";
-    $cds_start_on_transcript=$foundU;
-  }elsif($foundR>-1){
-    print "DEBUG found new repeat start codon upstream at $foundR\n";
-    $cds_start_on_transcript=$foundR;
+  if(scalar(@found)>0){
+    #my $max_score=-1;
+    #for(my $j=0;$j<=$#fscores;$j++){
+    #  $max_score=$fscores[$j] if($fscores[$j]>$max_score);
+    #}
+    #for(my $j=0;$j<=$#found;$j++){
+    #  $cds_start_on_transcript=$found[$j] if($fscores[$j] == $max_score);
+    #}
+    $cds_start_on_transcript=$found[-1];
+    print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
   }else{ 
     print "DEBUG failed to find new start codon, looking downstream\n";
+    my $foundU=-1;
     for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
-      $foundU=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG" && $foundU==-1);
-      #$foundU=$i if((uc(substr($transcript_seq,$i,3)) eq "ATG" && not(substr($transcript_seq,$i,3) eq "atg"))  && $foundU==-1);
-      $foundR=$i if((substr($transcript_seq,$i,3) eq "atg" )&&($foundR==-1));
-      last if($foundU>-1 || $foundR>-1);
+      if(uc(substr($transcript_seq,$i,3)) eq "ATG"){
+        $foundU=$i;
+        last;
+      }
     }
     if($foundU>-1){
       print "DEBUG found new start codon upstream at $foundU\n";
       $cds_start_on_transcript=$foundU;
-    }elsif($foundR>-1){
-      print "DEBUG found new repeat start codon upstream at $foundR\n";
-      $cds_start_on_transcript=$foundR;
     }else{
       print "DEBUG failed to find new start codon\n";
     }

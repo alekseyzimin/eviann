@@ -229,7 +229,7 @@ for my $g(keys %transcript_cds){
           last;
         }
       }
-
+      print "REGION ",substr($transcript_seqs{$g},$cds_start_on_transcript-6,10),"\n" if($cds_start_on_transcript-6 >= 0);
       print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
       print OUTFILE1 ">$g $transcript_cds_start{$g} $transcript_cds_end{$g}\n$transcript_seqs{$g}\n";
     }
@@ -302,7 +302,7 @@ for my $g(keys %transcript_cds){
 	  last;
 	}
       }
-
+      print "REGION ",substr($transcript_seqs{$g},$cds_start_on_transcript-6,10),"\n" if($cds_start_on_transcript-6 >= 0);
       print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
       print OUTFILE1 ">$g $transcript_cds_start{$g} $transcript_cds_end{$g}\n$transcript_seqs{$g}\n";
     }
