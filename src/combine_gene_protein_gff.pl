@@ -188,7 +188,7 @@ for my $g(keys %transcript_gff){
     die("Genome sequence $gff_fields[0] needed for transcript $g not found!") if(not(defined($genome_seqs{$gff_fields[0]})));
     if($j==0){
       my $ext="";
-      $ext=substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-$ext_length-1,$ext_length) if($gff_fields[3]>=$ext_length+1);
+      $ext=substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-$ext_length,$ext_length) if($gff_fields[3]>=$ext_length+1);
       if($gff_fields[6] eq "+"){
         $transcript_seqs_5pext{$g}=$ext;
       }else{
