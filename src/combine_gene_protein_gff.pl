@@ -254,6 +254,10 @@ for my $g(keys %transcript_cds){
         @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
         $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
       }
+      if($cds_length %3 >0){
+        print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting end\n";
+        $cds_length-=$cds_length%3;
+      }
       $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
     }
 
@@ -389,6 +393,10 @@ for my $g(keys %transcript_cds){
       for(my $j=0;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
         @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
         $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
+      }
+      if($cds_length %3 >0){
+        print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting end\n";
+        $cds_length-=$cds_length%3;
       }
       $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
     }
