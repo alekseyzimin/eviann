@@ -188,7 +188,7 @@ if [ ! -e align-build.success ];then
   log "Building HISAT2 index"
   hisat2-build $GENOMEFILE $GENOME.hst 1>/dev/null 2>&1 && \
   touch align-build.success && \
-  rm -f align.success
+  rm -f align.success || error_exit "Building HISAT2 index failed, check your inputs"
 fi
 
 if [ ! -e align.success ];then
@@ -226,7 +226,7 @@ if [ ! -e align.success ];then
       }
     }}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
-  bash ./hisat2.sh && touch align.success && rm -f sort.success ./hisat2.sh || error_exit "Alignment with HISAT2 failed, please check if reads files exist"
+  bash ./hisat2.sh && touch align.success && rm -f sort.success ./hisat2.sh || error_exit "Alignment with HISAT2 failed, please check if reads files exist and formatted correctly"
 fi
 
 NUM_TISSUES=`ls tissue*.bam| grep -v sorted |wc -l`
@@ -350,7 +350,7 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   touch stringtie.success && rm -f merge.success
 fi
 
-if [ ! -e merge.success ];then
+if [ -e stringtie.success ] && [ -e protein_align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
 #we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \

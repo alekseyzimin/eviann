@@ -144,7 +144,7 @@ NUM_BATCHES=`ls $PROTEINN.*.batch |wc -l` && \
 echo "#!/bin/bash" > run_tblastn.sh && \
 echo "if [ ! -e tblastn.\$1.out ]; then" >> run_tblastn.sh && \
 echo "ufasta extract -f \$1 $PROTEINN > \$1.fa && \\" >>  run_tblastn.sh && \
-echo "tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -task tblastn-fast -max_intron_length $MAX_INTRON -lcase_masking -soft_masking true -num_threads 6 -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=75) print \$0}' > tblastn.\$1.out.tmp && mv tblastn.\$1.out.tmp tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
+echo "$MYPATH/tblastn -db $GENOMEN.blastdb -matrix BLOSUM80 -gapopen 13 -gapextend 2 -task tblastn-fast -subject_besthit -max_intron_length $MAX_INTRON -lcase_masking -soft_masking true -num_threads 6 -outfmt 6 -query \$1.fa  -evalue 1e-6 2>/dev/null | awk '{if(\$3>=75) print \$0}' > tblastn.\$1.out.tmp && mv tblastn.\$1.out.tmp tblastn.\$1.out && rm -f \$1.fa " >> run_tblastn.sh && \
 echo "fi" >> run_tblastn.sh && \
 chmod 0755 run_tblastn.sh && \
 ls $PROTEINN.*.batch |xargs -P $(($NUM_THREADS/4+1)) -I {} ./run_tblastn.sh {} 
@@ -388,7 +388,7 @@ head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILEN.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILEN.faa && \
 PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
 tail -n 1 $TASKFILE  > exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
-exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > run_exonerate.sh
+$MYPATH/exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -100 -p ./blosum80.txt --minintron 21 --maxintron ' > run_exonerate.sh
 echo -n $MAX_INTRON >> run_exonerate.sh
 echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget --seedrepeat 10 2>/dev/null |\
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
