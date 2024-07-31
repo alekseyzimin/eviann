@@ -187,50 +187,74 @@ if [ ! -e align-build.success ];then
   log "Building HISAT2 index"
   hisat2-build $GENOMEFILE $GENOME.hst 1>/dev/null 2>&1 && \
   touch align-build.success && \
-  rm -f align.success || error_exit "Building HISAT2 index failed, check your inputs"
+  rm -f transcripts_assemble.success || error_exit "Building HISAT2 index failed, check your inputs"
 fi
 
-if [ ! -e align.success ];then
-  log "Aligning RNAseq reads"
-  echo "#!/bin/bash" >hisat2.sh
+if [ ! -e transcripts_assemble.success ];then
   if [ -s $ALT_EST ];then
-    echo "if [ ! -s tissue0.bam ];then minimap2 -a -u f -x splice:hq -t $NUM_THREADS -G $MAX_INTRON $GENOMEFILE $ALT_EST 2>tissue0.err | $MYPATH/samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam; fi;" >> hisat2.sh
+    log "Processing transcripts from related species"
+    if [ ! -s tissue0.bam.sorted.bam.gtf ];then 
+      minimap2 -a -u f -x splice:hq -t $NUM_THREADS -G $MAX_INTRON $GENOMEFILE $ALT_EST 2>tissue0.err | \
+      $MYPATH/samtools view -bhS /dev/stdin > tissue0.bam.tmp && \
+      mv tissue0.bam.tmp tissue0.bam  
+      samtools view -h tissue0.bam | \
+      tee >(grep ^@ > tissue0.header) | \
+      grep -v ^@ | \
+      sort -S 50% -nrk5,5 |\
+      perl -ane '{if($h{$F[0]}<2 || $F[4] >0){$h{$F[0]}++;print}}' > tissue0.filter && \
+      cat tissue0.header tissue0.filter | samtools view -bhS /dev/stdin | \
+      samtools sort -@ $NUM_THREADS -m 1G /dev/stdin tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bak && \
+      samtools view -h tissue0.bam.sorted.bak | fix_splice_junctions.pl $ALT_EST | \
+      perl -e '{while($line=<STDIN>){if($line =~ /^@/){print $line}else{chomp($line);@f=split(/\t/,$line);for(my $i=1;$i<=6;$i++){print $f[0],".$i\t",join("\t",@f[1..$#f]),"\n";}}}}' |samtools view -bhS /dev/stdin > tissue0.bam.sorted.tmp.bam && \
+      mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bam && \
+      rm -f tissue0.bam.sorted.bak && \
+      stringtie -g 1 -m 100 -t -j 1 -l REFSTRG -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
+      mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
+    fi
   fi
+  echo "#!/bin/bash" > hisat_stringtie.sh
   if [ -s $RNASEQ ];then
+    log "Aligning and building transcripts from RNAseq reads"
     awk 'BEGIN{n=1}{
       if(NF == 3){
         if($NF == "fasta"){
-          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fasta format files "$1" or "$2", ignoring them\"\nfi\nfi"; 
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format files "$1" or "$2", ignoring them\"\nfi\nfi"; 
           n++;
         }else if($NF == "fastq"){
-          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi";
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi";
           n++;
         }
       }else if(NF == 2){
         if($NF == "bam"){
-          print "if [ ! -s tissue"n".bam ];then\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nfi"; 
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
           n++;
         }else if($NF == "fasta"){
-          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
           n++;
         }else if($NF == "fastq"){
-          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format file "$1", ignoring it\"\nfi\nfi";
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fastq format file "$1", ignoring it\"\nfi\nfi";
           n++;
         }else{
-          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi"
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi"
           n++;
         }
       }else if(NF == 1){
-        print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format file "$1", ignoring it\"\nfi\nfi";
+        print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fastq format file "$1", ignoring it\"\nfi\nfi";
         n++;
       }
-    }' $RNASEQ >> hisat2.sh
+    }' $RNASEQ >> hisat_stringtie.sh
   fi
-  bash ./hisat2.sh && touch align.success && rm -f sort.success ./hisat2.sh || error_exit "Alignment with HISAT2 failed, please check if reads files exist and formatted correctly"
+  echo "#!/bin/bash" > run_stringtie.sh && \
+    echo "$MYPATH/stringtie -p $NUM_THREADS \$1 -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
+    echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > '\$MIN_TPM' || tpm > '\$MIN_TPM' ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
+    echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
+    echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
+    chmod 0755 run_stringtie.sh && \
+  bash ./hisat_stringtie.sh && touch transcripts_assemble.success && rm -f merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
 fi
 
-NUM_TISSUES=`ls tissue*.bam| grep -v sorted |wc -l`
-if [ -e tissue0.bam ];then
+NUM_TISSUES=`ls tissue*.bam|wc -l`
+if [ -e tissue0.bam.sorted.bam ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
@@ -246,58 +270,7 @@ if [ ! -e protein_align.success ];then
   fi
 fi
 
-if [ ! -e sort.success ];then
-  log "Sorting alignment files"
-  if [ -s tissue0.bam ];then
-    #this is a cludge here, we duplicate each alignment in the sam file n=5 times, adding .i suffix to the transcript name, to force stringtie to drop fewer alignments
-    samtools view -h tissue0.bam | \
-    tee >(grep ^@ > tissue0.header) | \
-    grep -v ^@ | \
-    sort -S 50% -nrk5,5 |\
-    perl -ane '{if($h{$F[0]}<2 || $F[4] >0){$h{$F[0]}++;print}}' > tissue0.filter && \
-    cat tissue0.header tissue0.filter | samtools view -bhS /dev/stdin | \
-    samtools sort -@ $NUM_THREADS -m 1G /dev/stdin tissue0.bam.sorted.tmp && mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bak && \
-    samtools view -h tissue0.bam.sorted.bak | fix_splice_junctions.pl $ALT_EST | \
-    perl -e '{while($line=<STDIN>){if($line =~ /^@/){print $line}else{chomp($line);@f=split(/\t/,$line);for(my $i=1;$i<=6;$i++){print $f[0],".$i\t",join("\t",@f[1..$#f]),"\n";}}}}' |samtools view -bhS /dev/stdin > tissue0.bam.sorted.tmp.bam && \
-    mv tissue0.bam.sorted.tmp.bam tissue0.bam.sorted.bam && \
-    rm -f tissue0.bam.sorted.bak
-  fi
-  if [ $NUM_TISSUES -gt 0 ];then
-    for f in $(seq 1 $NUM_TISSUES);do
-      if [ ! -s tissue$f.bam.sorted.bam ] && [ -s tissue$f.bam ];then
-        samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam tissue$f.bam.sorted.tmp && \
-        mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
-      fi
-    done
-  fi
-  touch sort.success && rm -f stringtie.success
-fi
-
-if [ ! -e stringtie.success ] && [ -e sort.success ];then
-  if [ -s tissue0.bam.sorted.bam ];then
-    log "Assembling transcripts from related species with StringTie"
-    stringtie -g 1 -m 100 -t -j 1 -l REFSTRG -f 0.01 -c 1 -p $NUM_THREADS tissue0.bam.sorted.bam -o tissue0.bam.sorted.bam.gtf.tmp && \
-    mv tissue0.bam.sorted.bam.gtf.tmp tissue0.bam.sorted.bam.gtf
-  fi
-  if [ $NUM_TISSUES -gt 0 ];then
-    log "Assembling transcripts with Stringtie"
-    rm -f stringtie_to_assemble.txt && \
-    for f in $(seq 1 $NUM_TISSUES);do
-      if [ ! -s tissue$f.bam.sorted.bam.gtf ];then
-        echo  tissue$f.bam.sorted.bam >> stringtie_to_assemble.txt
-      fi
-    done
-    if [ -s stringtie_to_assemble.txt ];then
-      echo "#!/bin/bash" > run_stringtie.sh && \
-      echo "stringtie -p 4 \$1 -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
-      echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > '\$MIN_TPM' || tpm > '\$MIN_TPM' ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
-      echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
-      echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
-      chmod 0755 run_stringtie.sh && \
-      cat stringtie_to_assemble.txt | xargs -P $(($NUM_THREADS/2+1)) -I {} ./run_stringtie.sh {}
-    fi
-    rm -f run_stringtie.sh stringtie_to_assemble.txt
-  fi
+if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];then
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq 1 ];then
     # a single tissue, we add 1 for the number of samples and the TPMs
@@ -347,10 +320,10 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
   else
     error_exit "one or more Stringtie jobs failed"
   fi
-  touch stringtie.success && rm -f merge.success
+  touch transcripts_merge.success && rm -f merge.success
 fi
 
-if [ -e stringtie.success ] && [ -e protein_align.success ] && [ ! -e merge.success ];then
+if [ -e transcripts_merge.success ] && [ -e protein_align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
 #we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
