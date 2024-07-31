@@ -216,17 +216,28 @@ if [ ! -e transcripts_assemble.success ];then
   if [ -s $RNASEQ ];then
     log "Aligning and building transcripts from RNAseq reads"
     awk 'BEGIN{n=1}{
-      if(NF == 3){
+      if(NF == 4){
+        if($NF == "mix"){
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && minimap2 -a -u f -x splice -t '$NUM_THREADS' -G '$MAX_INTRON' '$GENOMEFILE' "$3" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n"_lr.bam.tmp && mv tissue"n"_lr.bam.tmp tissue"n"_lr.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n"_lr.bam tissue"n"_lr.bam.sorted.tmp && mv tissue"n"_lr.bam.sorted.tmp.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n".bam tissue"n"_lr.bam && ./run_stringtie_mix.sh tissue"n".bam.sorted.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n"_lr.bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format files "$1" or "$2", ignoring them\"\nfi\nfi";
+          n++;
+        }
+      }else if(NF == 3){
         if($NF == "fasta"){
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format files "$1" or "$2", ignoring them\"\nfi\nfi"; 
           n++;
         }else if($NF == "fastq"){
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi";
           n++;
+        }else if($NF == "bam_mix"){
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\ncp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && cp "$2" tissue"n"_lr.bam.tmp && mv tissue"n"_lr.bam.tmp tissue"n"_lr.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n"_lr.bam tissue"n"_lr.bam.sorted.tmp && mv tissue"n"_lr.bam.sorted.tmp.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n".bam tissue"n"_lr.bam && ./run_stringtie_mix.sh tissue"n".bam.sorted.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n"_lr.bam.sorted.bam || exit 1\nfi";
+          n++;
         }
       }else if(NF == 2){
         if($NF == "bam"){
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
+          n++;
+        }if($NF == "bam_lr"){
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
           n++;
         }else if($NF == "fasta"){
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam tissue"n".bam.sorted.tmp && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
@@ -250,6 +261,20 @@ if [ ! -e transcripts_assemble.success ];then
     echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
     echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
     chmod 0755 run_stringtie.sh && \
+  echo "#!/bin/bash" > run_stringtie_lr.sh && \
+    echo "$MYPATH/stringtie -p $NUM_THREADS \$1 -L -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
+    echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > '\$MIN_TPM' || tpm > '\$MIN_TPM' ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
+    echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
+    echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
+    chmod 0755 run_stringtie.sh && \
+  echo "#!/bin/bash" > run_stringtie_mix.sh && \
+    echo "$MYPATH/stringtie -p $NUM_THREADS \$1 \$2 --mix -o \$1.gtf.tmp && \\">>run_stringtie.sh && \
+    echo "awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > '\$MIN_TPM' || tpm > '\$MIN_TPM' ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\" >> run_stringtie.sh && \
+    echo "mv \$1.gtf.filtered.tmp \$1.gtf  && \\" >> run_stringtie.sh && \
+    echo "rm -f \$1.gtf.tmp " >> run_stringtie.sh && \
+    chmod 0755 run_stringtie.sh && \
+    chmod 0755 run_stringtie_lr.sh && \
+    chmod 0755 run_stringtie_mix.sh && \
   bash ./hisat_stringtie.sh && touch transcripts_assemble.success && rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
 fi
 
