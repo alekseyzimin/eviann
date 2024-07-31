@@ -200,28 +200,28 @@ if [ ! -e align.success ];then
     awk 'BEGIN{n=1}{
       if(NF == 3){
         if($NF == "fasta"){
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fasta format files "$1" or "$2", ignoring them\"\nfi\nfi"; 
           n++;
         }else if($NF == "fastq"){
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi";
           n++;
         }
       }else if(NF == 2){
-        if(NF == "bam"){
-          print "if [ ! -s tissue"n".bam ];then cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+        if($NF == "bam"){
+          print "if [ ! -s tissue"n".bam ];then\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nfi"; 
           n++;
-        }else if(NF == "fasta"){
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+        }else if($NF == "fasta"){
+          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
           n++;
-        }else if(NF == "fastq"){
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi";
+        }else if($NF == "fastq"){
+          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format file "$1", ignoring it\"\nfi\nfi";
           n++;
         }else{
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi";
+          print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi"
           n++;
         }
       }else if(NF == 1){
-        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi";
+        print "if [ ! -s tissue"n".bam ];then\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam || exit 1\nelse echo \"WARNING! Invalid fastq format file "$1", ignoring it\"\nfi\nfi";
         n++;
       }
     }' $RNASEQ >> hisat2.sh
