@@ -2,8 +2,7 @@
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
 PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="genome.fa"
-RNASEQ_PAIRED="paired"
-RNASEQ_UNPAIRED="unpaired"
+RNASEQ="paired"
 ALT_EST="altest"
 export BATCH_SIZE=1000000
 export MAX_INTRON=250000
@@ -39,10 +38,9 @@ function usage {
  echo "Options:"
  echo "-t <int: number of threads, default:1>"
  echo "-g <string: MANDATORY:genome fasta file with full path>"
- echo "-p <string: file containing list of filenames of paired Illumina reads from RNAseq experiments, one pair of /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
- echo "-u <string: file containing list of filenames of unpaired Illumina reads from RNAseq experiments, one /path/filename per line; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
+ echo "-r <string: file containing list of filenames of Illumina reads from RNAseq experiments, one pair of /path/filename per line for paired runs or /path/filename for unpaired runs; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
  echo "-e <string: fasta file with transcripts from related species>"
- echo "-r <string: fasta file of protein sequences from related species>"
+ echo "-p <string: fasta file of protein sequences from related species>"
  echo "-m <int: max intron size, default: 100000>"
  echo "-l <flag: liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
  echo "-f <flag: perform functional annotation, default: not set>"
@@ -83,15 +81,15 @@ do
             GENOMEFILE="$2"
             shift
             ;;
-        -p|--paired)
-            RNASEQ_PAIRED="$2"
+        -r|--rnaseq)
+            RNASEQ="$2"
             shift
             ;;
         -e|--est)
             ALT_EST="$2"
             shift
             ;;
-        -r|--proteins)
+        -p|--proteins)
             PROTEINFILE="$2"
             shift
             ;;
@@ -102,10 +100,6 @@ do
         -l|--liftover)
             LIFTOVER=1
             log "Liftover mode ON"
-            ;;
-        -u|--unpaired)
-            RNASEQ_UNPAIRED="$2"
-            shift
             ;;
         -f|--functional)
             FUNCTIONAL=1
@@ -142,7 +136,7 @@ done
 #get absolute paths
 GENOMEFILE=`realpath $GENOMEFILE`
 PROTEINFILE=`realpath $PROTEINFILE`
-RNASEQ_PAIRED=`realpath $RNASEQ_PAIRED`
+RNASEQ=`realpath $RNASEQ`
 RNASEQ_UNPAIRED=`realpath RNASEQ_UNPAIRED`
 ALT_EST=`realpath $ALT_EST`
 UNIPROT=`realpath $UNIPROT`
@@ -168,7 +162,7 @@ else
 fi
 
 #checking inputs
-if [ ! -s $RNASEQ_PAIRED ] && [ ! -s $RNASEQ_UNPAIRED ]  && [ ! -s $ALT_EST ];then
+if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
   error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e"
 fi
 if [ ! -s $UNIPROT ];then
@@ -181,6 +175,11 @@ if [ ! -s $PROTEINFILE ];then
 fi
 if [ ! -s $GENOMEFILE ];then
   error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
+fi
+
+NUM_PROTEINS=`grep '>' $PROTEINFILE |wc -l`
+if [ $NUM_PROTEINS -lt 1 ];then
+  error_exit "Invalid format for the proteins file $PROTEINFILE, must be in fasta format"
 fi
 
 #first we align
@@ -197,34 +196,35 @@ if [ ! -e align.success ];then
   if [ -s $ALT_EST ];then
     echo "if [ ! -s tissue0.bam ];then minimap2 -a -u f -x splice:hq -t $NUM_THREADS -G $MAX_INTRON $GENOMEFILE $ALT_EST 2>tissue0.err | $MYPATH/samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam; fi;" >> hisat2.sh
   fi
-  if [ -s $RNASEQ_PAIRED ];then
+  if [ -s $RNASEQ ];then
     awk 'BEGIN{n=1}{
-      if(NF==3 && $NF == "fasta"){
-        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
-      }else if(NF==2 && $NF == "bam"){
-        print "if [ ! -s tissue"n".bam ];then cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
-      }else{
-        if(NF==2 || (NF==3 && $NF == "fastq")){
-          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      if(NF == 3){
+        if($NF == "fasta"){
+          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+          n++;
+        }else if($NF == "fastq"){
+          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+          n++;
         }
+      }else if(NF == 2){
+        if(NF == "bam"){
+          print "if [ ! -s tissue"n".bam ];then cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+          n++;
+        }else if(NF == "fasta"){
+          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; 
+          n++;
+        }else if(NF == "fastq"){
+          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi";
+          n++;
+        }else{
+          print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi";
+          n++;
+        }
+      }else if(NF == 1){
+        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi";
+        n++;
       }
-    }' $RNASEQ_PAIRED >> hisat2.sh
-  fi
-  if [ -s $RNASEQ_UNPAIRED ];then
-    START=1;
-    if [ -s $RNASEQ_PAIRED ];then
-      START=`wc -l $RNASEQ_PAIRED | awk '{print int($1)+1}'`
-    fi
-    awk 'BEGIN{n=int("'$START'");}{
-    if(NF==2 && $NF == "fasta"){
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
-    }else if(NF==2 && $NF == "bam"){
-      print "if [ ! -s tissue"n".bam ];then cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
-    }else{
-      if(NF==1 || (NF==2 && $NF == "fastq")){
-        print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | '$MYPATH'/samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
-      }
-    }}' $RNASEQ_UNPAIRED >> hisat2.sh
+    }' $RNASEQ >> hisat2.sh
   fi
   bash ./hisat2.sh && touch align.success && rm -f sort.success ./hisat2.sh || error_exit "Alignment with HISAT2 failed, please check if reads files exist and formatted correctly"
 fi
