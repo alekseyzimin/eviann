@@ -59,17 +59,16 @@ function usage {
  mix -- indicates the data is from the same sample sequenced with Illumina RNA-seq provided in fastq format and long reads (Iso-seq or Oxford Nanopore) in fasta/fastq format, expects three /path/filename before
  bam_mix -- indicates the data is from the same sample sequenced with Illumina RNA-seq provided in bam format and long reads (Iso-seq or Oxford Nanopore) in bam format, expects two /path/filename.bam before
  
- Absense of recognized tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
-
+ Absense of a recognized tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
  "
  echo "-e <string: fasta file with transcripts from related species>"
  echo "-p <string: fasta file of protein sequences from related species>"
- echo "-m <int: max intron size, default: 100000>"
+ echo "-m <int: max intron size, default: 250000>"
  echo "-l <flag: liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
  echo "-f <flag: perform functional annotation, default: not set>"
  echo "--debug <flag: debug, if used intermediate output files will be kept, default: not set>"
- echo "-v <flag: verbose run, defalut: not set>"
- echo "--version report version"
+ echo "-v <flag: verbose run, default: not set>"
+ echo "--version <flag: report versionand exit, default: not set>"
  echo ""
  echo "-r AND one or more of the -p -u or -e must be supplied."
 }
@@ -309,15 +308,17 @@ if [ -e tissue0.bam.sorted.bam ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
-if [ ! -e protein_align.success ];then
+if [ ! -e protein2genome.protein_align.success ] || [ ! -e protein2genome.exonerate_gff.success ];then
   log "Aligning proteins"
   if [ $LIFTOVER -gt 0 ];then
     $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON -n 5 -l 100
   else
     $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
   fi
-  if [ -s $GENOME.$PROTEIN.palign.gff ];then
-    touch protein_align.success && rm -f merge.success
+  if [ -s $GENOME.$PROTEIN.palign.gff ] && [ -e protein2genome.protein_align.success ] && [ -e protein2genome.exonerate_gff.success ];then
+    rm -f merge.success
+  else
+    error_exit "Alignment of proteins with EviProt failed, please check your inputs!"
   fi
 fi
 
@@ -373,7 +374,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
   fi
 fi
 
-if [ -e transcripts_merge.success ] && [ -e protein_align.success ] && [ ! -e merge.success ];then
+if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
 #we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
@@ -570,7 +571,7 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
   touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
 fi
 
-if [ -e merge.success ] && [ -e pseudo_detect.success ] && [ ! -e functional.success ];then
+if [ -e merge.success ] && [ -e pseudo_detect.success ];then
   if [ $FUNCTIONAL -lt 1 ];then
     log "Output annotation GFF is in $GENOME.pseudo_label.gff, proteins are in  $GENOME.proteins.fasta, transcripts are in $GENOME.transcripts.fasta"
     echo "Annotation summary:"
@@ -579,14 +580,16 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ] && [ ! -e functional.suc
     echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
     echo -n "Number of proteins: "; grep '^>' $GENOME.proteins.fasta |wc -l
   else
-    log "Performing functional annotation" && \
-    blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
-    mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
-    my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
-    my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
-    my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-    rm -rf blastp4.out && \
-    touch functional.success  || error_exit "Functional annotation failed"
+    if [ ! -e functional.success ];then
+      log "Performing functional annotation" && \
+      blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
+      mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
+      my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
+      my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
+      my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
+      rm -rf blastp4.out && \
+      touch functional.success  || error_exit "Functional annotation failed"
+    fi
   fi
 fi 
 
