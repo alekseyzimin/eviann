@@ -38,7 +38,30 @@ function usage {
  echo "Options:"
  echo "-t <int: number of threads, default:1>"
  echo "-g <string: MANDATORY:genome fasta file with full path>"
- echo "-r <string: file containing list of filenames of Illumina reads from RNAseq experiments, one pair of /path/filename per line for paired runs or /path/filename for unpaired runs; fastq is expected by default, if files are fasta, add \"fasta\" as the third field on the line; if the reads are already aligned in bam format, put /path/filename.bam and add tag \"bam\" (without quotes) as second field on the line>"
+ echo "-r <string: file containing list of filenames of reads from transcriptome sequencing experiments.  
+ Please combine runs so that one file/pair/triplet of files contains a single sample.  
+ Each line lists data from a single experiment.
+ The lines are in the following format:
+ 
+ /path/filename_R1 /path/filename_R2 /path/filename tag
+ or
+ /path/filename_R1 /path/filename_R2 tag
+ or
+ /path/filename_R1 tag
+
+ tag indicates type of data.  Possible values are:
+ 
+ fastq -- indicates the data is Illumina RNA-seq in fastq format, expects one or a pair of /path/filename before
+ fasta -- indicates the data is Illumina RNA-seq in fasta format, expects one or a pair of /path/filename before
+ bam -- indicates the data is aligned Illumina RNA-seq reads, expects one /path/filename.bam before
+ bam_isoseq -- indicates the data is aligned PacBio Iso-seq reads, expects one /path/filename.bam before
+ isoseq -- indicates the data is PacBio Iso-seq reads in fasta or fastq format, expects one /path/filename before
+ mix -- indicates the data is from the same sample sequenced with Illumina RNA-seq provided in fastq format and long reads (Iso-seq or Oxford Nanopore) in fasta/fastq format, expects three /path/filename before
+ bam_mix -- indicates the data is from the same sample sequenced with Illumina RNA-seq provided in bam format and long reads (Iso-seq or Oxford Nanopore) in bam format, expects two /path/filename.bam before
+ 
+ Absense of recognized tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
+
+ "
  echo "-e <string: fasta file with transcripts from related species>"
  echo "-p <string: fasta file of protein sequences from related species>"
  echo "-m <int: max intron size, default: 100000>"
@@ -113,7 +136,7 @@ do
             set -x
             ;;
         --version)
-            echo "version 1.0.8"
+            echo "version 2.0.0"
             exit 0
             ;;
         --debug)
