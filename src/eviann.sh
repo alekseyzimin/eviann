@@ -4,6 +4,7 @@ PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="genome.fa"
 RNASEQ="paired"
 ALT_EST="altest"
+MINIPROT=0
 export BATCH_SIZE=1000000
 export MAX_INTRON=250000
 export MIN_TPM=0.25
@@ -64,9 +65,10 @@ function usage {
  echo "-e <string: fasta file with assembled transcripts from related species>"
  echo "-p <string: fasta file of protein sequences from related species>"
  echo "-m <int: max intron size, default: 250000>"
+ echo "--miniprot <flag: use miniprot instead of eviprot for protein-to-genome alignments, this is much faster but less accurate, default: not set>"
  echo "-l <flag: liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
  echo "-f <flag: perform functional annotation, default: not set>"
- echo "--debug <flag: debug, if used intermediate output files will be kept, default: not set>"
+ echo "--debug <flag: keep intermediate output files, default: not set>"
  echo "-v <flag: verbose run, default: not set>"
  echo "--version <flag: report versionand exit, default: not set>"
  echo ""
@@ -130,6 +132,10 @@ do
         -m|--max-intron)
             MAX_INTRON="$2"
             shift
+            ;;
+        --miniprot)
+            MINIPROT=1
+            log "Will use miniprot for protein alignments"
             ;;
         -v|--verbose)
             set -x
@@ -310,15 +316,47 @@ fi
 
 if [ ! -e protein2genome.protein_align.success ] || [ ! -e protein2genome.exonerate_gff.success ];then
   log "Aligning proteins"
-  if [ $LIFTOVER -gt 0 ];then
-    $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON -n 5 -l 100
+  if [ $MINIPROT -gt 0];then
+    miniprot -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEINFILE | \
+    perl -F'\t' -ane '{
+      if($F[2] eq "mRNA"){
+        $F[2]="gene";
+        if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\S+);Positive=(\S+);Target=(\S+)\s\d+\s\d+$/){
+          $count=1;
+          $parent="$5:$F[0]:$F[3]";
+          print join("\t",@F[0..7]),"\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$3;similarity=$3\n";
+        }
+      }elsif($F[2] eq "CDS"){
+        if($count>1){
+          $F[2]="intron";
+          if($F[6] eq "+"){
+            $start=$last_base+1;
+            $stop=$F[3]-1;
+          }else{
+            $start=$F[4]+1;
+            $stop=$last_base-1;
+          }print join("\t",@F[0..1]),"\tintron\t$start\t$stop\t",join("\t",@F[5..7]),"\tID=intron-$parent-",$count-1,";Parent=$parent\n";
+        }
+        $F[2]="cds";
+        print join("\t",@F[0..7]),"\tID=cds-$parent-$count;Parent=$parent\n";
+        $F[2]="exon";
+        print join("\t",@F[0..7]),"\tID=exon-$parent-$count;Parent=$parent\n";
+        $count++;
+        $last_base=($F[6] eq "+")?$F[4]:$F[3];
+      }
+    }' > $GENOME.$PROTEIN.palign.gff.tmp && \
+    mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && rm -f merge.success && touch protein2genome.exonerate_gff.success || error_exit "Alignment of proteins to the genome with miniprot failed"
   else
-    $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
-  fi
-  if [ -s $GENOME.$PROTEIN.palign.gff ] && [ -e protein2genome.protein_align.success ] && [ -e protein2genome.exonerate_gff.success ];then
-    rm -f merge.success
-  else
-    error_exit "Alignment of proteins with EviProt failed, please check your inputs!"
+    if [ $LIFTOVER -gt 0 ];then
+      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON -n 5 -l 100
+    else
+      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+    fi
+    if [ -s $GENOME.$PROTEIN.palign.gff ] && [ -e protein2genome.protein_align.success ] && [ -e protein2genome.exonerate_gff.success ];then
+      rm -f merge.success
+    else
+      error_exit "Alignment of proteins with EviProt failed, please check your inputs!"
+    fi
   fi
 fi
 
