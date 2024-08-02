@@ -125,7 +125,7 @@ GENOMEN=`basename $GENOME`
 
 #remove duplicates from protein sequences
 if [ -s $PROTEIN ];then
-  ufasta one $PROTEIN | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' > $PROTEINN.uniq.faa && \
+  ufasta one $PROTEIN | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' | tr ':' '_' > $PROTEINN.uniq.faa && \
   PROTEIN=$PROTEINN.uniq.faa
 else
   error_exit "Query protein file $PROTEIN is empty or does not exist"

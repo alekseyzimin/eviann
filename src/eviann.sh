@@ -38,9 +38,9 @@ function usage {
  echo "Options:"
  echo "-t <int: number of threads, default:1>"
  echo "-g <string: MANDATORY:genome fasta file with full path>"
- echo "-r <string: file containing list of filenames of reads from transcriptome sequencing experiments.  
+ echo "-r <string: file containing list of filenames of reads from transcriptome sequencing experiments, default:none>
+ Each line in the file must refer to sequencing data from a single experiment.
  Please combine runs so that one file/pair/triplet of files contains a single sample.  
- Each line lists data from a single experiment.
  The lines are in the following format:
  
  /path/filename_R1 /path/filename_R2 /path/filename tag
@@ -49,19 +49,19 @@ function usage {
  or
  /path/filename_R1 tag
 
- tag indicates type of data.  Possible values are:
+ Fields are space-separated. tag indicates type of data referred to in the preceding fields.  Possible values are:
  
- fastq -- indicates the data is Illumina RNA-seq in fastq format, expects one or a pair of /path/filename before
- fasta -- indicates the data is Illumina RNA-seq in fasta format, expects one or a pair of /path/filename before
- bam -- indicates the data is aligned Illumina RNA-seq reads, expects one /path/filename.bam before
- bam_isoseq -- indicates the data is aligned PacBio Iso-seq reads, expects one /path/filename.bam before
- isoseq -- indicates the data is PacBio Iso-seq reads in fasta or fastq format, expects one /path/filename before
- mix -- indicates the data is from the same sample sequenced with Illumina RNA-seq provided in fastq format and long reads (Iso-seq or Oxford Nanopore) in fasta/fastq format, expects three /path/filename before
- bam_mix -- indicates the data is from the same sample sequenced with Illumina RNA-seq provided in bam format and long reads (Iso-seq or Oxford Nanopore) in bam format, expects two /path/filename.bam before
+ fastq -- indicates the data is Illumina RNA-seq in fastq format, expects one or a pair of /path/filename before the tag
+ fasta -- indicates the data is Illumina RNA-seq in fasta format, expects one or a pair of /path/filename before the tag
+ bam -- indicates the data is aligned Illumina RNA-seq reads, expects one /path/filename.bam before the tag
+ bam_isoseq -- indicates the data is aligned PacBio Iso-seq reads, expects one /path/filename.bam before the tag
+ isoseq -- indicates the data is PacBio Iso-seq reads in fasta or fastq format, expects one /path/filename before the tag
+ mix -- indicates the data is from the sample sequenced with both Illumina RNA-seq provided in fastq format and long reads (Iso-seq or Oxford Nanopore) in fasta/fastq format, expects three /path/filename before the tag
+ bam_mix -- indicates the data is from the same sample sequenced with both Illumina RNA-seq provided in bam format and long reads (Iso-seq or Oxford Nanopore) in bam format, expects two /path/filename.bam before the tag
  
- Absense of a recognized tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
+ Absense of a tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
  "
- echo "-e <string: fasta file with transcripts from related species>"
+ echo "-e <string: fasta file with assembled transcripts from related species>"
  echo "-p <string: fasta file of protein sequences from related species>"
  echo "-m <int: max intron size, default: 250000>"
  echo "-l <flag: liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
