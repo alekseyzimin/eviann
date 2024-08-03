@@ -314,10 +314,24 @@ if [ -e tissue0.bam.sorted.bam ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
+if [ ! -e protein2genome.deduplicate.success ];then
+  log "Deduplicating input proteins"
+  $MYPATH/ufasta one $PROTEINFILE | \
+  awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
+  sort  -S 10% -k2,2 |\
+  uniq -f 1 |\
+  awk '{print $1"\n"$2}' | \
+  tr ':' '_' > $PROTEIN.uniq.tmp && \
+  mv $PROTEIN.uniq.tmp $PROTEIN.uniq && \
+  touch protein2genome.deduplicate.success && \
+  rm -f protein2genome.exonerate_gff.success || error_exit "Failed in deduplicating proteins"
+fi
+$PROTEIN=$PROTEIN.uniq
+
 if [ ! -e protein2genome.exonerate_gff.success ];then
   log "Aligning proteins"
   if [ $MINIPROT -gt 0 ];then
-    miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEINFILE 2>miniprot.err | \
+    miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
     perl -F'\t' -ane '{
       if($F[2] eq "mRNA"){
         $F[2]="gene";
@@ -355,9 +369,9 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
     mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && rm -f merge.success && touch protein2genome.exonerate_gff.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
   else
     if [ $LIFTOVER -gt 0 ];then
-      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON -n 5 -l 100
+      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN -m $MAX_INTRON -n 5 -l 100
     else
-      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
+      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN -m $MAX_INTRON
     fi
     if [ -s $GENOME.$PROTEIN.palign.gff ] && [ -e protein2genome.protein_align.success ] && [ -e protein2genome.exonerate_gff.success ];then
       rm -f merge.success

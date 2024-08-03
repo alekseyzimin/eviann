@@ -123,14 +123,9 @@ PROTEIN=`realpath $PROTEIN`
 PROTEINN=`basename $PROTEIN`;
 GENOMEN=`basename $GENOME`
 
-#remove duplicates from protein sequences
-if [ -s $PROTEIN ];then
-  ufasta one $PROTEIN | awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |sort  -S 10% -k2,2 |uniq -f 1 |awk '{print $1"\n"$2}' | tr ':' '_' > $PROTEINN.uniq.faa && \
-  PROTEIN=$PROTEINN.uniq.faa
-else
+if [ ! -s $PROTEIN ];then
   error_exit "Query protein file $PROTEIN is empty or does not exist"
 fi
-
 
 if [ ! -e protein2genome.protein_align.success ];then
 log "Aligning proteins to the genome"
