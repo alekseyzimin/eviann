@@ -18,6 +18,7 @@ set -o pipefail
 NUM_THREADS=1
 LIFTOVER=0
 FUNCTIONAL=0
+USE_SNAP=1
 GC=
 RC=
 NC=
@@ -449,20 +450,44 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
   mv $GENOME.protref.annotated.gtf.tmp $GENOME.protref.annotated.gtf && rm -f $GENOME.protref.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.gtf > $GENOME.abundanceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.gtf.tmp $GENOME.abundanceFiltered.gtf && \
-#here we combine the transcripts and protein matches; 
+#here we combine the transcripts and protein matches
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
   cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+  mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.k.gff.tmp $GENOME.protref.annotated.gtf $GENOME.transcripts_to_keep.txt
-  else
-    mv $GENOME.k.gff.tmp $GENOME.k.gff
-  fi
+    rm -rf $GENOME.protref.annotated.gtf $GENOME.transcripts_to_keep.txt
+  fi && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
   if [ ! -e merge.unused.success ];then
   if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
     log "Filtering unused protein only loci" && \
+#we use preliminary "k" file to train SNAP
+    if [ $USE_SNAP -gt 0 ] && [ ! -e snap.success ];then
+      log "Training SNAP and predicting protein coding genes to use in foltering aligned proteins" && \
+      mkdir -p SNAP && \
+      (cd SNAP && \
+        rm -rf * && \
+        awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \
+        $MYPATH/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;') > $GENOME.zff && \
+        $MYPATH/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
+        $MYPATH/fathom -export 1000 -plus uni.* && \
+        $MYPATH/forge export.ann export.dna && \
+        $MYPATH/hmm-assembler.pl $GENOME . > $GENOME.hmm && \
+        $MYPATH/snap -quiet -gff $GENOME.hmm $GENOME.onefield.fa | \
+        perl -F'\t' -ane 'BEGIN{$id=""}{if(not($id eq $F[8])){if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}$id=$F[8];$chrom=$F[0];$dir=$F[6];$start=$F[3];$end=$F[4];@exons=();}$F[2]="exon";$F[8]="Parent=$F[8]";if($dir eq "+"){$end=$F[4];}else{$start=$F[3];}push(@exons,join("\t",@F));$F[2]="cds";push(@exons,join("\t",@F));}END{if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}}' > $GENOME.snap.gff.tmp && \
+        mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
+      gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
+      grep 'class_code "="' $GENOME.snapcompare.annotated.gtf |\
+      grep -v "contained_in" |\
+      perl -F'\t' -ane '{if($F[8]=~/^transcript_id\s\"(\S+)\";\sgene_id/){print $1,"\n"}}' > $GENOME.snap_match.txt.tmp && \
+      mv $GENOME.snap_match.txt.tmp $GENOME.snap_match.txt && \
+      touch snap.success && \
+      if [ $DEBUG -lt 1 ];then
+        rm -rf SNAP
+      fi
+    fi && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
     ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
@@ -491,7 +516,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
           print if(defined($count{$transcript_id}));
         }
       }
-    }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
+    }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff

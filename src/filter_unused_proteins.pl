@@ -3,6 +3,7 @@
 my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
 my $liftover=$ARGV[2];
+my $approved=$ARGV[3];
 my %similarity;
 my %contigs;
 
@@ -29,6 +30,11 @@ while($line=<FILE>){
   if($F[2] eq "gene"){
     $similarity{$1}=$4+$3/100-1 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
   }
+}
+open(FILE,$approved);
+while($line=<FILE>){
+  chomp($line);
+  $approved{$line}=1;
 }
 
 #combined file on STDIN
@@ -75,6 +81,7 @@ while($line=<STDIN>){
 }
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
 my $similarity_threshold=$avg/$count;
+print "#similarity threshold $similarity_threshold\n";
 $similarity_threshold=$similarity_threshold*.9 if($liftover>0);
 my %h=();
 my %hs=();
@@ -99,6 +106,6 @@ while($line=<FILE>){
   }elsif($f[2] eq "exon" || $f[2] eq "cds"){
     $id=$1 if($f[8]=~ /Parent=(\S+)$/);
   }
-  print join("\t",@f),"\n" if(defined($h{$id}));
+  print join("\t",@f),"\n" if(defined($h{$id}) || defined($approved{$id}));
 }
 
