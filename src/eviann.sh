@@ -465,7 +465,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     log "Filtering unused protein only loci" && \
 #we use preliminary "k" file to train SNAP
     if [ $USE_SNAP -gt 0 ] && [ ! -e snap.success ];then
-      log "Training SNAP and predicting protein coding genes to use in foltering aligned proteins" && \
+      log "Training SNAP and predicting protein coding genes to use in filtering aligned proteins" && \
       mkdir -p SNAP && \
       (cd SNAP && \
         rm -rf * && \

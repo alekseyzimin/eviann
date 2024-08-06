@@ -88,7 +88,7 @@ my %hs=();
 my %hn=();
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
-  if(($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
+  if(($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && ($F[0]>=$similarity_threshold || defined($approved{$F[2]}))){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
     $h{$F[2]}=1;#we mark the proteins to keep
@@ -106,6 +106,6 @@ while($line=<FILE>){
   }elsif($f[2] eq "exon" || $f[2] eq "cds"){
     $id=$1 if($f[8]=~ /Parent=(\S+)$/);
   }
-  print join("\t",@f),"\n" if(defined($h{$id}) || defined($approved{$id}));
+  print join("\t",@f),"\n" if(defined($h{$id}));
 }
 
