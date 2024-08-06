@@ -326,7 +326,7 @@ if [ ! -e protein2genome.deduplicate.success ];then
   touch protein2genome.deduplicate.success && \
   rm -f protein2genome.exonerate_gff.success || error_exit "Failed in deduplicating proteins"
 fi
-$PROTEIN=$PROTEIN.uniq
+PROTEIN=$PROTEIN.uniq
 
 if [ ! -e protein2genome.exonerate_gff.success ];then
   log "Aligning proteins"
