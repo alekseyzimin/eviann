@@ -184,6 +184,7 @@ for prog in $(echo "minimap2 hisat2 hisat2-build");do
   which $prog || log "WARNING! $prog not found the the PATH, it may or may not be needed, but we ask that it is installed!";
 done
 if [ $MINIPROT -gt 0 ];then
+  echo -n "Checking for miniprot on the PATH... " && \
   which miniprot || error_exit "You asked to align proteins with miniprot, but it is not available on the PATH!";
 fi
 

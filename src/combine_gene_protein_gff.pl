@@ -359,8 +359,8 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
-    $transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
+    #$transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
 
   }else{#reverse orientation
@@ -498,8 +498,8 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
-    $transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
+    #$transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
   }
 }
