@@ -534,7 +534,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
       mv $GENOME.snap_match.txt.tmp $GENOME.snap_match.txt && \
       touch snap.success && \
       if [ $DEBUG -lt 1 ];then
-        rm -rf SNAP
+        rm -rf SNAP $GENOME.snapcompare $GENOME.snapcompare.{annotated.gtf,loci,tracking}
       fi
     fi && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
