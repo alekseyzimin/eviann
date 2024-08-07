@@ -381,17 +381,12 @@ GENOME=`head -n 1 $TASKFILE | cut -c 2-`
 head -n 2 $TASKFILE > /dev/shm/$TASKFILEN.fa && \
 head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILEN.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr J I | tr B D | tr Z E >> /dev/shm/$TASKFILEN.faa && \
-PROTLEN=`ufasta sizes /dev/shm/$TASKFILEN.faa` && \
 tail -n 1 $TASKFILE  > exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
-exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -200 -p ./blosum80.txt --minintron 21 --maxintron ' > run_exonerate.sh
-echo -n $MAX_INTRON >> run_exonerate.sh
-echo -n ' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget --seedrepeat 10 2>/dev/null |\
-awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1) print $0}'\'' | \
-grep "^$GENOME" >>  exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
-rm $TASKFILE && \
-mv  exonerate_alignments.tmp/$TASKFILEN.gff.tmp  exonerate_alignments.tmp/$TASKFILEN.gff || rm -f  exonerate_alignments.tmp/$TASKFILEN.gff.tmp
-fi
-rm -rf /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa ' >> run_exonerate.sh && \
+exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -200 -p ./blosum80.txt --minintron 21 --maxintron '$MAX_INTRON' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget --seedrepeat 10 2>/dev/null |\
+awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1 && $0 ~ /^'\''$GENOME'\''/) print $0}'\'' >>  exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
+rm $TASKFILE /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa && \
+mv exonerate_alignments.tmp/$TASKFILEN.gff.tmp exonerate_alignments.tmp/$TASKFILEN.gff || rm -f  exonerate_alignments.tmp/$TASKFILEN.gff.tmp
+fi ' >> run_exonerate.sh && \
 chmod 0755 run_exonerate.sh && \
 mkdir -p exonerate_alignments.tmp && \
 ls /dev/shm/tmp$MYPID |awk '{print "/dev/shm/tmp'$MYPID'/"$1}' | grep taskfile$ |xargs -P $NUM_THREADS -I {} ./run_exonerate.sh {} 
