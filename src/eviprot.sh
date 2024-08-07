@@ -386,7 +386,7 @@ exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$T
 awk '\''BEGIN{flag=0}{if($0 ~ /START OF GFF DUMP/ || $0 ~ /END OF GFF DUMP/){flag++} if(flag==1 && $0 ~ /^'\''$GENOME'\''/) print $0}'\'' >>  exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
 rm $TASKFILE /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa && \
 mv exonerate_alignments.tmp/$TASKFILEN.gff.tmp exonerate_alignments.tmp/$TASKFILEN.gff || rm -f  exonerate_alignments.tmp/$TASKFILEN.gff.tmp
-fi ' >> run_exonerate.sh && \
+fi ' > run_exonerate.sh && \
 chmod 0755 run_exonerate.sh && \
 mkdir -p exonerate_alignments.tmp && \
 ls /dev/shm/tmp$MYPID |awk '{print "/dev/shm/tmp'$MYPID'/"$1}' | grep taskfile$ |xargs -P $NUM_THREADS -I {} ./run_exonerate.sh {} 
