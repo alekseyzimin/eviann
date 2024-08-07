@@ -377,14 +377,14 @@ echo -n '#!/bin/bash
 TASKFILE=$1
 TASKFILEN=`basename $1`
 if [ -s $TASKFILE ] && [ ! -s  exonerate_alignments.tmp/$TASKFILEN.gff ];then
-tail -n 1 $TASKFILE  > exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
+tail -n 1 $TASKFILE > /dev/shm/$TASKFILEN.gff.tmp && \
 head -n 2 $TASKFILE > /dev/shm/$TASKFILEN.fa && \
 head -n 3 $TASKFILE |tail -n 1 > /dev/shm/$TASKFILEN.faa && \
 head -n 4 $TASKFILE |tail -n 1 | tr JBZ IDE >> /dev/shm/$TASKFILEN.faa && \
 exonerate --model protein2genome  -Q protein -T dna --refine full -t /dev/shm/$TASKFILEN.fa -f -200 -p ./blosum80.txt --minintron 21 --maxintron '$MAX_INTRON' -q /dev/shm/$TASKFILEN.faa --bestn 1 --showtargetgff --softmasktarget --seedrepeat 10 2>/dev/null |\
-awk '\''BEGIN{start=0;stop=0;}{if($0 ~ /START OF GFF DUMP/){start=1}else if($0 ~ /END OF GFF DUMP/){stop=1}else if(start==1 && stop==0 && !($0 ~ /^#/)){print $0}else if(stop==1){exit 0}}'\'' >>  exonerate_alignments.tmp/$TASKFILEN.gff.tmp && \
+awk '\''BEGIN{start=0;stop=0;}{if($0 ~ /START OF GFF DUMP/){start=1}else if($0 ~ /END OF GFF DUMP/){stop=1}else if(start==1 && stop==0 && !($0 ~ /^#/)){print $0}else if(stop==1){exit 0}}'\'' >>  /dev/shm/$TASKFILEN.gff.tmp && \
 rm $TASKFILE /dev/shm/$TASKFILEN.fa /dev/shm/$TASKFILEN.faa && \
-mv exonerate_alignments.tmp/$TASKFILEN.gff.tmp exonerate_alignments.tmp/$TASKFILEN.gff || rm -f  exonerate_alignments.tmp/$TASKFILEN.gff.tmp
+mv /dev/shm/$TASKFILEN.gff.tmp exonerate_alignments.tmp/$TASKFILEN.gff || rm -f  exonerate_alignments.tmp/$TASKFILEN.gff.tmp
 fi ' > run_exonerate.sh && \
 chmod 0755 run_exonerate.sh && \
 mkdir -p exonerate_alignments.tmp && \
