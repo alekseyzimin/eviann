@@ -31,5 +31,6 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/makeblastdb src/blastp src/tblastn \
 	src/gffread src/gffcompare src/trmap \
 	src/stringtie \
-	TransDecoder-v5.7.1.tar.gz
+	TransDecoder-v5.7.1.tar.gz \
+	snap.tgz
 

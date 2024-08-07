@@ -13,7 +13,7 @@ UNIPROT="$PWD/uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
 PID=$$
-export PATH=$MYPATH:$PATH;
+export PATH=$MYPATH:$MYPATH/SNAP:$PATH;
 set -o pipefail
 NUM_THREADS=1
 LIFTOVER=0
@@ -175,7 +175,7 @@ GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
 
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 minimap2 stringtie gffread blastp tblastn makeblastdb gffcompare TransDecoder.Predict TransDecoder.LongOrfs");do
+for prog in $(echo "ufasta hisat2 minimap2 stringtie gffread blastp tblastn makeblastdb gffcompare snap TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog on the PATH... " && \
   which $prog || error_exit "$prog not found the the PATH, please install the appropriate package";
 done
@@ -470,12 +470,12 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
       (cd SNAP && \
         rm -rf * && \
         awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \
-        $MYPATH/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;') > $GENOME.zff && \
-        $MYPATH/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
-        $MYPATH/fathom -export 1000 -plus uni.* && \
-        $MYPATH/forge export.ann export.dna && \
-        $MYPATH/hmm-assembler.pl $GENOME . > $GENOME.hmm && \
-        $MYPATH/snap -quiet -gff $GENOME.hmm $GENOME.onefield.fa | \
+        $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;') > $GENOME.zff && \
+        $MYPATH/SNAP/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
+        $MYPATH/SNAP/fathom -export 1000 -plus uni.* && \
+        $MYPATH/SNAP/forge export.ann export.dna && \
+        $MYPATH/SNAP/hmm-assembler.pl $GENOME . > $GENOME.hmm && \
+        $MYPATH/SNAP/snap -quiet -gff $GENOME.hmm $GENOME.onefield.fa | \
         perl -F'\t' -ane 'BEGIN{$id=""}{if(not($id eq $F[8])){if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}$id=$F[8];$chrom=$F[0];$dir=$F[6];$start=$F[3];$end=$F[4];@exons=();}$F[2]="exon";$F[8]="Parent=$F[8]";if($dir eq "+"){$end=$F[4];}else{$start=$F[3];}push(@exons,join("\t",@F));$F[2]="cds";push(@exons,join("\t",@F));}END{if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}}' > $GENOME.snap.gff.tmp && \
         mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
       gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
