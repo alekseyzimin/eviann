@@ -475,8 +475,17 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
         $MYPATH/SNAP/fathom -export 1000 -plus uni.* && \
         $MYPATH/SNAP/forge export.ann export.dna && \
         $MYPATH/SNAP/hmm-assembler.pl $GENOME . > $GENOME.hmm && \
-        $MYPATH/SNAP/snap -quiet -gff $GENOME.hmm $GENOME.onefield.fa | \
-        perl -F'\t' -ane 'BEGIN{$id=""}{if(not($id eq $F[8])){if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}$id=$F[8];$chrom=$F[0];$dir=$F[6];$start=$F[3];$end=$F[4];@exons=();}$F[2]="exon";$F[8]="Parent=$F[8]";if($dir eq "+"){$end=$F[4];}else{$start=$F[3];}push(@exons,join("\t",@F));$F[2]="cds";push(@exons,join("\t",@F));}END{if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}}' > $GENOME.snap.gff.tmp && \
+        $MYPATH/ufasta split -i $GENOME.onefield.fa $GENOME.onefield.1.fa $GENOME.onefield.2.fa $GENOME.onefield.3.fa $GENOME.onefield.4.fa $GENOME.onefield.5.fa $GENOME.onefield.6.fa $GENOME.onefield.7.fa $GENOME.8.onefield.fa && \
+        echo '#!/bin/bash
+        if [ -s '$GENOME'.onefield.$1.fa ];then
+        '$MYPATH'/SNAP/snap -quiet -gff '$GENOME'.hmm '$GENOME'.onefield.$1.fa > '$GENOME'.onefield.$1.gff
+        else
+        echo "" > '$GENOME'.onefield.$1.gff
+        fi' > run_snap.sh && \
+        chmod 0755 run_snap.sh && \
+        seq 1 8 | xargs -P 8 -I {} ./run_snap.sh {} && \
+        cat $GENOME.onefield.{1,2,3,4,5,6,7,8}.gff | \
+        perl -F'\t' -ane 'BEGIN{$id=""}{if($#F == 8){if(not($id eq $F[8])){if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}$id=$F[8];$chrom=$F[0];$dir=$F[6];$start=$F[3];$end=$F[4];@exons=();}$F[2]="exon";$F[8]="Parent=$F[8]";if($dir eq "+"){$end=$F[4];}else{$start=$F[3];}push(@exons,join("\t",@F));$F[2]="cds";push(@exons,join("\t",@F));}}END{if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}}' > $GENOME.snap.gff.tmp && \
         mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
       gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
       grep 'class_code "="' $GENOME.snapcompare.annotated.gtf |\
