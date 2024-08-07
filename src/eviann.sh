@@ -744,21 +744,24 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
   ufasta extract -f <(awk '{if($3=="mRNA" || $3=="exon") print $0" "$3}' $GENOME.gff |uniq -c -f 9  | awk '{if($1==1 && $4=="exon"){split($10,a,":");split(a[1],b,"="); print b[2]}}' ) $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   if [ -s $GENOME.proteins.mex.fasta ] && [ -s $GENOME.proteins.sex.fasta ];then
     makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb.sex2mex.out 2>&1 && \
-    blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp.tmp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp5.out 2>&1 && \
+    blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp.tmp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore sseqid" -num_alignments 5 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp5.out 2>&1 && \
     mv $GENOME.sex2mex.blastp.tmp $GENOME.sex2mex.blastp && \
     perl -ane '{
-      if($F[3]>90 && $F[2]/($F[1]+1)>0.90){
-        $pseudo{$F[0]}=1;
+      @f1=split(/-/,$F[0]);
+      @f2=split(/-/,$F[5]);
+      if($F[3]>90 && $F[2]/($F[1]+1)>0.90 && not($f1[0] eq $f2[0])){
+        $pseudo{$f1[0]}=1;
       }
     }END{
       open(FILE,"'$GENOME'.gff");
       while($line=<FILE>){
         chomp($line);
-        @f=split(/\s+/,$line);
+        @f=split(/\t/,$line);
         print $line;
         ($id,$junk)=split(/;/,$f[8]);
-        if($f[2] eq "mRNA" && defined($pseudo{substr($id,3)})){
-          print "pseudo=true;\n";
+        ($loc_id,$junk)=split(/-/,$id);
+        if(($f[2] eq "mRNA" || $f[2] eq "gene") && defined($pseudo{substr($loc_id,3)})){
+          print ";pseudo=true\n";
         }else{print "\n";}
       }
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
@@ -776,9 +779,10 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
   if [ $FUNCTIONAL -lt 1 ];then
     log "Output annotation GFF is in $GENOME.pseudo_label.gff, proteins are in  $GENOME.proteins.fasta, transcripts are in $GENOME.transcripts.fasta"
     echo "Annotation summary:"
-    echo -n "Number of genes: ";awk '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
-    echo -n "Number of processed pseudo gene transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
-    echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
+    echo -n "Number of genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
+    echo -n "Number of processed pseudo gene transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
+    echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
+    echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
     echo -n "Number of proteins: "; grep '^>' $GENOME.proteins.fasta |wc -l
   else
     if [ ! -e functional.success ];then
@@ -797,10 +801,10 @@ fi
 if [ -e functional.success ];then
   log "Output annotation GFF is in $GENOME.functional_note.pseudo_label.gff, proteins are in  $GENOME.functional_note.proteins.fasta, transcripts are in $GENOME.functional_note.transcripts.fasta"
   echo "Annotation summary:"
-  echo -n "Number of genes: ";awk '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
-  echo -n "Number of functional genes: "; awk '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.gff| grep Similar |wc -l
-  echo -n "Number of processed pseudo gene transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff| grep 'pseudo=true' |wc -l
-  echo -n "Number of transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |wc -l
+  echo -n "Number of genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
+  echo -n "Number of processed pseudo gene transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
+  echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
+  echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
   echo -n "Number of functional protein coding transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |grep Similar |wc -l
   echo -n "Number of proteins: "; grep '^>' $GENOME.functional_note.proteins.fasta |wc -l
 fi
