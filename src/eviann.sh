@@ -175,10 +175,17 @@ GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
 
 #checking is dependencies are installed
-for prog in $(echo "ufasta hisat2 minimap2 stringtie gffread blastp tblastn makeblastdb gffcompare snap TransDecoder.Predict TransDecoder.LongOrfs");do
+for prog in $(echo "ufasta stringtie gffread blastp tblastn makeblastdb gffcompare snap TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog on the PATH... " && \
-  which $prog || error_exit "$prog not found the the PATH, please install the appropriate package";
+  which $prog || error_exit "$prog not found the the PATH, please make sure installation of EviAnn ran correctly!";
 done
+for prog in $(echo "minimap2 hisat2 hisat2-build");do
+  echo -n "Checking for $prog on the PATH... " && \
+  which $prog || log "WARNING! $prog not found the the PATH, it may or may not be needed, but we ask that it is installed!";
+done
+if [ $MINIPROT -gt 0 ];then
+  which miniprot || error_exit "You asked to align proteins with miniprot, but it is not available on the PATH!";
+fi
 
 #unpack uniprot
 if [ ! -s $UNIPROT ];then
@@ -192,7 +199,7 @@ fi
 
 #checking inputs
 if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
-  error_exit "Must specify at least one non-empty file with filenames of RNAseq reads with -p or -u or a file with ESTs from the same or closely related species with -e"
+  error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
 fi
 if [ ! -s $UNIPROT ];then
   error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa>"
@@ -485,7 +492,39 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
         chmod 0755 run_snap.sh && \
         seq 1 8 | xargs -P 8 -I {} ./run_snap.sh {} && \
         cat $GENOME.onefield.{1,2,3,4,5,6,7,8}.gff | \
-        perl -F'\t' -ane 'BEGIN{$id=""}{if($#F == 8){if(not($id eq $F[8])){if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}$id=$F[8];$chrom=$F[0];$dir=$F[6];$start=$F[3];$end=$F[4];@exons=();}$F[2]="exon";$F[8]="Parent=$F[8]";if($dir eq "+"){$end=$F[4];}else{$start=$F[3];}push(@exons,join("\t",@F));$F[2]="cds";push(@exons,join("\t",@F));}}END{if(not($id eq "")){print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";print join("",@exons);}}' > $GENOME.snap.gff.tmp && \
+        perl -F'\t' -ane 'BEGIN{
+            $id="";
+          }{
+            if($#F == 8){
+              if(not($id eq $F[8])){
+                if(not($id eq "")){
+                  print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
+                  print join("",@exons);
+                }
+                $id=$F[8];
+                $chrom=$F[0];
+                $dir=$F[6];
+                $start=$F[3];
+                $end=$F[4];
+                @exons=();
+              }
+              $F[2]="exon";
+              $F[8]="Parent=$F[8]";
+              if($dir eq "+"){
+                $end=$F[4];
+              }else{
+                $start=$F[3];
+              }
+              push(@exons,join("\t",@F));
+              $F[2]="cds";
+              push(@exons,join("\t",@F));
+            }
+          }END{
+            if(not($id eq "")){
+              print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
+              print join("",@exons);
+            }
+          }' > $GENOME.snap.gff.tmp && \
         mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
       gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
       grep 'class_code "="' $GENOME.snapcompare.annotated.gtf |\
@@ -502,30 +541,30 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
     perl -F'\t' -ane 'BEGIN{
-      open(FILE,"'$GENOME'.protein_count.txt");
-      while($line=<FILE>){
-        chomp($line);
-        my ($name,$c)=split(/\s+/,$line);
-        $count{$name}=$c;
-      }
-    }{
-      undef($transcript_id);
-      if($F[2] eq "transcript"){
-        if($F[8]=~/ID=(\S+);locus=(\S+)$/){
-          $transcript_id=$1;
-          $gene_id=$2;
-          $printstr=join("\t",@F);
-          chomp($printstr);
-          print "$printstr;count=$count{$transcript_id}\n" if(defined($count{$transcript_id}));
+        open(FILE,"'$GENOME'.protein_count.txt");
+        while($line=<FILE>){
+          chomp($line);
+          my ($name,$c)=split(/\s+/,$line);
+          $count{$name}=$c;
         }
-      }elsif($F[2] eq "CDS"){
-        $transcript_id=$1; 
-        if($F[8]=~/Parent=(\S+)$/){
-          $transcript_id=$1;
-          print if(defined($count{$transcript_id}));
+      }{
+        undef($transcript_id);
+        if($F[2] eq "transcript"){
+          if($F[8]=~/ID=(\S+);locus=(\S+)$/){
+            $transcript_id=$1;
+            $gene_id=$2;
+            $printstr=join("\t",@F);
+            chomp($printstr);
+            print "$printstr;count=$count{$transcript_id}\n" if(defined($count{$transcript_id}));
+          }
+        }elsif($F[2] eq "CDS"){
+          $transcript_id=$1; 
+          if($F[8]=~/Parent=(\S+)$/){
+            $transcript_id=$1;
+            print if(defined($count{$transcript_id}));
+          }
         }
-      }
-    }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
+      }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff
@@ -547,25 +586,25 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
       add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if(!($9~/internal/)){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
       perl -F'\t' -ane 'BEGIN{
-        open(FILE,"'$GENOME'.lncRNA.u.blastp");
-        while($line=<FILE>){
-          $line=~/^(.+)\.p\d+/;
-          $f=$1;
-          $f=~s/_lncRNA//;
-          $h{$f}=1;
-        }
-      }{
-        unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
-          @f=split(/;|:/,$F[8]); 
-          if(defined($h{substr($f[0],3)})){
-            if($F[2] eq "mRNA"){
-              print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
-            }else{
-              print join("\t",@F);;
+          open(FILE,"'$GENOME'.lncRNA.u.blastp");
+          while($line=<FILE>){
+            $line=~/^(.+)\.p\d+/;
+            $f=$1;
+            $f=~s/_lncRNA//;
+            $h{$f}=1;
+          }
+        }{
+          unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
+            @f=split(/;|:/,$F[8]); 
+            if(defined($h{substr($f[0],3)})){
+              if($F[2] eq "mRNA"){
+                print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
+              }else{
+                print join("\t",@F);;
+              }
             }
           }
-        }
-      }' > $GENOME.u.cds.gff.tmp && \
+        }' > $GENOME.u.cds.gff.tmp && \
       mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff
     else
       echo "#gff" > $GENOME.u.cds.gff
@@ -590,7 +629,29 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
     mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
-    grep ^REGION check_cds.out |perl -ane '{$n++;@f=split("",uc($F[1]));for($i=0;$i<=$#f;$i++){if($f[$i] eq "A"){$freq[0][$i]++;}elsif($f[$i] eq "C"){$freq[1][$i]++;}elsif($f[$i] eq "G"){$freq[2][$i]++;}elsif($f[$i] eq "T"){$freq[3][$i]++;}}}END{print "A\tC\tG\tT\n";for($i=0;$i<=$#f;$i++){for($j=0;$j<=3;$j++){printf("%.2f\t",$freq[$j][$i]/$n);}print "\n"}}' > cds_matrix.txt && \
+    grep ^REGION check_cds.out | \
+    perl -ane '{
+      $n++;
+      @f=split("",uc($F[1]));
+      for($i=0;$i<=$#f;$i++){
+        if($f[$i] eq "A"){
+          $freq[0][$i]++;
+        }elsif($f[$i] eq "C"){
+          $freq[1][$i]++;
+        }elsif($f[$i] eq "G"){
+          $freq[2][$i]++;
+        }elsif($f[$i] eq "T"){
+          $freq[3][$i]++;
+        }
+      }
+    }END{
+      print "A\tC\tG\tT\n";
+      for($i=0;$i<=$#f;$i++){
+        for($j=0;$j<=3;$j++){
+          printf("%.2f\t",$freq[$j][$i]/$n);
+        }print "\n";
+      }
+    }' > cds_matrix.txt && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -617,7 +678,29 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
     mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
     cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
-    grep ^REGION check_cds.out |perl -ane '{$n++;@f=split("",uc($F[1]));for($i=0;$i<=$#f;$i++){if($f[$i] eq "A"){$freq[0][$i]++;}elsif($f[$i] eq "C"){$freq[1][$i]++;}elsif($f[$i] eq "G"){$freq[2][$i]++;}elsif($f[$i] eq "T"){$freq[3][$i]++;}}}END{print "A\tC\tG\tT\n";for($i=0;$i<=$#f;$i++){for($j=0;$j<=3;$j++){printf("%.2f\t",$freq[$j][$i]/$n);}print "\n"}}' > cds_matrix.txt && \
+    grep ^REGION check_cds.out | \
+    perl -ane '{
+      $n++;
+      @f=split("",uc($F[1]));
+      for($i=0;$i<=$#f;$i++){
+        if($f[$i] eq "A"){
+          $freq[0][$i]++;
+        }elsif($f[$i] eq "C"){
+          $freq[1][$i]++;
+        }elsif($f[$i] eq "G"){
+          $freq[2][$i]++;
+        }elsif($f[$i] eq "T"){
+          $freq[3][$i]++;
+        }
+      }
+    }END{
+      print "A\tC\tG\tT\n";
+      for($i=0;$i<=$#f;$i++){
+        for($j=0;$j<=3;$j++){
+          printf("%.2f\t",$freq[$j][$i]/$n);
+        }print "\n";
+      }
+    }' > cds_matrix.txt && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -642,7 +725,16 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     rm -rf $GENOME.all.{combined,redundant}.gtf $GENOME.all $GENOME.palign.all.gff $GENOME.protref.all.annotated.class.gff $GENOME.protref.all.annotated.gtf $GENOME.protref.all $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
   fi && \
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
-  touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,j,u}.success
+  if [ ! -e merge.unused.success ];then
+    log "Merging proteins without transcript match failed, results will be incomplete!"
+  fi && \
+  if [ ! -e merge.u.success ];then
+    log "Merging transcripts without protein match failed, results will be incomplete!"
+  fi && \
+  if [ ! -e snap.success ];then
+    log "Ab initio gene finding with snap failed, results may be suboptimal incomplete!"
+  fi && \
+  touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,u}.success snap.success
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
@@ -653,7 +745,22 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
     makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb.sex2mex.out 2>&1 && \
     blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp.tmp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore" -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp5.out 2>&1 && \
     mv $GENOME.sex2mex.blastp.tmp $GENOME.sex2mex.blastp && \
-    perl -ane '{if($F[3]>90 && $F[2]/($F[1]+1)>0.90){$pseudo{$F[0]}=1;}}END{open(FILE,"'$GENOME'.gff");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);print $line; ($id,$junk)=split(/;/,$f[8]);if($f[2] eq "mRNA" && defined($pseudo{substr($id,3)})){ print "pseudo=true;\n";}else{print "\n"}}}' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
+    perl -ane '{
+      if($F[3]>90 && $F[2]/($F[1]+1)>0.90){
+        $pseudo{$F[0]}=1;
+      }
+    }END{
+      open(FILE,"'$GENOME'.gff");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        print $line;
+        ($id,$junk)=split(/;/,$f[8]);
+        if($f[2] eq "mRNA" && defined($pseudo{substr($id,3)})){
+          print "pseudo=true;\n";
+        }else{print "\n";}
+      }
+    }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
   else
     cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
