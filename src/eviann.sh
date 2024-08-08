@@ -478,7 +478,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
       (cd SNAP && \
         rm -rf * && \
         awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \
-        $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;') > $GENOME.zff && \
+        $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}') > $GENOME.zff && \
         $MYPATH/SNAP/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
         $MYPATH/SNAP/fathom -export 1000 -plus uni.* && \
         $MYPATH/SNAP/forge export.ann export.dna && \
