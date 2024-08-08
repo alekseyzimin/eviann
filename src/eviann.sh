@@ -344,7 +344,7 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
     perl -F'\t' -ane '{
       if($F[2] eq "mRNA"){
         $F[2]="gene";
-        if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\S+);Positive=(\S+);Target=(\S+)\s\d+\s\d+$/){
+        if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\d+.\d+);Positive=(\d+.\d+);\S*Target=(\S+)\s\d+\s\d+$/){
           $count=1;
           $parent="$5:$F[0]:$F[3]";
           if(not(defined($output{$parent}))){
@@ -353,7 +353,7 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
           }else{
             $flag=0;
           }
-          print join("\t",@F[0..7]),"\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$3;similarity=$3\n" if($flag);
+          print join("\t",@F[0..7]),"\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$3;similarity=$4\n" if($flag);
         }
       }elsif($F[2] eq "CDS"){
         if($count>1){
@@ -670,7 +670,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     fi && \
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt cds_matrix.txt 1>combine.out 2>&1 && \
-    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff  && rm -f $GENOME.{u,unused_proteins}.gff.tmp
+    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff  && rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
@@ -719,7 +719,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     fi && \
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt cds_matrix.txt 1>combine.out 2>&1 && \
-    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && rm -f $GENOME.{u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
+    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
   fi && \
   rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
   if [ $DEBUG -lt 1 ];then
