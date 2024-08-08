@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-#this code filters the transcripts by local abundance; for the sale location (gene) and the same CDS, it keeps the best expressed ones
+#this code filters the transcripts by local abundance; for the same location (gene) and the same CDS, it keeps the best expressed ones
 #input is the GTF file, where the name of the transcript includes the abundance
 #transcript_id "MSTRG_00000160:8"; gene_id "XLOC_000001"; xloc "XLOC_000001"; cmp_ref "NP_051101.1.NC_000932.1.81474"; class_code "k"; tss_id "TSS1";
 my %transcripts_at_xloc_same_cds=();
@@ -31,8 +31,8 @@ for $l(keys %transcripts_at_xloc_same_cds){
   #print "DEBUG top $tr count $top_count class $class threshold $threshold\n";
   for(my $i=0;$i<=$#transcripts;$i++){
     my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
-    #print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold || (weight_function($count,$tpm) >= $threshold*.9 && ($class eq "=" || $class eq "k")));
-    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold);
+    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold || (weight_function($count,$tpm) >= $threshold*.5 && ($class eq "=" || $class eq "k")));
+    #print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold);
   }
 }
 
