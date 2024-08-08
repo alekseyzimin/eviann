@@ -778,15 +778,7 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
 fi
 
 if [ -e merge.success ] && [ -e pseudo_detect.success ];then
-  if [ $FUNCTIONAL -lt 1 ];then
-    log "Output annotation GFF is in $GENOME.pseudo_label.gff, proteins are in  $GENOME.proteins.fasta, transcripts are in $GENOME.transcripts.fasta"
-    echo "Annotation summary:"
-    echo -n "Number of genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
-    echo -n "Number of processed pseudo gene transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
-    echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
-    echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
-    echo -n "Number of distinct proteins: "; ufasta one $GENOME.proteins.fasta | grep -v '^>' |sort -S 10% |uniq |wc -l
-  else
+  if [ $FUNCTIONAL -gt 0 ];then
     if [ ! -e functional.success ];then
       log "Performing functional annotation" && \
       blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
@@ -797,19 +789,15 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
       rm -rf blastp4.out && \
       touch functional.success  || error_exit "Functional annotation failed"
     fi
+    log "Output functionally annotated GFF is in $GENOME.functional_note.pseudo_label.gff, proteins are in  $GENOME.functional_note.proteins.fasta, transcripts are in $GENOME.functional_note.transcripts.fasta"
+    echo -n "Number of functional protein coding transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |grep Similar |wc -l
+  else
+    log "Output annotation GFF is in $GENOME.pseudo_label.gff, proteins are in  $GENOME.proteins.fasta, transcripts are in $GENOME.transcripts.fasta"
   fi
-fi 
-
-if [ -e functional.success ];then
-  log "Output annotation GFF is in $GENOME.functional_note.pseudo_label.gff, proteins are in  $GENOME.functional_note.proteins.fasta, transcripts are in $GENOME.functional_note.transcripts.fasta"
-  echo "Annotation summary:"
   echo -n "Number of genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
   echo -n "Number of processed pseudo gene transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
-  echo -n "Number of functional protein coding transcripts: ";awk '{if($3=="mRNA")print $0}' $GENOME.functional_note.pseudo_label.gff |grep Similar |wc -l
   echo -n "Number of distinct proteins: "; ufasta one $GENOME.proteins.fasta | grep -v '^>' |sort -S 10% |uniq |wc -l
 fi
-
-
 
