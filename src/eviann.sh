@@ -136,7 +136,7 @@ do
             ;;
         --miniprot)
             MINIPROT=1
-            log "Will use miniprot for protein alignments"
+            log "Will use miniprot for protein alignments, miniprot is expected to be on the system PATH, please use version 0.12"
             ;;
         -v|--verbose)
             set -x
@@ -151,7 +151,7 @@ do
             ;;
         -h|--help|-u|--usage)
             usage
-            exit 0
+            exit 255
             ;;
         *)
             echo "Unknown option $1"
@@ -175,9 +175,10 @@ GENOME=`basename $GENOMEFILE`
 PROTEIN=`basename $PROTEINFILE`
 
 #checking is dependencies are installed
+log "Checking dependencies"
 for prog in $(echo "ufasta stringtie gffread blastp tblastn makeblastdb gffcompare snap TransDecoder.Predict TransDecoder.LongOrfs");do
-  echo -n "Checking for $prog on the PATH... " && \
-  which $prog || error_exit "$prog not found the the PATH, please make sure installation of EviAnn ran correctly!";
+  echo -n "Checking for $prog in $MYPATH ... " && \
+  which $prog || error_exit "$prog not found in $MYPATH, please make sure installation of EviAnn ran correctly!";
 done
 for prog in $(echo "minimap2 hisat2 hisat2-build");do
   echo -n "Checking for $prog on the PATH... " && \
@@ -187,14 +188,20 @@ if [ $MINIPROT -gt 0 ];then
   echo -n "Checking for miniprot on the PATH... " && \
   which miniprot || error_exit "You asked to align proteins with miniprot, but it is not available on the PATH!";
 fi
+echo "Checking if TransDecoder is properly installed and works"
+$MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
+$MYPATH/TransDecoder.LongOrfs --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.LongOrfs to see what is missing."
+log "All dependencies checks passed"
 
 #unpack uniprot
 if [ ! -s $UNIPROT ];then
-  log "Unpacking Uniprot database"
+  log "Unpacking Uniprot database" && \
   gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
   mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta && \
+  log "Building blast Uniprot database" && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1
 else
+  log "Building blast Uniprot database" && \
   makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1
 fi
 
@@ -341,19 +348,25 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
   log "Aligning proteins"
   if [ $MINIPROT -gt 0 ];then
     miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
-    perl -F'\t' -ane '{
+    perl -F'\t' -ane 'BEGIN{@output=();}{
       if($F[2] eq "mRNA"){
+        if(scalar(@output) > 1){
+          foreach $l(@output){
+            print $l;
+          }
+        }
+        @output=();
         $F[2]="gene";
         if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\d+.\d+);Positive=(\d+.\d+);\S*Target=(\S+)\s\d+\s\d+$/){
           $count=1;
           $parent="$5:$F[0]:$F[3]";
-          if(not(defined($output{$parent}))){
+          if(not(defined($already_output{$parent}))){
             $flag=1;
-            $output{$parent}=1;
+            $already_output{$parent}=1;
           }else{
             $flag=0;
           }
-          print join("\t",@F[0..7]),"\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$3;similarity=$4\n" if($flag);
+          push(@output,join("\t",@F[0..7])."\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$3;similarity=$4\n") if($flag);
         }
       }elsif($F[2] eq "CDS"){
         if($count>1){
@@ -365,14 +378,33 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
             $start=$F[4]+1;
             $stop=$last_base-1;
           }
-          print join("\t",@F[0..1]),"\tintron\t$start\t$stop\t",join("\t",@F[5..7]),"\tID=intron-$parent-",$count-1,";Parent=$parent\n" if($flag);
+          push(@output,join("\t",@F[0..1])."\tintron\t$start\t$stop\t".join("\t",@F[5..7])."\tID=intron-$parent-",$count-1,";Parent=$parent\n") if($flag);
         }
         $F[2]="cds";
-        print join("\t",@F[0..7]),"\tID=cds-$parent-$count;Parent=$parent\n" if($flag);
+        push(@output,join("\t",@F[0..7])."\tID=cds-$parent-$count;Parent=$parent\n") if($flag);
         $F[2]="exon";
-        print join("\t",@F[0..7]),"\tID=exon-$parent-$count;Parent=$parent\n" if($flag);
+        push(@output,join("\t",@F[0..7])."\tID=exon-$parent-$count;Parent=$parent\n") if($flag);
         $count++;
         $last_base=($F[6] eq "+")?$F[4]:$F[3];
+      }elsif($F[2] eq "stop_codon"){
+        if($F[6] eq "+"){
+          @f=split(/\t/,$output[$#output]);
+          if($F[4]==$f[4]){
+            $f[4]-=3;
+          }
+        }else{
+          @f=split(/\t/,$output[$#output]);
+          if($F[3]==$f[3]){
+            $f[3]+=3;
+            $output[$#output]=join("\t",@f);
+          }
+        }
+      }
+    }END{
+      if(scalar(@output) > 1){
+        foreach $l(@output){
+          print $l;
+        }
       }
     }' > $GENOME.$PROTEIN.palign.gff.tmp && \
     mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && rm -f merge.success && touch protein2genome.exonerate_gff.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
