@@ -176,7 +176,7 @@ PROTEIN=`basename $PROTEINFILE`
 
 #checking is dependencies are installed
 log "Checking dependencies"
-for prog in $(echo "ufasta stringtie gffread blastp tblastn makeblastdb gffcompare snap TransDecoder.Predict TransDecoder.LongOrfs");do
+for prog in $(echo "ufasta stringtie gffread gffcompare blastp tblastn makeblastdb miniprot snap TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog in $MYPATH ... " && \
   which $prog || error_exit "$prog not found in $MYPATH, please make sure installation of EviAnn ran correctly!";
 done
@@ -184,10 +184,6 @@ for prog in $(echo "minimap2 hisat2 hisat2-build");do
   echo -n "Checking for $prog on the PATH... " && \
   which $prog || log "WARNING! $prog not found the the PATH, it may or may not be needed, but we ask that it is installed!";
 done
-if [ $MINIPROT -gt 0 ];then
-  echo -n "Checking for miniprot on the PATH... " && \
-  which miniprot || error_exit "You asked to align proteins with miniprot, but it is not available on the PATH!";
-fi
 echo "Checking if TransDecoder is properly installed and works"
 $MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
 $MYPATH/TransDecoder.LongOrfs --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.LongOrfs to see what is missing."
