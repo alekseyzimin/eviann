@@ -136,7 +136,7 @@ do
             ;;
         --miniprot)
             MINIPROT=1
-            log "Will use miniprot for protein alignments, miniprot is expected to be on the system PATH, please use version 0.12"
+            log "Will use miniprot for protein alignments, miniprot is expected to be on the system PATH, please use version 0.13 or higher"
             ;;
         -v|--verbose)
             set -x
@@ -387,18 +387,25 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
         $count++;
         $last_base=($F[6] eq "+")?$F[4]:$F[3];
       }elsif($F[2] eq "stop_codon"){
+        @f=split(/\t/,$output[$#output]);
         if($F[6] eq "+"){
-          @f=split(/\t/,$output[$#output]);
           if($F[4]==$f[4]){
             $f[4]-=3;
+            $output[$#output]=join("\t",@f);
+            @f=split(/\t/,$output[$#output-1]);
+            $f[4]-=3;
+            $output[$#output-1]=join("\t",@f);
           }
         }else{
-          @f=split(/\t/,$output[$#output]);
           if($F[3]==$f[3]){
             $f[3]+=3;
             $output[$#output]=join("\t",@f);
+            @f=split(/\t/,$output[$#output-1]);
+            $f[3]+=3;
+            $output[$#output-1]=join("\t",@f);
           }
         }
+        push(@output,join("\t",@F[0..7])."\tID=stop_codon-$parent-$count;Parent=$parent\n") if($flag);
       }
     }END{
       if(scalar(@output) > 1){
