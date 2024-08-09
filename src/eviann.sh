@@ -324,6 +324,58 @@ if [ -e tissue0.bam.sorted.bam ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
+if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];then
+  OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
+  if [ $OUTCOUNT -eq 1 ];then
+    # a single tissue, we add 1 for the number of samples and the TPMs
+    cat tissue*.bam.sorted.bam.gtf | grep -v '^#' | perl -F'\t' -ane '{
+      if($F[2] eq "transcript"){
+        if($F[8]=~/transcript_id \"(\S+)\";/){
+          $transcript=$1;
+          $tpm=1;
+          $tpm=$1 if($F[8] =~ /TPM \"(\S+)\";/);
+          $new_transcript_id="M$transcript:1:$tpm";
+        }
+      }
+      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
+      print join("\t",@F);
+    }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf &&  touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+  elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
+    log "Merging transcripts"
+    gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
+    awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
+    mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
+    perl -F'\t' -ane '
+    BEGIN{
+      $thresh=int('$NUM_TISSUES')/50;
+      open(FILE,"'$GENOME'.max_tpm.samples.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $tpm{$f[0]}=$f[1];
+        $samples{$f[0]}=$f[2];
+      }
+    }{
+      if($F[2] eq "transcript"){
+        $flag=1;
+        if($F[8]=~/transcript_id \"(\S+)\";/){
+          $transcript=$1;
+          $new_transcript_id="$transcript:$samples{$transcript}:$tpm{$transcript}";
+          $flag=0 if($samples{$transcript}<$thresh);
+        }else{
+          die("no transcript id found on line ".join("\t",@F));
+        }
+      }
+      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
+      print join("\t",@F) if($flag);
+    }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
+    mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
+    rm -f $GENOME.tmp.{combined.gtf,tracking,loci} $GENOME.tmp && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+  else
+    error_exit "one or more Stringtie jobs failed to run properly"
+  fi
+fi
+
 if [ ! -e protein2genome.deduplicate.success ];then
   log "Deduplicating input proteins"
   $MYPATH/ufasta one $PROTEINFILE | \
@@ -420,58 +472,6 @@ if [ ! -e protein2genome.exonerate_gff.success ];then
     else
       error_exit "Alignment of proteins with EviProt failed, please check your input files"
     fi
-  fi
-fi
-
-if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];then
-  OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
-  if [ $OUTCOUNT -eq 1 ];then
-    # a single tissue, we add 1 for the number of samples and the TPMs
-    cat tissue*.bam.sorted.bam.gtf | grep -v '^#' | perl -F'\t' -ane '{
-      if($F[2] eq "transcript"){
-        if($F[8]=~/transcript_id \"(\S+)\";/){
-          $transcript=$1;
-          $tpm=1;
-          $tpm=$1 if($F[8] =~ /TPM \"(\S+)\";/);
-          $new_transcript_id="M$transcript:1:$tpm";
-        }
-      }
-      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
-      print join("\t",@F);
-    }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf &&  touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
-  elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
-    log "Merging transcripts"
-    gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
-    awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
-    mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
-    perl -F'\t' -ane '
-    BEGIN{
-      $thresh=int('$NUM_TISSUES')/50;
-      open(FILE,"'$GENOME'.max_tpm.samples.txt");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/\s+/,$line);
-        $tpm{$f[0]}=$f[1];
-        $samples{$f[0]}=$f[2];
-      }
-    }{
-      if($F[2] eq "transcript"){
-        $flag=1;
-        if($F[8]=~/transcript_id \"(\S+)\";/){
-          $transcript=$1;
-          $new_transcript_id="$transcript:$samples{$transcript}:$tpm{$transcript}";
-          $flag=0 if($samples{$transcript}<$thresh);
-        }else{
-          die("no transcript id found on line ".join("\t",@F));
-        }
-      }
-      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
-      print join("\t",@F) if($flag);
-    }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
-    mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
-    rm -f $GENOME.tmp.{combined.gtf,tracking,loci} $GENOME.tmp && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
-  else
-    error_exit "one or more Stringtie jobs failed to run properly"
   fi
 fi
 
