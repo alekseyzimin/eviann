@@ -469,7 +469,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       print join("\t",@F) if($flag);
     }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
-    rm -f $GENOME.tmp.combined.gtf && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+    rm -f $GENOME.tmp.{combined.gtf,tracking,loci} $GENOME.tmp && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
   else
     error_exit "one or more Stringtie jobs failed to run properly"
   fi
@@ -707,7 +707,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
     mv $GENOME.gff.tmp $GENOME.gff  && \
     rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff && \
-    touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,u}.success snap.success || error_exit "Merging transcript and protein evidence failed."
+    touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
@@ -760,7 +760,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
     mv $GENOME.gff.tmp $GENOME.gff && \
     rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff && \
-    touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,u}.success snap.success || error_exit "Merging transcript and protein evidence failed."
+    touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
   fi
   rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
   if [ $DEBUG -lt 1 ];then
@@ -774,8 +774,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     log "Merging transcripts without protein match failed, results will be incomplete!"
   fi
   if [ ! -e snap.success ];then
-    log "Ab initio gene finding with snap failed, results may be suboptimal incomplete!"
+    log "Ab initio gene finding with snap failed, results may be suboptimal!"
   fi
+  rm -f merge.{unused,u}.success snap.success
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
@@ -807,14 +808,13 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
         }else{print "\n";}
       }
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
-    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
+    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   else
-    cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
+    cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   fi
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp 
-  fi && \
-  touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
+  fi
 fi
 
 if [ -e merge.success ] && [ -e pseudo_detect.success ];then
