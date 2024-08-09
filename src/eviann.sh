@@ -124,6 +124,7 @@ do
             ;;
         -l|--liftover)
             LIFTOVER=1
+            MINIPROT=0
             log "Liftover mode ON"
             ;;
         -f|--functional)
