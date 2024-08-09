@@ -4,12 +4,12 @@ PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="genome.fa"
 RNASEQ="paired"
 ALT_EST="altest"
-MINIPROT=0
+MINIPROT=1
 export BATCH_SIZE=1000000
 export MAX_INTRON=250000
 export MIN_TPM=0.25
 export DEBUG=0
-UNIPROT="$PWD/uniprot_sprot.nonred.85.fasta"
+UNIPROT="uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
 PID=$$
@@ -66,7 +66,7 @@ function usage {
  echo "-e <string: fasta file with assembled transcripts from related species>"
  echo "-p <string: fasta file of protein sequences from related species>"
  echo "-m <int: max intron size, default: 250000>"
- echo "--miniprot <flag: use miniprot instead of eviprot for protein-to-genome alignments, this is much faster but less accurate, default: not set>"
+ echo "--eviprot <flag: use eviprot instead of miniprot for protein-to-genome alignments, this is much slower but more accurate, default: not set>"
  echo "-l <flag: liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
  echo "-f <flag: perform functional annotation, default: not set>"
  echo "--debug <flag: keep intermediate output files, default: not set>"
@@ -134,9 +134,9 @@ do
             MAX_INTRON="$2"
             shift
             ;;
-        --miniprot)
-            MINIPROT=1
-            log "Will use miniprot for protein alignments, miniprot is expected to be on the system PATH, please use version 0.13 or higher"
+        --eviprot)
+            MINIPROT=0
+            log "Will use eviprot for protein alignments, this is slower but yields better sensitivity"
             ;;
         -v|--verbose)
             set -x
@@ -194,11 +194,6 @@ if [ ! -s $UNIPROT ];then
   log "Unpacking Uniprot database" && \
   gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
   mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta && \
-  log "Building blast Uniprot database" && \
-  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1
-else
-  log "Building blast Uniprot database" && \
-  makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1
 fi
 
 #checking inputs
@@ -210,7 +205,7 @@ if [ ! -s $UNIPROT ];then
 fi
 if [ ! -s $PROTEINFILE ];then
   echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
-  export PROTEINFILE=$UNIPROT && \
+  export PROTEINFILE=`realpath $UNIPROT` && \
   export PROTEIN=`basename $UNIPROT`
 fi
 if [ ! -s $GENOMEFILE ];then
@@ -616,6 +611,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+    makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 && \
     blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp1.out > $GENOME.lncRNA.blastp.tmp && \
     mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
@@ -816,6 +812,7 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
   if [ $FUNCTIONAL -gt 0 ];then
     if [ ! -e functional.success ];then
       log "Performing functional annotation" && \
+      makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 && \
       blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
       mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
       my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
