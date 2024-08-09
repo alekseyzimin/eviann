@@ -47,13 +47,13 @@ function usage {
  Please combine runs so that one file/pair/triplet of files contains a single sample.  
  The lines are in the following format:
  
- /path/filename /path/filename /path/filename tag
+/path/filename /path/filename /path/filename tag
  or
- /path/filename /path/filename tag
+/path/filename /path/filename tag
  or
- /path/filename tag
+/path/filename tag
 
- Fields are space-separated. \"tag\" indicates type of data referred to in the preceding fields.  Possible values are:
+ Fields are space-separated, no leading space. \"tag\" indicates type of data referred to in the preceding fields.  Possible values are:
  
  fastq -- indicates the data is Illumina RNA-seq in fastq format, expects one or a pair of /path/filename.fastq before the tag
  fasta -- indicates the data is Illumina RNA-seq in fasta format, expects one or a pair of /path/filename.fasta before the tag
@@ -220,14 +220,6 @@ if [ $NUM_PROTEINS -lt 1 ];then
   error_exit "Invalid format for the proteins file $PROTEINFILE, must be in fasta format"
 fi
 
-#first we align
-if [ ! -e align-build.success ];then
-  log "Building HISAT2 index"
-  hisat2-build $GENOMEFILE $GENOME.hst 1>/dev/null 2>&1 && \
-  touch align-build.success && \
-  rm -f transcripts_assemble.success || error_exit "Building HISAT2 index failed, check your inputs"
-fi
-
 if [ ! -e transcripts_assemble.success ];then
   if [ -s $ALT_EST ];then
     log "Processing transcripts from related species"
@@ -313,10 +305,18 @@ if [ ! -e transcripts_assemble.success ];then
     awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\
     mv \$1.gtf.filtered.tmp \$1.gtf  && \\
     rm -f \$1.gtf.tmp " > run_stringtie_mix.sh && \
-    chmod 0755 run_stringtie.sh && \
-    chmod 0755 run_stringtie_lr.sh && \
-    chmod 0755 run_stringtie_mix.sh && \
-  bash ./hisat_stringtie.sh && touch transcripts_assemble.success && rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
+  chmod 0755 run_stringtie.sh && \
+  chmod 0755 run_stringtie_lr.sh && \
+  chmod 0755 run_stringtie_mix.sh && \
+  HISAT=`grep hisat2 hisat_stringtie.sh| wc -l` && \
+  if [ $HISAT -gt 0 ] && [ ! -e align-build.success ];then
+    log "Building HISAT2 index"
+    hisat2-build $GENOMEFILE $GENOME.hst 1>/dev/null 2>&1 && \
+    touch align-build.success || error_exit "Building HISAT2 index failed, check your inputs"
+  fi && \
+  bash ./hisat_stringtie.sh && \
+  touch transcripts_assemble.success && \
+  rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
 fi
 
 NUM_TISSUES=`ls tissue*.bam.sorted.bam|wc -l`
