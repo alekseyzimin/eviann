@@ -196,7 +196,7 @@ log "All dependencies checks passed"
 if [ ! -s $UNIPROT ];then
   log "Unpacking Uniprot database" && \
   gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
-  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta && \
+  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta 
 fi
 
 #checking inputs
@@ -310,10 +310,10 @@ if [ ! -e transcripts_assemble.success ];then
   chmod 0755 run_stringtie_mix.sh && \
   HISAT=`grep hisat2 hisat_stringtie.sh| wc -l` && \
   if [ $HISAT -gt 0 ] && [ ! -e align-build.success ];then
-    log "Building HISAT2 index"
+    log "Building HISAT2 index" && \
     hisat2-build $GENOMEFILE $GENOME.hst 1>/dev/null 2>&1 && \
     touch align-build.success || error_exit "Building HISAT2 index failed, check your inputs"
-  fi && \
+  fi
   bash ./hisat_stringtie.sh && \
   touch transcripts_assemble.success && \
   rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
@@ -498,7 +498,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.protref.annotated.gtf $GENOME.transcripts_to_keep.txt
-  fi && \
+  fi 
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
   if [ ! -e merge.unused.success ];then
@@ -569,7 +569,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
       if [ $DEBUG -lt 1 ];then
         rm -rf SNAP $GENOME.snapcompare $GENOME.snapcompare.{annotated.gtf,loci,tracking}
       fi
-    fi && \
+    fi
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
     ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
@@ -599,14 +599,14 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
           }
         }
       }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
-    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff
+    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff
     fi
   else
-    echo "" > $GENOME.best_unused_proteins.gff
+    echo "" > $GENOME.best_unused_proteins.gff && touch merge.unused.success
   fi 
-  fi && touch merge.unused.success && \
+  fi
   #these are u's -- no match to a protein
   if [ ! -e merge.u.success ];then
   if [ -s $GENOME.u.gff ];then
@@ -640,9 +640,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
             }
           }
         }' > $GENOME.u.cds.gff.tmp && \
-      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff
+      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff && touch merge.u.success
     else
-      echo "#gff" > $GENOME.u.cds.gff
+      echo "#gff" > $GENOME.u.cds.gff && touch merge.u.success
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep,gff3,bed} blastp1.out transdecoder.Predict.out 
   else
@@ -651,7 +651,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.u.gff
   fi
-  fi && touch merge.u.success && \
+  fi
   log "Working on final merge"
   if [ -s $GENOME.best_unused_proteins.gff ];then
 #now we have additional proteins produces by transdecoder, let's use them all
@@ -701,10 +701,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
       awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
-    fi && \
+    fi
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt cds_matrix.txt 1>combine.out 2>&1 && \
-    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff  && rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
+    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
+    mv $GENOME.gff.tmp $GENOME.gff  && \
+    rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff && \
+    touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,u}.success snap.success || error_exit "Merging transcript and protein evidence failed."
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
@@ -750,26 +753,29 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
     if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
       awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
-    fi && \
+    fi
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
     cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt cds_matrix.txt 1>combine.out 2>&1 && \
-    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && mv $GENOME.gff.tmp $GENOME.gff && rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff
-  fi && \
+    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | \
+    awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
+    mv $GENOME.gff.tmp $GENOME.gff && \
+    rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{u,unused_proteins}.gff && \
+    touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,u}.success snap.success || error_exit "Merging transcript and protein evidence failed."
+  fi
   rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.all.{combined,redundant}.gtf $GENOME.all $GENOME.palign.all.gff $GENOME.protref.all.annotated.class.gff $GENOME.protref.all.annotated.gtf $GENOME.protref.all $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
-  fi && \
+  fi
   gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
   if [ ! -e merge.unused.success ];then
     log "Merging proteins without transcript match failed, results will be incomplete!"
-  fi && \
+  fi
   if [ ! -e merge.u.success ];then
     log "Merging transcripts without protein match failed, results will be incomplete!"
-  fi && \
+  fi
   if [ ! -e snap.success ];then
     log "Ab initio gene finding with snap failed, results may be suboptimal incomplete!"
-  fi && \
-  touch merge.success && rm -f pseudo_detect.success functional.success merge.{unused,u}.success snap.success
+  fi
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
