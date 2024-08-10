@@ -536,13 +536,15 @@ for my $locus(keys %transcripts_cds_loci){
         my @gff_fields_t=split(/\t/,$transcript{$t});
         my @attributes_t=split(";",$gff_fields_t[8]);
         my $start_cds=$transcript_cds_start{$t};
-        my $end_cds=$transcript_cds_end{$t};;
+        my $end_cds=$transcript_cds_end{$t};
         my $transcript_start=$gff_fields_t[3];
         my $transcript_end=$gff_fields_t[4];
+        $transcript_start=$start_cds if($transcript_start > $start_cds);
+        $transcript_end=$end_cds if($transcript_end < $end_cds);
         my $transcript_cds_start_index=0;
         my $transcript_cds_end_index=$#{$transcript_gff{$t}};
-        $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
-        $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
+        $locus_start=$transcript_start if($transcript_start < $locus_start);
+        $locus_end=$transcript_end if($transcript_end > $locus_end);
 #here we figure out which exons are UTR
         for(my $i=0;$i<=$#{$transcript_gff{$t}};$i++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$i]);
@@ -558,8 +560,6 @@ for my $locus(keys %transcripts_cds_loci){
             last;
           }
         }
-        $locus_start=$transcript_start if($transcript_start<$locus_start);
-        $locus_end=$transcript_end if($transcript_end>$locus_end);
 #output transcript
         $transcript_index++;
         print "DEBUG output transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
