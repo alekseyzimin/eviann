@@ -27,6 +27,7 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/filter_by_local_abundance.pl \
 	src/filter_by_class_code.pl \
 	src/filter_unused_proteins.pl \
+	src/convert_miniprot_gff.pl \
 	exonerate \
 	makeblastdb blastp tblastn \
 	gffread gffcompare trmap \
