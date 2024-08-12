@@ -231,10 +231,12 @@ if [ ! -e stringtie.success ] && [ -e sort.success ];then
 fi
 
 if [ ! -e protein_align.success ];then
-  protein2genome.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEINFILE -m $MAX_INTRON
-  if [ -s $GENOME.$PROTEIN.palign.gff ];then
-    touch protein_align.success
-  fi
+  log "Aligning proteins"
+  miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
+  $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
+  mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
+  rm -f split.success && \
+  touch protein_align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
 fi
 
 if [ ! -e split.success ];then 

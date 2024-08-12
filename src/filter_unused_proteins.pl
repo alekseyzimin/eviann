@@ -81,8 +81,8 @@ while($line=<STDIN>){
 }
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
 my $similarity_threshold=$avg/$count;
-print "#similarity threshold $similarity_threshold\n";
 $similarity_threshold=$similarity_threshold*.9 if($liftover>0);
+print "#similarity threshold $similarity_threshold\n";
 my %h=();
 my %hs=();
 my %hn=();
