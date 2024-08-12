@@ -21,7 +21,9 @@ while($line=<STDIN>){
       }else{
         $flag=0;
       }
-      push(@output,join("\t",@F[0..7])."\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$3;similarity=$4\n") if($flag);
+      $identity=$3*100;
+      $similarity=$4*100;
+      push(@output,join("\t",@F[0..7])."\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$identity;similarity=$similarity\n") if($flag);
     }
   }elsif($F[2] eq "CDS"){
     if($count>1){
