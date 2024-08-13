@@ -244,7 +244,7 @@ if [ ! -e transcripts_assemble.success ];then
   fi
   echo "#!/bin/bash" > hisat_stringtie.sh
   if [ -s $RNASEQ ];then
-    CHECK_RNASEQ=`grep "^>" $RNASEQ | wc -l`
+    CHECK_RNASEQ=`grep -P "^>|^@" $RNASEQ | wc -l`
     if [ $CHECK_RNASEQ -gt 0 ];then
       error_exit "Wrong format of the RNA sequencing description file $RNASEQ, please check your inputs and option switches!"
     fi
