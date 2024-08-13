@@ -535,7 +535,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success
             print if(defined($count{$transcript_id}));
           }
         }
-      }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $LIFTOVER $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
+      }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff
