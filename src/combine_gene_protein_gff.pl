@@ -206,6 +206,9 @@ for my $g(keys %transcript_gff){
     } 
     $transcript_seqs{$g}.=substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-1,$gff_fields[4]-$gff_fields[3]+1);
   }
+  $transcript_seqs_5pext_actual{$g}="";
+  $transcript_seqs_3pext_actual{$g}="";
+
   if($gff_fields[6] eq "-"){
     $transcript_seqs{$g}=~tr/ACGTNacgtn/TGCANtgcan/;
     $transcript_seqs{$g}=reverse($transcript_seqs{$g});
@@ -285,44 +288,43 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))){
-    #try to extend
-      ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g});
+    ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}) if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))); #try to extend
+    #at this point we did all we could to fix the coding region; last thing that remains is to make sure the stop codon is included both into the cds and the transcript
+    #from here on we assume that the stop codon is included!!!
+    $cds_end_on_transcript+=3;
+    #make sure we are not out of the transcript!!!
+    $transcript_seqs_3pext_actual{$g}=substr($transcript_seqs_3pext{$g},0,length($transcript_seqs_3pext_actual{$g})+3) if($cds_end_on_transcript > length($transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g}));
 
-      if(length($transcript_seqs_5pext{$g})>0 || length($transcript_seqs_3pext{$g})>0){
+    if(length($transcript_seqs_5pext_actual{$g})>0 || length($transcript_seqs_3pext_actual{$g})>0){
 #updating the transcript
-        $transcript_seqs{$g}=$transcript_seqs_5pext{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext{$g};
+      $transcript_seqs{$g}=$transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g};
 
 #updating the transcript records
-        @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-        my $ori=$gff_fields[6];
-        if($ori eq "+"){
-          if(length($transcript_seqs_5pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-            $gff_fields[3]-=length($transcript_seqs_5pext{$g});
-            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
-          }
-          if(length($transcript_seqs_3pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-            $gff_fields[4]+=length($transcript_seqs_3pext{$g});
-            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-          }   
-        }else{
-          if(length($transcript_seqs_3pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-            $gff_fields[3]-=length($transcript_seqs_3pext{$g});
-            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
-          }
-          if(length($transcript_seqs_5pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-            $gff_fields[4]+=length($transcript_seqs_5pext{$g});
-            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-          }  
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+      my $ori=$gff_fields[6];
+      if($ori eq "+"){
+        if(length($transcript_seqs_5pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+          $gff_fields[3]-=length($transcript_seqs_5pext_actual{$g});
+          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
         }
+        if(length($transcript_seqs_3pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+          $gff_fields[4]+=length($transcript_seqs_3pext_actual{$g});
+          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+        }   
+      }else{
+        if(length($transcript_seqs_3pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+          $gff_fields[3]-=length($transcript_seqs_3pext_actual{$g});
+          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+        }
+        if(length($transcript_seqs_5pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+          $gff_fields[4]+=length($transcript_seqs_5pext_actual{$g});
+          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+        }  
       }
-    }else{#no need to extend 
-      $transcript_seqs_5pext{$g}="";
-      $transcript_seqs_3pext{$g}="";
     }
 
 #check to see if we truncated the cds -- maybe it is a special protein?
@@ -355,12 +357,11 @@ for my $g(keys %transcript_cds){
     }
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
-    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
-    #$transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
+    $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without a start or a stop
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
 
   }else{#reverse orientation
@@ -425,43 +426,42 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))){
-    #try to extend
-      ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g});
+    ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}) if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))); #try to extend
+#at this point we did all we could to fix the coding region; last thing that remains is to make sure the stop codon is included both into the cds and the transcript
+#from here on we assume that the stop codon is included!!!
+    $cds_end_on_transcript+=3;
+#make sure we are not out of the transcript!!!
+    $transcript_seqs_3pext_actual{$g}=substr($transcript_seqs_3pext{$g},0,length($transcript_seqs_3pext_actual{$g})+3) if($cds_end_on_transcript > length($transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g}));
 
 #updating the transcript if extended
-      if(length($transcript_seqs_5pext{$g})>0 || length($transcript_seqs_3pext{$g})>0){
-        $transcript_seqs{$g}=$transcript_seqs_5pext{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext{$g};
+    if(length($transcript_seqs_5pext_actual{$g})>0 || length($transcript_seqs_3pext_actual{$g})>0){
+      $transcript_seqs{$g}=$transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g};
 #updating the transcript records
-        @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-        my $ori=$gff_fields[6];
-        if($ori eq "+"){
-          if(length($transcript_seqs_5pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-            $gff_fields[3]-=length($transcript_seqs_5pext{$g});
-            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
-          }
-          if(length($transcript_seqs_3pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-            $gff_fields[4]+=length($transcript_seqs_3pext{$g});
-            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-          }   
-        }else{
-          if(length($transcript_seqs_3pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
-            $gff_fields[3]-=length($transcript_seqs_3pext{$g});
-            ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
-          }
-          if(length($transcript_seqs_5pext{$g})>0){
-            @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
-            $gff_fields[4]+=length($transcript_seqs_5pext{$g});
-            ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
-          } 
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+      my $ori=$gff_fields[6];
+      if($ori eq "+"){
+        if(length($transcript_seqs_5pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+          $gff_fields[3]-=length($transcript_seqs_5pext_actual{$g});
+          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
         }
+        if(length($transcript_seqs_3pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+          $gff_fields[4]+=length($transcript_seqs_3pext_actual{$g});
+          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+        }   
+      }else{
+        if(length($transcript_seqs_3pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+          $gff_fields[3]-=length($transcript_seqs_3pext_actual{$g});
+          ${$transcript_gff{$g}}[0]=join("\t",@gff_fields);
+        }
+        if(length($transcript_seqs_5pext_actual{$g})>0){
+          @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+          $gff_fields[4]+=length($transcript_seqs_5pext_actual{$g});
+          ${$transcript_gff{$g}}[-1]=join("\t",@gff_fields);
+        } 
       }
-    }else{#no need to extend
-      $transcript_seqs_5pext{$g}="";
-      $transcript_seqs_3pext{$g}="";
     }
 
     if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.1){
@@ -494,13 +494,13 @@ for my $g(keys %transcript_cds){
     }
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
     $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
-    #$transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
-    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
+#$transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
+      print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
   }
 }
 
