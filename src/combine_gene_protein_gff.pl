@@ -535,6 +535,7 @@ for my $locus(keys %transcripts_cds_loci){
         my $note="";
         my @gff_fields_t=split(/\t/,$transcript{$t});
         my @attributes_t=split(";",$gff_fields_t[8]);
+        my $transcriptID=substr($attributes_t[0],3);#this is the source transcript ID
         my $start_cds=$transcript_cds_start{$t};
         my $end_cds=$transcript_cds_end{$t};
         my $transcript_start=$gff_fields_t[3];
@@ -566,7 +567,7 @@ for my $locus(keys %transcripts_cds_loci){
         my $evidence_type="complete";
         $evidence_type="protein_only" if($source eq "EviAnnP");
         $evidence_type="transcript_only" if($protID =~ /^XLOC_/);
-        push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;ProteinID=$protID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Class=$class;Evidence=$evidence_type;");
+        push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceProteinID=$protID;EvidenceTranscriptID=$transcriptID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Class=$class;Evidence=$evidence_type;");
 #output exons
         my $i=1;
         my $first_j=0;
