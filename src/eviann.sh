@@ -395,14 +395,15 @@ fi
 PROTEIN=$PROTEIN.uniq
 
 if [ ! -e protein2genome.exonerate_gff.success ];then
-  log "Aligning proteins"
   if [ $MINIPROT -gt 0 ];then
+    log "Aligning proteins to the genome with miniprot"
     miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
     $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
     mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
     rm -f merge.success && \
     touch protein2genome.exonerate_gff.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
   else
+    log "Aligning proteins to the genome with EviProt"
     if [ $LIFTOVER -gt 0 ];then
       $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN -m $MAX_INTRON -n 5 -l 100
     else
