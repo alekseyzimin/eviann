@@ -185,7 +185,7 @@ if(defined($ARGV[5])){
   open(FILE,$ARGV[5]);
   while(my $line=<FILE>){
     chomp($line);
-    @f=split(/\t/,$line);
+    @f=split(/\s+/,$line);
     $original_transcript_name{$f[0]}=$f[1];
   }
 }
