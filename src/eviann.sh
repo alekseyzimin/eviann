@@ -1,9 +1,9 @@
 #!/bin/bash
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
 PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
-GENOMEFILE="genome.fa"
-RNASEQ="paired"
-ALT_EST="altest"
+GENOMEFILE="na"
+RNASEQ="na"
+ALT_EST="na"
 MINIPROT=1
 export BATCH_SIZE=1000000
 export MAX_INTRON=250000
