@@ -731,6 +731,7 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
   echo -n "Number of processed pseudo gene transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
+  echo -n "Number of long non-coding RNAs: "; awk -F '\t' '{if($3=="mRNA") print}'  $GENOME.pseudo_label.gff | grep _lncRNA |wc -l
   echo -n "Number of distinct proteins: "; ufasta one $GENOME.proteins.fasta | grep -v '^>' |sort -S 10% |uniq |wc -l
 fi
 

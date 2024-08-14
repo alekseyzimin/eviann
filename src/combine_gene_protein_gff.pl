@@ -720,7 +720,7 @@ for my $locus(keys %transcripts_only_loci){
     my $transcriptID=substr($attributes_t[0],3);#this is the source transcript ID
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
-    next if(($num_samples<2 || $tpm<1) && $transcriptID =~ /^MSTRG/);i#require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
+    next if(($num_samples<2 || $tpm<1) && $transcriptID =~ /^MSTRG/);#require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
     $transcript_index++;
     push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
     my $i=1;
