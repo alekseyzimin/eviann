@@ -441,9 +441,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         chmod 0755 run_snap.sh && \
         seq 1 8 | xargs -P 8 -I {} ./run_snap.sh {} && \
         cat $GENOME.onefield.{1,2,3,4,5,6,7,8}.gff | \
-        perl -F'\t' -ane 'BEGIN{
-            $id="";
-          }{
+        perl -F'\t' -ane 'BEGIN{$id="";}{
             if($#F == 8){
               if(not($id eq $F[8])){
                 if(not($id eq "")){
@@ -527,7 +525,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
               if($F[2] eq "mRNA"){
                 print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
               }else{
-                print join("\t",@F);;
+                print join("\t",@F);
               }
             }
           }
