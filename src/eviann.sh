@@ -37,43 +37,43 @@ exit 1
 function usage {
  echo "Usage: eviann.sh [options]"
  echo "Options:"
- echo "-t int number of threads, default:1"
- echo "-g /path/file MANDATORY:genome fasta file"
- echo "-r /path/file file containing list of filenames of reads from transcriptome sequencing experiments, default:none
+ echo " -t INT     number of threads, default: 1"
+ echo " -g FILE    MANDATORY:genome fasta file default: none"
+ echo " -r FILE    file containing list of filenames of reads from transcriptome sequencing experiments, default: none
  
- FORMAT OF THIS FILE:
- Each line in the file must refer to sequencing data from a single experiment.
- Please combine runs so that one file/pair/triplet of files contains a single sample.  
- The lines are in the following format:
+  FORMAT OF THIS FILE:
+  Each line in the file must refer to sequencing data from a single experiment.
+  Please combine runs so that one file/pair/triplet of files contains a single sample.  
+  The lines are in the following format:
  
-/path/filename /path/filename /path/filename tag
- or
-/path/filename /path/filename tag
- or
-/path/filename tag
+ /path/filename /path/filename /path/filename tag
+  or
+ /path/filename /path/filename tag
+  or
+ /path/filename tag
 
- Fields are space-separated, no leading space. \"tag\" indicates type of data referred to in the preceding fields.  Possible values are:
+  Fields are space-separated, no leading space. \"tag\" indicates type of data referred to in the preceding fields.  Possible values are:
  
- fastq -- indicates the data is Illumina RNA-seq in fastq format, expects one or a pair of /path/filename.fastq before the tag
- fasta -- indicates the data is Illumina RNA-seq in fasta format, expects one or a pair of /path/filename.fasta before the tag
- bam -- indicates the data is aligned Illumina RNA-seq reads, expects one /path/filename.bam before the tag
- bam_isoseq -- indicates the data is aligned PacBio Iso-seq reads, expects one /path/filename.bam before the tag
- isoseq -- indicates the data is PacBio Iso-seq reads in fasta or fastq format, expects one /path/filename.(fasta or fastq) before the tag
- mix -- indicates the data is from the sample sequenced with both Illumina RNA-seq provided in fastq format and long reads (Iso-seq or Oxford Nanopore) in fasta/fastq format, expects three /path/filename before the tag
- bam_mix -- indicates the data is from the same sample sequenced with both Illumina RNA-seq provided in bam format and long reads (Iso-seq or Oxford Nanopore) in bam format, expects two /path/filename.bam before the tag
+  fastq -- indicates the data is Illumina RNA-seq in fastq format, expects one or a pair of /path/filename.fastq before the tag
+  fasta -- indicates the data is Illumina RNA-seq in fasta format, expects one or a pair of /path/filename.fasta before the tag
+  bam -- indicates the data is aligned Illumina RNA-seq reads, expects one /path/filename.bam before the tag
+  bam_isoseq -- indicates the data is aligned PacBio Iso-seq reads, expects one /path/filename.bam before the tag
+  isoseq -- indicates the data is PacBio Iso-seq reads in fasta or fastq format, expects one /path/filename.(fasta or fastq) before the tag
+  mix -- indicates the data is from the sample sequenced with both Illumina RNA-seq provided in fastq format and long reads (Iso-seq or Oxford Nanopore) in fasta/fastq format, expects three /path/filename before the tag
+  bam_mix -- indicates the data is from the same sample sequenced with both Illumina RNA-seq provided in bam format and long reads (Iso-seq or Oxford Nanopore) in bam format, expects two /path/filename.bam before the tag
  
- Absense of a tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
+  Absense of a tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
  "
- echo "-e /path/file fasta file with assembled transcripts from related species"
- echo "-p /path/file fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not given>"
- echo "-m int max intron size, default: 250000"
- echo "-l liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
- echo "-f perform functional annotation, default: not set"
- echo "--debug keep intermediate output files, default: not set"
- echo "--verbose verbose run, default: not set"
- echo "--version report version and exit, default: not set"
+ echo " -e FILE    fasta file with assembled transcripts from related species, default: none"
+ echo " -p FILE    fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
+ echo " -m INT     max intron size, default: 250000"
+ echo " -l         liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
+ echo " -f         perform functional annotation, default: not set"
+ echo " --debug    keep intermediate output files, default: not set"
+ echo " --verbose  verbose run, default: not set"
+ echo " --version  report version and exit, default: not set"
  echo ""
- echo "-r or -e MUST be supplied."
+ echo " -r or -e MUST be supplied."
 }
 
 log () {
