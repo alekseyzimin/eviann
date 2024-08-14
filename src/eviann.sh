@@ -486,34 +486,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       fi
     fi
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
-    ufasta one $GENOME.unused.faa |awk '{if($1 ~ /^>/){name=substr($1,2)}else{print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
+    ufasta one $GENOME.unused.faa |\
+    awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "a[2]":"a[3]":"$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
-    perl -F'\t' -ane 'BEGIN{
-        open(FILE,"'$GENOME'.protein_count.txt");
-        while($line=<FILE>){
-          chomp($line);
-          my ($name,$c)=split(/\s+/,$line);
-          $count{$name}=$c;
-        }
-      }{
-        undef($transcript_id);
-        if($F[2] eq "transcript"){
-          if($F[8]=~/ID=(\S+);locus=(\S+)$/){
-            $transcript_id=$1;
-            $gene_id=$2;
-            $printstr=join("\t",@F);
-            chomp($printstr);
-            print "$printstr;count=$count{$transcript_id}\n" if(defined($count{$transcript_id}));
-          }
-        }elsif($F[2] eq "CDS"){
-          $transcript_id=$1; 
-          if($F[8]=~/Parent=(\S+)$/){
-            $transcript_id=$1;
-            print if(defined($count{$transcript_id}));
-          }
-        }
-      }' | filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt > $GENOME.best_unused_proteins.gff.tmp && \
+    filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt $GENOME.protein_count.txt > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff

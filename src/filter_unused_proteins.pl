@@ -3,6 +3,7 @@
 my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
 my $approved=$ARGV[2];
+my $counts_file=$ARGV[3];
 my %similarity;
 my %contigs;
 
@@ -36,6 +37,14 @@ while($line=<FILE>){
   $approved{$line}=1;
 }
 
+open(FILE,$counts_file);
+while($line=<FILE>){
+  chomp($line);
+  my ($name,$c)=split(/\s+/,$line);
+  $pcount{$name}=$c;
+}
+
+
 #combined file on STDIN
 my $avg=0;
 my $count=1;
@@ -48,12 +57,13 @@ while($line=<STDIN>){
     my $tcount;
     my $startcodon;
     my $stopcodon;
-    if($f[8]=~/ID=(\S+);locus=(\S+);count=(\S+)$/){
+    if($f[8]=~/ID=(\S+);locus=(\S+)$/){
       $transcript_id=$1;
       $gene_id=$2;
-      $pcount=$3;
+    }else{
+      next;
     }
-    $codon_count=0;
+    next if(not(defined($pcount{$transcript_id})));
     my $start=$f[3];
     my $end=$f[4];
     my $ori=$f[6];
@@ -68,11 +78,13 @@ while($line=<STDIN>){
       $seq=~tr/acgtACGT/tgcaTGCA/;
       $stopcodon=uc(reverse($seq));
     }
+    $codon_count=0;
     $codon_count++ if($startcodon eq "ATG"); 
     $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
-    if(defined($transcript_id) && defined($gene_id) && $codon_count>1){
-      my $score=100-(100-$similarity{$transcript_id})/$pcount;
+    if($codon_count>1){
+      my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id");
+      print "DEBUG $score $gene_id $transcript_id\n";
       $avg+=$score;
       $count++;
     }
