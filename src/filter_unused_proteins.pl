@@ -4,6 +4,7 @@ my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
 my $approved=$ARGV[2];
 my $counts_file=$ARGV[3];
+my $liftover=$ARGV[4];
 my %similarity;
 my %contigs;
 
@@ -94,6 +95,7 @@ my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scor
 #my $similarity_threshold=$avg/$count;
 my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.9)]);
 my $similarity_threshold=$f[0];
+$similarity_threshold=0 if(defined($liftover) && $liftover>0);
 print "#similarity threshold $similarity_threshold\n";
 my %h=();
 my %hs=();

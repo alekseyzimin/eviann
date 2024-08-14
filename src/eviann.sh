@@ -17,6 +17,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 USE_SNAP=1
+LIFTOVER=0
 GC=
 RC=
 NC=
@@ -66,6 +67,7 @@ function usage {
  echo "-e /path/file fasta file with assembled transcripts from related species"
  echo "-p /path/file fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not given>"
  echo "-m int max intron size, default: 250000"
+ echo "-l liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set>"
  echo "-f perform functional annotation, default: not set"
  echo "--debug keep intermediate output files, default: not set"
  echo "--verbose verbose run, default: not set"
@@ -119,6 +121,10 @@ do
         -s|--swissprot)
             UNIPROT="$2"
             shift
+            ;;
+        -l|--liftover)
+            LIFTOVER=1
+            log "Liftover mode ON"
             ;;
         -f|--functional)
             FUNCTIONAL=1
@@ -488,7 +494,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
-    filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt $GENOME.protein_count.txt > $GENOME.best_unused_proteins.gff.tmp && \
+    filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff
