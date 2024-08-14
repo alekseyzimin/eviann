@@ -678,13 +678,6 @@ for my $locus(keys %transcripts_only_loci){
   my $locus_end=$gff_fields[4];
   #check if we already have something at this locus
   my $skip=0;
-  for($i=0;$i<=$#outputLOCchr;$i++){
-    if($gff_fields[0] eq $outputLOCchr[$i] && (($locus_start<=$outputLOCend[$i] && $locus_start>=$outputLOCbeg[$i])||($locus_end<=$outputLOCend[$i] && $locus_end>=$outputLOCbeg[$i]))){
-      $skip=1;
-      $i=$#outputLOCchr;
-    }
-  }
-  next if($skip);
   my $geneID=$locus."U_lncRNA";
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
@@ -699,15 +692,23 @@ for my $locus(keys %transcripts_only_loci){
       my @attributes_t=split(";",$gff_fields_t[8]);
       $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
       $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
+      #check if any of the transcripts overlap known protein coding loci
+      for(my $i=0;$i<=$#outputLOCchr;$i++){
+        if($gff_fields_t[0] eq $outputLOCchr[$i] && (($locus_start<=$outputLOCend[$i] && $locus_start>=$outputLOCbeg[$i])||($locus_end<=$outputLOCend[$i] && $locus_end>=$outputLOCbeg[$i]))){
+          $skip=1;
+          $i=$#outputLOCchr;
+        }
+      }
       for(my $j=1;$j<=$#{$transcript_gff_u{$t}};$j++){
         my @gff_fields_curr=split(/\t/,${$transcript_gff_u{$t}}[$j]);
         my @gff_fields_prev=split(/\t/,${$transcript_gff_u{$t}}[$j-1]);
         $distinct_intron_junctions{"$gff_fields_prev[4] $gff_fields_curr[3]"}=1;
         $total_intron_junctions++;
-     }
+      }
     }
     $junction_score=scalar(keys %distinct_intron_junctions)/$total_intron_junctions;
   }
+  next if($skip);
   #do not output the locus if there are too many disagreements between the intron junctions
   next if($junction_score>0.66);
   #if we got here we can output the transcripts at the locus
@@ -719,20 +720,20 @@ for my $locus(keys %transcripts_only_loci){
     my $transcriptID=substr($attributes_t[0],3);#this is the source transcript ID
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
-    next if($num_samples<2 || $tpm<1);
+    next if(($num_samples<2 || $tpm<1) && $transcriptID =~ /^MSTRG/);i#require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
     $transcript_index++;
-    push(@output,"$gff_fields_t[0]\tEviAnnU\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
+    push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
     my $i=1;
     for my $x(@{$transcript_gff_u{$t}}){
       my @gff_fields=split(/\t/,$x);
-      push(@output,"$gff_fields_t[0]\tEviAnnU\t".join("\t",@gff_fields[2..7])."\tID=$parent$transcript_index:exon:$i;Parent=$parent$transcript_index");
+      push(@output,"$gff_fields_t[0]\tEviAnn\t".join("\t",@gff_fields[2..7])."\tID=$parent$transcript_index:exon:$i;Parent=$parent$transcript_index");
       $i++;
     }
   }
   if($transcript_index>0){
     my $dir_factor=0;
     $dir_factor=0.5 if($gff_fields[6] eq "-");
-    $gene_record_u{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnnU\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;junction_score=$junction_score;\n".join("\n",@output)."\n";
+    $gene_record_u{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;type=lncRNA;junction_score=$junction_score;\n".join("\n",@output)."\n";
     push(@gene_records_u,$gff_fields[0]." ".($locus_start+$dir_factor));
   }
 }
