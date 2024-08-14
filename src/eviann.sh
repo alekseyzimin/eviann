@@ -15,7 +15,6 @@ PID=$$
 export PATH=$MYPATH:$MYPATH/SNAP:$PATH;
 set -o pipefail
 NUM_THREADS=1
-LIFTOVER=0
 FUNCTIONAL=0
 USE_SNAP=1
 GC=
@@ -67,7 +66,6 @@ function usage {
  echo "-e /path/file fasta file with assembled transcripts from related species"
  echo "-p /path/file fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not given>"
  echo "-m int max intron size, default: 250000"
- echo "-l liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, sets --eviprot, default: not set"
  echo "-f perform functional annotation, default: not set"
  echo "--debug keep intermediate output files, default: not set"
  echo "--verbose verbose run, default: not set"
@@ -121,10 +119,6 @@ do
         -s|--swissprot)
             UNIPROT="$2"
             shift
-            ;;
-        -l|--liftover)
-            LIFTOVER=1
-            log "Liftover mode ON"
             ;;
         -f|--functional)
             FUNCTIONAL=1
