@@ -4,7 +4,6 @@ PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
 GENOMEFILE="na"
 RNASEQ="na"
 ALT_EST="na"
-MINIPROT=1
 export BATCH_SIZE=1000000
 export MAX_INTRON=250000
 export MIN_TPM=0.25
@@ -68,7 +67,6 @@ function usage {
  echo "-e /path/file fasta file with assembled transcripts from related species"
  echo "-p /path/file fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not given>"
  echo "-m int max intron size, default: 250000"
- echo "--eviprot use eviprot instead of miniprot for protein-to-genome alignments, this is much slower but more accurate, default: not set"
  echo "-l liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, sets --eviprot, default: not set"
  echo "-f perform functional annotation, default: not set"
  echo "--debug keep intermediate output files, default: not set"
@@ -126,7 +124,6 @@ do
             ;;
         -l|--liftover)
             LIFTOVER=1
-            MINIPROT=0
             log "Liftover mode ON"
             ;;
         -f|--functional)
@@ -136,10 +133,6 @@ do
         -m|--max-intron)
             MAX_INTRON="$2"
             shift
-            ;;
-        --eviprot)
-            MINIPROT=0
-            log "Will use eviprot for protein alignments, this is slower but yields better sensitivity"
             ;;
         --verbose)
             set -x
@@ -390,34 +383,20 @@ if [ ! -e protein2genome.deduplicate.success ];then
   tr ':' '_' > $PROTEIN.uniq.tmp && \
   mv $PROTEIN.uniq.tmp $PROTEIN.uniq && \
   touch protein2genome.deduplicate.success && \
-  rm -f protein2genome.exonerate_gff.success || error_exit "Failed in deduplicating proteins"
+  rm -f protein2genome.align.success || error_exit "Failed in deduplicating proteins"
 fi
 PROTEIN=$PROTEIN.uniq
 
-if [ ! -e protein2genome.exonerate_gff.success ];then
-  if [ $MINIPROT -gt 0 ];then
-    log "Aligning proteins to the genome with miniprot"
-    miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
+if [ ! -e protein2genome.align.success ];then
+  log "Aligning proteins to the genome with miniprot"
+  miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
     $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
     mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
     rm -f merge.success && \
-    touch protein2genome.exonerate_gff.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
-  else
-    log "Aligning proteins to the genome with EviProt"
-    if [ $LIFTOVER -gt 0 ];then
-      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN -m $MAX_INTRON -n 5 -l 100
-    else
-      $MYPATH/eviprot.sh -t $NUM_THREADS -a $GENOMEFILE -p $PROTEIN -m $MAX_INTRON
-    fi
-    if [ -s $GENOME.$PROTEIN.palign.gff ] && [ -e protein2genome.protein_align.success ] && [ -e protein2genome.exonerate_gff.success ];then
-      rm -f merge.success
-    else
-      error_exit "Alignment of proteins with EviProt failed, please check your input files"
-    fi
-  fi
+    touch protein2genome.align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
 fi
 
-if [ -e transcripts_merge.success ] && [ -e protein2genome.exonerate_gff.success ] && [ ! -e merge.success ];then
+if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
 #we fix suspect intons in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
