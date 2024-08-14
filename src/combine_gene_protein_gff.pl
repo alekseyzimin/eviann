@@ -676,6 +676,15 @@ for my $locus(keys %transcripts_only_loci){
   my @gff_fields=split(/\t/,$transcript_u{$transcripts_at_loci[0]});
   my $locus_start=$gff_fields[3];
   my $locus_end=$gff_fields[4];
+  #check if we already have something at this locus
+  my $skip=0;
+  for($i=0;$i<=$#outputLOCchr;$i++){
+    if($gff_fields[0] eq $outputLOCchr[$i] && (($locus_start<=$outputLOCend[$i] && $locus_start>=$outputLOCbeg[$i])||($locus_end<=$outputLOCend[$i] && $locus_end>=$outputLOCbeg[$i]))){
+      $skip=1;
+      $i=$#outputLOCchr;
+    }
+  }
+  next if($skip);
   my $geneID=$locus."U_lncRNA";
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
@@ -701,13 +710,18 @@ for my $locus(keys %transcripts_only_loci){
   }
   #do not output the locus if there are too many disagreements between the intron junctions
   next if($junction_score>0.66);
-  #if we got here we can output the transcript
+  #if we got here we can output the transcripts at the locus
   for my $t(@transcripts_at_loci){
     next if(not(defined($transcript_gff_u{$t})));
     my @gff_fields_t=split(/\t/,$transcript_u{$t});
+    next if($gff_fields_t[8] =~ /contained_in/);
     my @attributes_t=split(";",$gff_fields_t[8]);
+    my $transcriptID=substr($attributes_t[0],3);#this is the source transcript ID
+    $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
+    my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
+    next if($num_samples<2 || $tpm<1);
     $transcript_index++;
-    push(@output,"$gff_fields_t[0]\tEviAnnU\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;$attributes_t[3]");
+    push(@output,"$gff_fields_t[0]\tEviAnnU\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
     my $i=1;
     for my $x(@{$transcript_gff_u{$t}}){
       my @gff_fields=split(/\t/,$x);
