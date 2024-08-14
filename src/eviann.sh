@@ -423,11 +423,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi 
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
-  if [ ! -e merge.unused.success ];then
-  if [ -s $GENOME.unused_proteins.gff ] && [ ! -e merge.unused.success ];then
+  if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
 #we use preliminary "k" file to train SNAP
-    if [ $USE_SNAP -gt 0 ] && [ ! -e snap.success ];then
+    if [ $USE_SNAP -gt 0 ];then
       log "Training SNAP and predicting protein coding genes to use in filtering aligned proteins" && \
       mkdir -p SNAP && \
       (cd SNAP && \
@@ -503,9 +502,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   else
     echo "" > $GENOME.best_unused_proteins.gff && touch merge.unused.success
   fi 
-  fi
   #these are u's -- no match to a protein
-  if [ ! -e merge.u.success ];then
   if [ -s $GENOME.u.gff ];then
     log "Looking for ORFs in transcripts with no protein matches"
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
@@ -547,7 +544,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.u.gff
-  fi
   fi
   log "Working on final merge"
   if [ -s $GENOME.best_unused_proteins.gff ];then
