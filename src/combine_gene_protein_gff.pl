@@ -10,6 +10,7 @@ my %protein;
 my @outputLOCbeg;
 my @outputLOCend;
 my @outputLOCchr;
+my @outputLOCdir;
 my %transcript_gff;
 my %transcript_cds;
 my @gene_records_k;
@@ -662,6 +663,7 @@ for my $locus(keys %transcripts_cds_loci){
     push(@outputLOCchr,$gff_fields[0]);
     push(@outputLOCbeg,$locus_start);
     push(@outputLOCend,$locus_end);
+    push(@outputLOCdir,$gff_fields[6]);
   }
   #print $gff_fields[0]." ".($locus_start+$dir_factor),"\n",$gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)};
 }
@@ -693,12 +695,7 @@ for my $locus(keys %transcripts_only_loci){
       $locus_start=$gff_fields_t[3] if($gff_fields_t[3]<$locus_start);
       $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
       #check if any of the transcripts overlap known protein coding loci
-      for(my $i=0;$i<=$#outputLOCchr;$i++){
-        if($gff_fields_t[0] eq $outputLOCchr[$i] && (($locus_start<=$outputLOCend[$i] && $locus_start>=$outputLOCbeg[$i])||($locus_end<=$outputLOCend[$i] && $locus_end>=$outputLOCbeg[$i]))){
-          $skip=1;
-          $i=$#outputLOCchr;
-        }
-      }
+      $skip=check_overlap($gff_fields_t[0],$gff_fields_t[6],$locus_start,$locus_end);
       for(my $j=1;$j<=$#{$transcript_gff_u{$t}};$j++){
         my @gff_fields_curr=split(/\t/,${$transcript_gff_u{$t}}[$j]);
         my @gff_fields_prev=split(/\t/,${$transcript_gff_u{$t}}[$j-1]);
@@ -744,6 +741,8 @@ my $fake_utr=0;
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
+  #it is better to allow proteins to detect new isoforms at existing locations
+  #next if(check_overlap($gff_fields_p[0],$gff_fields_p[6],$gff_fields_p[3],$gff_fields_p[4]));
   my $ptstart=$gff_fields_p[3]-$fake_utr>0 ? $gff_fields_p[3]-$fake_utr:1;
   my $ptend=$gff_fields_p[4]+$fake_utr<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+$fake_utr:length($genome_seqs{$gff_fields_p[0]});
 
@@ -783,6 +782,21 @@ foreach $g(@gene_records_sorted){
     print OUTFILE3 $gene_record_u{$g};
     $output{$g}=1;
   }
+}
+
+sub check_overlap{
+  my $chrom=$_[0];
+  my $dir=$_[1];
+  my $l_start=$_[2];
+  my $l_end=$_[3];
+  my $overlap=0;
+  for(my $i=0;$i<=$#outputLOCchr;$i++){
+    if($chrom eq $outputLOCchr[$i] &&  (($l_start<=$outputLOCend[$i] && $l_start>=$outputLOCbeg[$i])||($l_end<=$outputLOCend[$i] && $l_end>=$outputLOCbeg[$i]))){
+      $overlap=1;
+      $i=$#outputLOCchr;
+    }
+  }
+  return($overlap);
 }
 
 sub mysort{
