@@ -718,6 +718,7 @@ for my $locus(keys %transcripts_only_loci){
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
     next if(($num_samples<2 || $tpm<2) && $transcriptID =~ /^MSTRG/);#require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
+    next if(scalar(@{$transcript_gff_u{$t}})<2); #must be multi-exon
     $transcript_index++;
     push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
     my $i=1;
