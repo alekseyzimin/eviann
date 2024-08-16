@@ -24,7 +24,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $ext_length=99;
+my $ext_length=33;
 my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
 my %code=();
@@ -318,17 +318,26 @@ for my $g(keys %transcript_cds){
         @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
         $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
       }
-      if($cds_length %3 >0){
-        print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting end\n";
-        $cds_length-=$cds_length%3;
-      }
       $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
     }
+    
+    $cds_length=length($transcript_seqs{$g})-$cds_start_on_transcript if($cds_end_on_transcript>length($transcript_seqs{$g}));
 
-    if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
-      $transcript_class{$g}="NA";
-      next;
+    if($cds_length %3 >0){
+      print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
+      if(uc(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) eq "ATG"){
+        print "end\n";
+        $cds_length-=$cds_length%3;
+      }elsif(uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TGA"){
+        $cds_start_on_transcript-=$cds_length%3;
+        $cds_length-=$cds_length%3;
+        print "beginning\n"
+      }else{
+        $cds_length-=$cds_length%3;
+        print "end\n";
+      }
     }
+    $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
 
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
@@ -456,17 +465,30 @@ for my $g(keys %transcript_cds){
         @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
         $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
       }
-      if($cds_length %3 >0){
-        print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting end\n";
-        $cds_length-=$cds_length%3;
-      }
       $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
     }
 
-    if($cds_start_on_transcript<0 || $cds_end_on_transcript>length($transcript_seqs{$g})){
-      $transcript_class{$g}="NA";
-      next;
+    $cds_length=length($transcript_seqs{$g})-$cds_start_on_transcript if($cds_end_on_transcript>length($transcript_seqs{$g}));
+    if($cds_start_on_transcript<0){
+      $cds_length+=$cds_start_on_transcript;
+      $cds_start_on_transcript=0;
     }
+
+    if($cds_length %3 >0){
+      print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
+      if(uc(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) eq "ATG"){
+        print "end\n";
+        $cds_length-=$cds_length%3;
+      }elsif(uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TGA"){
+        $cds_start_on_transcript-=$cds_length%3;
+        $cds_length-=$cds_length%3;
+        print "beginning\n"
+      }else{
+        $cds_length-=$cds_length%3;
+        print "end\n";
+      }
+    }
+    $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
 
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
