@@ -17,7 +17,7 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
-my $ext_length=501;#this controls how much of an extension fir the transcripts we allow for protein alignments that go boyond the transcript boundaries
+my $ext_length=501;#this controls how much of an extension for the transcripts we allow for protein alignments that go beyond the transcript boundaries
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 #here we read in the aligned CDS features

@@ -24,7 +24,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $ext_length=501;
+my $ext_length=33;
 my $output_prefix=$ARGV[0];
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
@@ -160,24 +160,52 @@ while(my $line=<FILE>){
   $transcript_cds_stop_on_transcript{$geneID}=$cds_stop-3;
 }
 
-#we load the CDS start codon matrix
-open(FILE,$ARGV[4]);
-my $i=0;
-#skip header
-my $line=<FILE>;
-chomp($line);
-my @f=split(/\t/,$line);
-$letter_index{$f[0]}=0;
-$letter_index{$f[1]}=1;
-$letter_index{$f[2]}=2;
-$letter_index{$f[3]}=3;
-while(my $line=<FILE>){
-  chomp($line);
-  @f=split(/\t/,$line);
-  for(my $j=0;$j<=3;$j++){
-    $freq[$j][$i]=$f[$j];
+#we load SNAP HMMs
+if(defined($ARGV[4])){
+  open(FILE,$ARGV[4]);
+  $line=<FILE>;
+  if($line =~ /^zoeHMM/){#check format
+    while($line=<FILE>){
+      chomp($line);
+      if($line=~/^Donor/){
+        $line=<FILE>;
+        my $i=0;
+        while(not($line=~/NN TRM/)){
+          chomp($line);
+          $line=~s/^\s+//;
+          my @f=split(/\s+/,$line);
+          for(my $j=0;$j<=3;$j++){
+            $donor_freq[$i][$j]=$f[$j];
+          }
+          $i++;
+        }
+      }elsif($line=~/^Acceptor/){
+        $line=<FILE>;
+        my $i=0;
+        while(not($line=~/NN TRM/)){
+          chomp($line);
+          $line=~s/^\s+//;
+          my @f=split(/\s+/,$line);
+          for(my $j=0;$j<=3;$j++){
+            $acceptor_freq[$i][$j]=$f[$j];
+          }
+          $i++;
+        }
+      }elsif($line=~/^Start/){
+        $line=<FILE>;
+        my $i=0;
+        while(not($line=~/NNN TRM/)){
+          chomp($line);
+          $line=~s/^\s+//;
+          my @f=split(/\s+/,$line);
+          for(my $j=0;$j<=3;$j++){
+            $coding_start_freq[$i][$j]=$f[$j];
+          }
+          $i++;
+        }
+      }
+    }
   }
-  $i++;
 }
 
 #finally, if available we load the original transcript names
@@ -236,7 +264,7 @@ for my $g(keys %transcript_cds){
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
   my $tend=$gff_fields_t[4];
-  print "\nDEBUG protein $transcript_cds{$g} transcript $g length ",length($transcript_seqs{$g}),"\n";
+  print "\nDEBUG protein $transcript_cds{$g} transcript $g $original_transcript_name{$g} length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
@@ -828,7 +856,7 @@ sub fix_start_stop_codon_ext{
   }else{
     $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
     #check the extension for AG -- acceptor sites, if found, do not extend
-    if(index(uc($transcript_5pext),"AG")==-1){#no acceptor site in the exrtension
+    if(1 || index(uc($transcript_5pext),"AG")==-1){#no acceptor site in the exrtension
       $cds_start_on_transcript=0;
       print "DEBUG extend 5p $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
     }else{#hit an acceptor site, no change
@@ -846,7 +874,7 @@ sub fix_start_stop_codon_ext{
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
   }else{
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
-    if(index(uc($transcript_3pext),"GT")==-1){
+    if(1 || index(uc($transcript_3pext),"GT")==-1){
       $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
       print "DEBUG extend 3p $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
     }else{
