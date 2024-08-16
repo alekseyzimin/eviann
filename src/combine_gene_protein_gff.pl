@@ -24,8 +24,20 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $ext_length=33;
+my $ext_length=99;
 my $output_prefix=$ARGV[0];
+#these are genetic codes for HMMs
+my %code=();
+$code{"A"}=0;
+$code{"a"}=0;
+$code{"C"}=1;
+$code{"c"}=1;
+$code{"G"}=2;
+$code{"g"}=2;
+$code{"T"}=3;
+$code{"t"}=3;
+$code{"N"}=4;
+$code{"n"}=4;
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
 open(OUTFILE4,">$output_prefix".".unused_proteins.gff.tmp");
@@ -136,6 +148,7 @@ if(defined($transcript{$geneID})){
 
 #we load the genome sequences
 open(FILE,$ARGV[2]);
+print "DEBUG Loading genome sequence\n";
 while(my $line=<FILE>){
   chomp($line);
   if($line=~ /^>/){
@@ -153,6 +166,7 @@ $genome_seqs{$scf}=$seq if(not($scf eq ""));
 
 #we load the adjusted cds start and stop coordinates
 open(FILE,$ARGV[3]);
+  print "DEBUG Loading CDS start/stop coordinates from TransDecoder\n";
 while(my $line=<FILE>){
   chomp($line);
   my ($geneID, $cds_start,$cds_stop)=split(/\s+/,$line);
@@ -162,6 +176,7 @@ while(my $line=<FILE>){
 
 #we load SNAP HMMs
 if(defined($ARGV[4])){
+  print "DEBUG Loading SNAP HMMs\n";
   open(FILE,$ARGV[4]);
   $line=<FILE>;
   if($line =~ /^zoeHMM/){#check format
@@ -170,37 +185,43 @@ if(defined($ARGV[4])){
       if($line=~/^Donor/){
         $line=<FILE>;
         my $i=0;
-        while(not($line=~/NN TRM/)){
+        while($line=<FILE>){
+          last if($line=~/NN TRM/);
           chomp($line);
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
           for(my $j=0;$j<=3;$j++){
             $donor_freq[$i][$j]=$f[$j];
           }
+          $donor_freq[$i][4]=0;
           $i++;
         }
       }elsif($line=~/^Acceptor/){
         $line=<FILE>;
         my $i=0;
-        while(not($line=~/NN TRM/)){
+        while($line=<FILE>){
+          last if($line=~/NN TRM/);
           chomp($line);
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
           for(my $j=0;$j<=3;$j++){
             $acceptor_freq[$i][$j]=$f[$j];
           }
+          $acceptor_freq[$i][4]=0;
           $i++;
         }
       }elsif($line=~/^Start/){
         $line=<FILE>;
         my $i=0;
-        while(not($line=~/NNN TRM/)){
+        while($line=<FILE>){
+          last if($line=~/NNN TRM/);
           chomp($line);
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
           for(my $j=0;$j<=3;$j++){
             $coding_start_freq[$i][$j]=$f[$j];
           }
+          $coding_start_freq[$i][4]=0;
           $i++;
         }
       }
@@ -856,10 +877,36 @@ sub fix_start_stop_codon_ext{
   }else{
     $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
     #check the extension for AG -- acceptor sites, if found, do not extend
-    if(1 || index(uc($transcript_5pext),"AG")==-1){#no acceptor site in the exrtension
+    my $found_acceptor=0;
+    if(defined($ARGV[4])){
+      for(my $j=3;$j<length($transcript_5pext)-2;$j++){
+        if(substr($transcript_5pext,$j,2) eq "AG"){
+          print "DEBUG found acceptor at $j\n";
+          my $index5=$j;
+          my $ext_seq=uc($transcript_5pext.$transcript_seq);
+          if($index5>=25){
+            $score_seq=substr($ext_seq,$index5-25,30);
+          }elsif($index5<25){
+            $score_seq="N"x(25-$index5).substr($ext_seq,0,$index5+5);
+          }
+#score the extension
+          $ext_score=0;
+          for(my $i=0;$i<30;$i++){
+            $ext_score+=$acceptor_freq[$i][$code{substr($score_seq,$i,1)}];
+            print "DEBUG ",substr($score_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
+          }
+          print "DEBUG $index5 $score_seq $ext_score\n";
+          if($ext_score > 0){
+            $found_acceptor=1;
+            $j=length($transcript_5pext);
+          }
+        }
+      }
+    }
+    if($found_acceptor==0){
       $cds_start_on_transcript=0;
       print "DEBUG extend 5p $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
-    }else{#hit an acceptor site, no change
+    }else{
       print "DEBUG reject 5p $cds_start_on_transcript_ext $transcript_5pext ",length($transcript_5pext),"\n";
       $transcript_5pext="";
     }
@@ -874,7 +921,33 @@ sub fix_start_stop_codon_ext{
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
   }else{
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
-    if(1 || index(uc($transcript_3pext),"GT")==-1){
+    my $found_donor=0;
+    if(defined($ARGV[4])){
+      for(my $j=0;$j<length($transcript_3pext)-3;$j++){
+        if(substr($transcript_3pext,$j,2) eq "GT"){
+          print "DEBUG found acceptor at $j\n";
+          my $index3=$j;
+          my $ext_seq=uc($transcript_seq.$transcript_3pext);
+          if(length($transcript_3pext)-$index3>=6){
+            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,9);
+          }else{
+            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3)."N"x(6-$index3);
+          }
+          #score the extension
+          $ext_score=0;
+          for(my $i=0;$i<9;$i++){
+            $ext_score+=$donor_freq[$i][$code{substr($score_seq,$i,1)}];
+            print "DEBUG ",substr($score_seq,$i,1)," ",$donor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
+          }
+          print "DEBUG $index3 $score_seq $ext_score\n";
+          if($ext_score > 0){
+            $found_donor=1;
+            $j=length($transcript_3pext);
+          }
+        }
+      }
+    }
+    if($found_donor==0){
       $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
       print "DEBUG extend 3p $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
     }else{
