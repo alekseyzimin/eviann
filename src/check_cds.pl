@@ -187,7 +187,18 @@ for my $g(keys %transcript_cds){
     }
 
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-    $cds_length=length($transcript_seqs{$g})-$cds_start_on_transcript if($cds_end_on_transcript>length($transcript_seqs{$g}));
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
+      $cds_start_on_transcript=0;
+      $cds_end_on_transcript=length($transcript_seqs{$g});
+    }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
+      $cds_start_on_transcript=$cds_end_on_transcript%3;
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
+      $cds_end_on_transcript=length($transcript_seqs{$g})-$cds_start_on_transcript -(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    }
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
@@ -195,7 +206,7 @@ for my $g(keys %transcript_cds){
         print "end\n";
         $cds_length-=$cds_length%3;
       }elsif(uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TGA"){
-        $cds_start_on_transcript-=$cds_length%3;
+        $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
       }else{
@@ -280,11 +291,18 @@ for my $g(keys %transcript_cds){
     }
 
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-    $cds_length=length($transcript_seqs{$g})-$cds_start_on_transcript if($cds_end_on_transcript>length($transcript_seqs{$g}));
-    if($cds_start_on_transcript<0){
-      $cds_length+=$cds_start_on_transcript;
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
       $cds_start_on_transcript=0;
+      $cds_end_on_transcript=length($transcript_seqs{$g});
+    }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
+      $cds_start_on_transcript=$cds_end_on_transcript%3;
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
+      $cds_end_on_transcript=length($transcript_seqs{$g})-$cds_start_on_transcript -(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
@@ -292,7 +310,7 @@ for my $g(keys %transcript_cds){
         print "end\n";
         $cds_length-=$cds_length%3;
       }elsif(uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TGA"){
-        $cds_start_on_transcript-=$cds_length%3;
+        $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
       }else{
