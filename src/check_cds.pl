@@ -223,49 +223,43 @@ for my $g(keys %transcript_cds){
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
-#checking for in-frame stop codons\
+#checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
-    ($cds_start_on_transcript,$cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    if($cds_start_on_transcript==-1 && $cds_end_on_transcript==-1){
+    ($cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+    print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n" if(not($cds_end_on_transcript==$cds_end_on_transcript_original));
+#fixing start/stop    
+    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+    $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<0.5*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
-      print "DEBUG broken CDS in frame stop $g\n";
+      print "DEBUG broken CDS no start and stop or too short $g\n";
     }else{
-#fixing start/stop    
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-      $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-      $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-      if(not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") && not(uc($first_codon) eq "ATG")){
-        print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
-        my @pn=split(/:/,$transcript_cds{$g});
-        print OUTFILE3 "$pn[0]\n";
-        print "DEBUG broken CDS no start and stop $g\n";
-      }else{
 #translating back to genome coords
-        my $sequence_covered=0;
-        for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-          $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-          if($sequence_covered>$cds_start_on_transcript){
-            $transcript_cds_start{$g}=$gff_fields[4]-($sequence_covered-$cds_start_on_transcript)+1;
-            last;
-          }
+      my $sequence_covered=0;
+      for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
+        @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+        $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+        if($sequence_covered>$cds_start_on_transcript){
+          $transcript_cds_start{$g}=$gff_fields[4]-($sequence_covered-$cds_start_on_transcript)+1;
+          last;
         }
-        my $sequence_covered=0;
-        for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-          $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-          if($sequence_covered>=$cds_end_on_transcript){
-            $transcript_cds_end{$g}=$gff_fields[4]-($sequence_covered-$cds_end_on_transcript);
-            last;
-          }
-        }
-        print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-        print OUTFILE1 ">$g $transcript_cds_start{$g} $transcript_cds_end{$g}\n$transcript_seqs{$g}\n";
       }
+      my $sequence_covered=0;
+      for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
+        @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+        $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+        if($sequence_covered>=$cds_end_on_transcript){
+          $transcript_cds_end{$g}=$gff_fields[4]-($sequence_covered-$cds_end_on_transcript);
+          last;
+        }
+      }
+      print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+      print OUTFILE1 ">$g $transcript_cds_start{$g} $transcript_cds_end{$g}\n$transcript_seqs{$g}\n";
     }
   }else{#reverse orientation
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
@@ -333,51 +327,45 @@ for my $g(keys %transcript_cds){
 #checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
-    ($cds_start_on_transcript,$cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    if($cds_start_on_transcript==-1 && $cds_end_on_transcript==-1){
+    ($cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+    print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n" if(not($cds_end_on_transcript==$cds_end_on_transcript_original));
+#fixing start/stop    
+    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+    $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<0.5*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
-      print "DEBUG broken CDS in frame stop $g\n";
+      print "DEBUG broken CDS no start and stop or too short $g\n";
     }else{
-#fixing start/stop    
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-      $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-      $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-      if(not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") && not(uc($first_codon) eq "ATG")){
-        print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
-        my @pn=split(/:/,$transcript_cds{$g});
-        print OUTFILE3 "$pn[0]\n";
-        print "DEBUG broken CDS no start and stop $g\n";
-      }else{
-
 #translating start and end to genome coords
-        my $sequence_covered=0;
-        for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-          $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-          if($sequence_covered>$cds_start_on_transcript){
-            $transcript_cds_end{$g}=$gff_fields[3]+($sequence_covered-$cds_start_on_transcript)-1;
-            last;
-          }
-        }
-
-        my $sequence_covered=0;
-        for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
-          @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-          $sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
-          if($sequence_covered>=$cds_end_on_transcript){
-            $transcript_cds_start{$g}=$gff_fields[3]+($sequence_covered-$cds_end_on_transcript);
-            last;
-          }
-        }
-        print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
-        print OUTFILE1 ">$g $transcript_cds_start{$g} $transcript_cds_end{$g}\n$transcript_seqs{$g}\n";
+      my $sequence_covered=0;
+      for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
+	@gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+	$sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+	if($sequence_covered>$cds_start_on_transcript){
+	  $transcript_cds_end{$g}=$gff_fields[3]+($sequence_covered-$cds_start_on_transcript)-1;
+	  last;
+	}
       }
+
+      my $sequence_covered=0;
+      for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
+	@gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+	$sequence_covered+=$gff_fields[4]-$gff_fields[3]+1;
+	if($sequence_covered>=$cds_end_on_transcript){
+	  $transcript_cds_start{$g}=$gff_fields[3]+($sequence_covered-$cds_end_on_transcript);
+	  last;
+	}
+      }
+      print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+      print OUTFILE1 ">$g $transcript_cds_start{$g} $transcript_cds_end{$g}\n$transcript_seqs{$g}\n";
     }
   }
 }
+
 sub fix_start_stop_codon{
   my $cds_start_on_transcript=$_[0];
   my $cds_end_on_transcript=$_[1];
@@ -436,10 +424,9 @@ sub check_in_frame_stops{
       last;
     }
   }
-  if($in_frame_stop>-1){#check another frame
+  if($in_frame_stop>-1){
     print "DEBUG found in-frame stop at $in_frame_stop\n";
-    $cds_start_on_transcript=-1;
-    $cds_end_on_transcript=-1;
+    $cds_end_on_transcript=$in_frame_stop
   }
-  return($cds_start_on_transcript,$cds_end_on_transcript);
+  return($cds_end_on_transcript);
 }

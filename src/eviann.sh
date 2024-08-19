@@ -514,7 +514,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
-      add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if(!($9~/internal/)){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
+      add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9~/ORF type:complete/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
       perl -F'\t' -ane 'BEGIN{
           open(FILE,"'$GENOME'.lncRNA.u.blastp");
           while($line=<FILE>){
@@ -539,12 +539,12 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     else
       echo "#gff" > $GENOME.u.cds.gff && touch merge.u.success
     fi
-    rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep,gff3,bed} blastp1.out transdecoder.Predict.out 
+    rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
   else
     echo "#gff" > $GENOME.u.cds.gff 
   fi
   if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.u.gff
+    rm -rf $GENOME.u.gff $GENOME.lncRNA.fa.transdecoder.{gff3,bed}
   fi
   log "Working on final merge"
   if [ -s $GENOME.best_unused_proteins.gff ];then
