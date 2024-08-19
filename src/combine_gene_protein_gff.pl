@@ -358,12 +358,6 @@ for my $g(keys %transcript_cds){
 
 #checking for in-frame stop codons
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.2){#if the transcript is severely truncated -- then we probably got the start wrong
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.2){#give up if still truncated
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      } 
-    }
 
 #fixing start/stop, extending if needed
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
@@ -409,7 +403,7 @@ for my $g(keys %transcript_cds){
     }
 
 #check to see if we truncated the cds -- maybe it is a special protein?
-    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.1){
+    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.5){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
@@ -516,12 +510,6 @@ for my $g(keys %transcript_cds){
 
 #checking for in-frame stop codons
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.2){#if the transcript is severely truncated -- then we probably got the start wrong
-      ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_end_on_transcript+6,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      if($cds_end_on_transcript-$cds_start_on_transcript+1 < $cds_length*0.2){#give up if still truncated
-        ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-      }
-    }
 
 #fixing start/stop, extending if needed
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
@@ -565,7 +553,7 @@ for my $g(keys %transcript_cds){
       }
     }
 
-    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.1){
+    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.5){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";

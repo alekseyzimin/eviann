@@ -226,7 +226,7 @@ for my $g(keys %transcript_cds){
 #checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
-    ($cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+    $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
     print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n" if(not($cds_end_on_transcript==$cds_end_on_transcript_original));
 #fixing start/stop    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
@@ -327,7 +327,7 @@ for my $g(keys %transcript_cds){
 #checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
-    ($cds_end_on_transcript)=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+    $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
     print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n" if(not($cds_end_on_transcript==$cds_end_on_transcript_original));
 #fixing start/stop    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
