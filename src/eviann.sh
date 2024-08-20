@@ -481,7 +481,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           }' > $GENOME.snap.gff.tmp && \
         mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
       gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
-      grep 'class_code "="' $GENOME.snapcompare.annotated.gtf |\
+      grep -P 'class_code "(=|c)"' $GENOME.snapcompare.annotated.gtf |\
       grep -v "contained_in" |\
       perl -F'\t' -ane '{if($F[8]=~/^transcript_id\s\"(\S+)\";\sgene_id/){print $1,"\n"}}' > $GENOME.snap_match.txt.tmp && \
       mv $GENOME.snap_match.txt.tmp $GENOME.snap_match.txt && \
