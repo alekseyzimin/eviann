@@ -685,14 +685,24 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
       while($line=<FILE>){
         chomp($line);
         @f=split(/\t/,$line);
-        print $line;
         ($id,$junk)=split(/;/,$f[8]);
         ($loc_id,$junk)=split(/-/,$id);
-        if(($f[2] eq "mRNA" || $f[2] eq "gene") && defined($pseudo{substr($loc_id,3)})){
-          print ";pseudo=true\n";
-        }else{print "\n";}
+        if($f[2] eq "mRNA" || $f[2] eq "gene"){
+          if(defined($pseudo{substr($loc_id,3)})){
+            print "$line;pseudo=true\n";
+            $printcds=0;
+          }else{
+            print "$line\n";
+            $printcds=1;
+          }
+        }elsif($f[2] eq "CDS"){
+          print "$line\n" if($printcds);
+        }else{
+          print "$line\n";
+        } 
       }
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
+    gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.pseudo_label.gff && \
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   else
     cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
