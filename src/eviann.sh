@@ -493,12 +493,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #we now filter the transcripts file using the splice scores, leaving aline the transcripts that do match proteins and rerun combine
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcript_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=10000;}}{if($F[2] eq "transcript"){$flag=0;$id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');}print if($flag);}' $GENOME.abundanceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.protein_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[1]}=10000;}}{if($F[2] eq "gene"){$flag=0;$id=$1 if($F[8] =~ /^ID=(\S+);geneID/); $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');}print if($flag);}' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff && \
+  #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.spliceFiltered.gff $GENOME.abundanceFiltered.spliceFiltered.gtf && \
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered && \
   cat $GENOME.palign.fixed.spliceFiltered.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.protref.annotated.gtf $GENOME.transcripts_to_keep.txt
+    rm -rf $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.transcript_splice_scores.txt $GENOME.protein_splice_scores.txt $GENOME.transcripts_to_keep.txt 
   fi
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
