@@ -16,8 +16,8 @@ export PATH=$MYPATH:$MYPATH/SNAP:$PATH;
 set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
-USE_SNAP=1
 LIFTOVER=0
+JUNCTION_THRESHOLD=6
 GC=
 RC=
 NC=
@@ -491,8 +491,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.palign.fixed.gff) $GENOMEFILE $GENOME.hmm > $GENOME.protein_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving aline the transcripts that do match proteins and rerun combine
-  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcript_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=10000;}}{if($F[2] eq "transcript"){$flag=0;$id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); $flag=1 if($score{$id}>8);}print if($flag);}' $GENOME.abundanceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf && \
-  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.protein_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[1]}=10000;}}{if($F[2] eq "gene"){$flag=0;$id=$1 if($F[8] =~ /^ID=(\S+);gene_id/); $flag=1 if($score{$id}>8);}print if($flag);}' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff && \
+  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcript_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=10000;}}{if($F[2] eq "transcript"){$flag=0;$id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');}print if($flag);}' $GENOME.abundanceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf && \
+  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.protein_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[1]}=10000;}}{if($F[2] eq "gene"){$flag=0;$id=$1 if($F[8] =~ /^ID=(\S+);gene_id/); $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');}print if($flag);}' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff && \
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.spliceFiltered.gff $GENOME.abundanceFiltered.spliceFiltered.gtf && \
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered && \
   cat $GENOME.palign.fixed.spliceFiltered.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \

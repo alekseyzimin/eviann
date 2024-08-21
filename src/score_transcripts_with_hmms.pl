@@ -151,6 +151,6 @@ for my $g(keys %transcript_gff){
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
     }
   }
-  print "DEBUG $g $transcript_junction_score{$g}\n";
+  print "$g $transcript_junction_score{$g}\n";
 }  
 
