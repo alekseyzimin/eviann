@@ -651,7 +651,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -f $GENOME.protref.snap.{loci,stats,tracking}
     rm -rf $GENOME.all.{combined,redundant}.gtf $GENOME.all $GENOME.palign.all.gff $GENOME.protref.all.annotated.class.gff $GENOME.protref.all.annotated.gtf $GENOME.protref.all $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
   fi
-  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta -y $GENOME.proteins.fasta $GENOME.gff && \
+  gffread -S -g $GENOMEFILE -w $GENOME.transcripts.fasta $GENOME.gff && \
   if [ ! -e merge.unused.success ];then
     log "Merging proteins without transcript match failed, results will be incomplete!"
   fi
@@ -665,7 +665,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
-  log "Detecting and annotating processed pseudogenes"
+  log "Detecting and annotating processed pseudogenes" && \
+  gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
   ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
   mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
   ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -c | perl -ane '{($gene,$junk)=split(/-/,$F[1]);$max_count{$gene}=$F[0] if($max_count{$gene}<$F[0]);$transcripts{$gene}.="$F[1]\n";}END{foreach $k(keys %max_count){if($max_count{$k}==1){print $transcripts{$k}}}}') $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && \
@@ -677,7 +678,7 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
     perl -ane '{
       @f1=split(/-/,$F[0]);
       @f2=split(/-/,$F[5]);
-      if($F[3]>90 && $F[2]/($F[1]+1)>0.90 && not($f1[0] eq $f2[0])){
+      if($F[3]>90 && $F[2]/($F[1]+1)>0.9 && not($f1[0] eq $f2[0])){
         $pseudo{$f1[0]}=1;
       }
     }END{
