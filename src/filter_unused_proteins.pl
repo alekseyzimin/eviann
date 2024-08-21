@@ -47,8 +47,6 @@ while($line=<FILE>){
 
 
 #combined file on STDIN
-my $avg=0;
-my $count=1;
 while($line=<STDIN>){
   chomp($line);
   my @f=split(/\t/,$line);
@@ -85,17 +83,19 @@ while($line=<STDIN>){
     if($codon_count>1){
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id");
-      print "DEBUG $score $gene_id $transcript_id\n";
-      $avg+=$score;
-      $count++;
+      #print "DEBUG $score $gene_id $transcript_id $ori\n";
     }
   }
 }
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
-#my $similarity_threshold=$avg/$count;
-my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.75)]);
-my $similarity_threshold=$f[0];
-$similarity_threshold=0 if(defined($liftover) && $liftover>0);
+my $similarity_threshold=0;
+if(defined($liftover) && $liftover>0){
+  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.95)]);
+  $similarity_threshold=$f[0];
+}else{
+  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.75)]);
+  $similarity_threshold=$f[0];
+}
 print "#similarity threshold $similarity_threshold\n";
 my %h=();
 my %hs=();
