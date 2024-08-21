@@ -104,6 +104,7 @@ while(my $line=<FILE>){
     $tori=$gff_fields[6];
     my $class_code="";
     my $protID="";
+    $transcript_junction_score{$geneID}=10000;
     foreach my $attr(@attributes){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
@@ -240,7 +241,7 @@ if(defined($ARGV[5])){
   }
 }
 
-#we make the transcript sequences for protein coding transcripts
+#we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){
   $transcript_seqs{$g}="";
   my @gff_fields=();
@@ -256,6 +257,32 @@ for my $g(keys %transcript_gff){
         $transcript_seqs_3pext{$g}=$ext;
       }
     }
+    if($j>0 && defined($ARGV[4])){
+      my @gff_fields_prev=split(/\t/,${$transcript_gff{$g}}[$j-1]);
+      if($gff_fields[6] eq "+"){
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,9));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-28,30));
+        #print "DEBUG $g $gff_fields[6] $donor_seq $acceptor_seq\n";
+      }else{
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-7,9));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,30));
+        $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+        $donor_seq=reverse($donor_seq);
+        $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+        $acceptor_seq=reverse($acceptor_seq);
+        #print "DEBUG $g $gff_fields[6] $donor_seq $acceptor_seq\n";
+      }
+      my $junction_score=0;
+      for(my $i=0;$i<9;$i++){
+        $junction_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}];
+        #print "DEBUG ",substr($donor_seq,$i,1)," ",$donor_freq[$i][$code{substr($donor_seq,$i,1)}],"\n";
+      }
+      for(my $i=0;$i<30;$i++){
+        $junction_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}];
+        #print "DEBUG ",substr($acceptor_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}],"\n";
+      }
+      $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
+    }
     if($j==$#{$transcript_gff{$g}}){
       my $ext="";
       $ext=substr($genome_seqs{$gff_fields[0]},$gff_fields[4],$ext_length) if($gff_fields[4]<length($genome_seqs{$gff_fields[0]})-$ext_length);
@@ -267,9 +294,12 @@ for my $g(keys %transcript_gff){
     } 
     $transcript_seqs{$g}.=substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-1,$gff_fields[4]-$gff_fields[3]+1);
   }
+  print "DEBUG $g $transcript_junction_score{$g} $transcript_class{$g}\n";
+  $transcript_class{$g}="NA" if($transcript_junction_score{$g}<8 && ($transcript_source eq "EviAnnP" || not($transcript_class{$g} eq "=" || $transcript_class{$g} eq "k")));#delete all transcripts with badly scoring junctions
+
   $transcript_seqs_5pext_actual{$g}="";
   $transcript_seqs_3pext_actual{$g}="";
-
+  
   if($gff_fields[6] eq "-"){
     $transcript_seqs{$g}=~tr/ACGTNacgtn/TGCANtgcan/;
     $transcript_seqs{$g}=reverse($transcript_seqs{$g});
@@ -282,6 +312,7 @@ for my $g(keys %transcript_gff){
 
 #here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then check for a start codon and, if not found, extend the start/stop of the CDS up to the transcript boundary to look for the valid start/stop
 for my $g(keys %transcript_cds){
+  next if($transcript_class{$g} eq "NA");
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
   my $tend=$gff_fields_t[4];

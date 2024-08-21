@@ -405,8 +405,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
-  cat $GENOME.palign.fixed.gff | filter_by_class_code.pl $GENOME.protref.annotated.gtf | \
-  filter_by_local_abundance.pl > $GENOME.transcripts_to_keep.txt.tmp && \
+  cat $GENOME.palign.fixed.gff | \
+    filter_by_class_code.pl $GENOME.protref.annotated.gtf | \
+    filter_by_local_abundance.pl > $GENOME.transcripts_to_keep.txt.tmp && \
   mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
   mv $GENOME.protref.annotated.gtf $GENOME.protref.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.annotated.gtf.bak > $GENOME.protref.annotated.gtf.tmp && \
@@ -423,73 +424,86 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi 
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
+#we use preliminary "k" file to train SNAP
+  log "Training SNAP and predicting protein coding genes to use in filtering aligned proteins" && \
+  rm -rf SNAP && mkdir -p SNAP && \
+  (cd SNAP && \
+   awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \
+   $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}') > $GENOME.zff && \
+   $MYPATH/SNAP/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
+   $MYPATH/SNAP/fathom -export 1000 -plus uni.* && \
+   $MYPATH/SNAP/forge export.ann export.dna && \
+   $MYPATH/SNAP/hmm-assembler.pl $GENOME . > ../$GENOME.hmm.tmp && \
+   mv ../$GENOME.hmm.tmp ../$GENOME.hmm && \
+   $MYPATH/ufasta split -i $GENOME.onefield.fa $GENOME.onefield.1.fa $GENOME.onefield.2.fa $GENOME.onefield.3.fa $GENOME.onefield.4.fa $GENOME.onefield.5.fa $GENOME.onefield.6.fa $GENOME.onefield.7.fa $GENOME.8.onefield.fa && \
+   echo '#!/bin/bash
+   if [ -s '$GENOME'.onefield.$1.fa ];then
+   '$MYPATH'/SNAP/snap -quiet -gff ../'$GENOME'.hmm '$GENOME'.onefield.$1.fa > '$GENOME'.onefield.$1.gff
+   else
+   echo "" > '$GENOME'.onefield.$1.gff
+   fi' > run_snap.sh && \
+   chmod 0755 run_snap.sh && \
+   seq 1 8 | xargs -P 8 -I {} ./run_snap.sh {} && \
+   cat $GENOME.onefield.{1,2,3,4,5,6,7,8}.gff | \
+   perl -F'\t' -ane 'BEGIN{$id="";}{
+   if($#F == 8){
+     if(not($id eq $F[8])){
+       if(not($id eq "")){
+         print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
+         print join("",@exons);
+       }
+       $id=$F[8];
+       $chrom=$F[0];
+       $dir=$F[6];
+       $start=$F[3];
+       $end=$F[4];
+       @exons=();
+     }
+     $F[2]="exon";
+     $F[8]="Parent=$F[8]";
+     if($dir eq "+"){
+       $end=$F[4];
+     }else{
+       $start=$F[3];
+     }
+     push(@exons,join("\t",@F));
+     $F[2]="cds";
+     push(@exons,join("\t",@F));
+   }
+   }END{
+     if(not($id eq "")){
+       print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
+       print join("",@exons);
+     }
+   }' > $GENOME.snap.gff.tmp && \
+   mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
+  gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
+  grep -P 'class_code "(=|c)"' $GENOME.snapcompare.annotated.gtf |\
+  grep -v "contained_in" |\
+  perl -F'\t' -ane '{if($F[8]=~/^transcript_id\s\"(\S+)\";\sgene_id/){print $1,"\n"}}' > $GENOME.snap_match.txt.tmp && \
+  mv $GENOME.snap_match.txt.tmp $GENOME.snap_match.txt && \
+  touch snap.success && \
+  if [ $DEBUG -lt 1 ];then
+    rm -rf SNAP $GENOME.snapcompare $GENOME.snapcompare.{annotated.gtf,loci,tracking}
+  fi
+  #now we have SNAP HMM's -- let's score the splice sites for transcripts and aligned proteins
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.abundanceFiltered.gtf) $GENOMEFILE $GENOME.hmm > $GENOME.transcript_splice_scores.txt && \
+  score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.palign.fixed.gff) $GENOMEFILE $GENOME.hmm > $GENOME.protein_splice_scores.txt && \
+  perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
+  #we now filter the transcripts file using the splice scores, leaving aline the transcripts that do match proteins and rerun combine
+  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcript_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=10000;}}{if($F[2] eq "transcript"){$flag=0;$id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); $flag=1 if($score{$id}>8);}print if($flag);}' $GENOME.abundanceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf && \
+  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.protein_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[1]}=10000;}}{if($F[2] eq "gene"){$flag=0;$id=$1 if($F[8] =~ /^ID=(\S+);gene_id/); $flag=1 if($score{$id}>8);}print if($flag);}' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff && \
+  gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.spliceFiltered.gff $GENOME.abundanceFiltered.spliceFiltered.gtf && \
+  rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered && \
+  cat $GENOME.palign.fixed.spliceFiltered.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+  mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+  if [ $DEBUG -lt 1 ];then
+    rm -rf $GENOME.protref.annotated.gtf $GENOME.transcripts_to_keep.txt
+  fi
+  mv $GENOME.u.gff.tmp $GENOME.u.gff && \
+  mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
-#we use preliminary "k" file to train SNAP
-    if [ $USE_SNAP -gt 0 ];then
-      log "Training SNAP and predicting protein coding genes to use in filtering aligned proteins" && \
-      mkdir -p SNAP && \
-      (cd SNAP && \
-        rm -rf * && \
-        awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \
-        $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}') > $GENOME.zff && \
-        $MYPATH/SNAP/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
-        $MYPATH/SNAP/fathom -export 1000 -plus uni.* && \
-        $MYPATH/SNAP/forge export.ann export.dna && \
-        $MYPATH/SNAP/hmm-assembler.pl $GENOME . > ../$GENOME.hmm.tmp && \
-        mv ../$GENOME.hmm.tmp ../$GENOME.hmm && \
-        $MYPATH/ufasta split -i $GENOME.onefield.fa $GENOME.onefield.1.fa $GENOME.onefield.2.fa $GENOME.onefield.3.fa $GENOME.onefield.4.fa $GENOME.onefield.5.fa $GENOME.onefield.6.fa $GENOME.onefield.7.fa $GENOME.8.onefield.fa && \
-        echo '#!/bin/bash
-        if [ -s '$GENOME'.onefield.$1.fa ];then
-        '$MYPATH'/SNAP/snap -quiet -gff ../'$GENOME'.hmm '$GENOME'.onefield.$1.fa > '$GENOME'.onefield.$1.gff
-        else
-        echo "" > '$GENOME'.onefield.$1.gff
-        fi' > run_snap.sh && \
-        chmod 0755 run_snap.sh && \
-        seq 1 8 | xargs -P 8 -I {} ./run_snap.sh {} && \
-        cat $GENOME.onefield.{1,2,3,4,5,6,7,8}.gff | \
-        perl -F'\t' -ane 'BEGIN{$id="";}{
-            if($#F == 8){
-              if(not($id eq $F[8])){
-                if(not($id eq "")){
-                  print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
-                  print join("",@exons);
-                }
-                $id=$F[8];
-                $chrom=$F[0];
-                $dir=$F[6];
-                $start=$F[3];
-                $end=$F[4];
-                @exons=();
-              }
-              $F[2]="exon";
-              $F[8]="Parent=$F[8]";
-              if($dir eq "+"){
-                $end=$F[4];
-              }else{
-                $start=$F[3];
-              }
-              push(@exons,join("\t",@F));
-              $F[2]="cds";
-              push(@exons,join("\t",@F));
-            }
-          }END{
-            if(not($id eq "")){
-              print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
-              print join("",@exons);
-            }
-          }' > $GENOME.snap.gff.tmp && \
-        mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
-      gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
-      grep -P 'class_code "(=|c)"' $GENOME.snapcompare.annotated.gtf |\
-      grep -v "contained_in" |\
-      perl -F'\t' -ane '{if($F[8]=~/^transcript_id\s\"(\S+)\";\sgene_id/){print $1,"\n"}}' > $GENOME.snap_match.txt.tmp && \
-      mv $GENOME.snap_match.txt.tmp $GENOME.snap_match.txt && \
-      touch snap.success && \
-      if [ $DEBUG -lt 1 ];then
-        rm -rf SNAP $GENOME.snapcompare $GENOME.snapcompare.{annotated.gtf,loci,tracking}
-      fi
-    fi
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
     ufasta one $GENOME.unused.faa |\
     awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
