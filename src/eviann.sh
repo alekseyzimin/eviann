@@ -717,8 +717,9 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
         } 
       }
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
+    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff &&
     gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.pseudo_label.gff && \
-    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
+    touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   else
     cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   fi
