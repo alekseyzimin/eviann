@@ -17,7 +17,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 LIFTOVER=0
-JUNCTION_THRESHOLD=6
+JUNCTION_THRESHOLD=4
 GC=
 RC=
 NC=
@@ -177,7 +177,7 @@ for prog in $(echo "ufasta stringtie gffread gffcompare blastp tblastn makeblast
   which $prog || error_exit "$prog not found in $MYPATH, please make sure installation of EviAnn ran correctly!";
 done
 for prog in $(echo "minimap2 hisat2 hisat2-build");do
-  echo -n "Checking for $prog on the PATH... " && \
+  echo -n "Checking for $prog on the PATH ... " && \
   which $prog || log "WARNING! $prog not found the the PATH, it may or may not be needed, but we ask that it is installed!";
 done
 echo "Checking if TransDecoder is properly installed and works"
@@ -425,7 +425,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
 #we use preliminary "k" file to train SNAP
-  log "Training SNAP and predicting protein coding genes to use in filtering aligned proteins" && \
+  log "Training SNAP to produce HMM matrices for scoring splice sites" && \
   rm -rf SNAP && mkdir -p SNAP && \
   (cd SNAP && \
    awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \

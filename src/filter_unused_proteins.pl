@@ -93,7 +93,7 @@ if(defined($liftover) && $liftover>0){
   my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.95)]);
   $similarity_threshold=$f[0];
 }else{
-  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.75)]);
+  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.8)]);
   $similarity_threshold=$f[0];
 }
 print "#similarity threshold $similarity_threshold\n";
