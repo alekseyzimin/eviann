@@ -17,7 +17,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 LIFTOVER=0
-JUNCTION_THRESHOLD=7
+JUNCTION_THRESHOLD=8
 GC=
 RC=
 NC=
@@ -327,18 +327,20 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq 1 ];then
     # a single tissue, we add 1 for the number of samples and the TPMs
-    cat tissue*.bam.sorted.bam.gtf | grep -v '^#' | perl -F'\t' -ane '{
-      if($F[2] eq "transcript"){
-        if($F[8]=~/transcript_id \"(\S+)\";/){
-          $transcript=$1;
-          $tpm=1;
-          $tpm=$1 if($F[8] =~ /TPM \"(\S+)\";/);
-          $new_transcript_id="M$transcript:1:$tpm";
+    cat tissue*.bam.sorted.bam.gtf | \
+      grep -v '^#' | \
+      perl -F'\t' -ane '{
+        if($F[2] eq "transcript"){
+          if($F[8]=~/transcript_id \"(\S+)\";/){
+            $transcript=$1;
+            $tpm=1;
+            $tpm=$1 if($F[8] =~ /TPM \"(\S+)\";/);
+            $new_transcript_id="M$transcript:1:$tpm";
+          }
         }
-      }
-      $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
-      print join("\t",@F);
-    }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf &&  touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+        $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
+        print join("\t",@F);
+      }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf &&  touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
@@ -378,11 +380,11 @@ fi
 if [ ! -e protein2genome.deduplicate.success ];then
   log "Deduplicating input proteins"
   $MYPATH/ufasta one $PROTEINFILE | \
-  awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
-  sort  -S 10% -k2,2 |\
-  uniq -f 1 |\
-  awk '{print $1"\n"$2}' | \
-  tr ':' '_' > $PROTEIN.uniq.tmp && \
+    awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
+    sort  -S 10% -k2,2 |\
+    uniq -f 1 |\
+    awk '{print $1"\n"$2}' | \
+    tr ':' '_' > $PROTEIN.uniq.tmp && \
   mv $PROTEIN.uniq.tmp $PROTEIN.uniq && \
   touch protein2genome.deduplicate.success && \
   rm -f protein2genome.align.success || error_exit "Failed in deduplicating proteins"
@@ -393,9 +395,9 @@ if [ ! -e protein2genome.align.success ];then
   log "Aligning proteins to the genome with miniprot"
   miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
     $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
-    mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
-    rm -f merge.success && \
-    touch protein2genome.align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
+  mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
+  rm -f merge.success && \
+  touch protein2genome.align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
 fi
 
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
@@ -419,10 +421,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we combine the transcripts and protein matches
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
-  cat $GENOME.palign.fixed.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+  cat $GENOME.palign.fixed.gff | \
+    combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.protref.annotated.gtf $GENOME.transcripts_to_keep.txt
+    rm -rf $GENOME.transcripts_to_keep.txt
   fi 
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
@@ -431,7 +434,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   rm -rf SNAP && mkdir -p SNAP && \
   (cd SNAP && \
    awk '{print $1}' $GENOMEFILE > $GENOME.onefield.fa && \
-   $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}') > $GENOME.zff && \
+   $MYPATH/SNAP/gff3_to_zff.pl $GENOME.onefield.fa <(gffread -F ../$GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
+    perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}') > $GENOME.zff && \
    $MYPATH/SNAP/fathom -categorize 1000 $GENOME.zff $GENOME.onefield.fa && \
    $MYPATH/SNAP/fathom -export 1000 -plus uni.* && \
    $MYPATH/SNAP/forge export.ann export.dna && \
@@ -447,42 +451,42 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
    chmod 0755 run_snap.sh && \
    seq 1 8 | xargs -P 8 -I {} ./run_snap.sh {} && \
    cat $GENOME.onefield.{1,2,3,4,5,6,7,8}.gff | \
-   perl -F'\t' -ane 'BEGIN{$id="";}{
-   if($#F == 8){
-     if(not($id eq $F[8])){
-       if(not($id eq "")){
-         print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
-         print join("",@exons);
-       }
-       $id=$F[8];
-       $chrom=$F[0];
-       $dir=$F[6];
-       $start=$F[3];
-       $end=$F[4];
-       @exons=();
-     }
-     $F[2]="exon";
-     $F[8]="Parent=$F[8]";
-     if($dir eq "+"){
-       $end=$F[4];
-     }else{
-       $start=$F[3];
-     }
-     push(@exons,join("\t",@F));
-     $F[2]="cds";
-     push(@exons,join("\t",@F));
-   }
-   }END{
-     if(not($id eq "")){
-       print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
-       print join("",@exons);
-     }
-   }' > $GENOME.snap.gff.tmp && \
-   mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
+    perl -F'\t' -ane 'BEGIN{$id="";}{
+    if($#F == 8){
+      if(not($id eq $F[8])){
+        if(not($id eq "")){
+          print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
+          print join("",@exons);
+        }
+        $id=$F[8];
+        $chrom=$F[0];
+        $dir=$F[6];
+        $start=$F[3];
+        $end=$F[4];
+        @exons=();
+      }
+      $F[2]="exon";
+      $F[8]="Parent=$F[8]";
+      if($dir eq "+"){
+        $end=$F[4];
+      }else{
+        $start=$F[3];
+      }
+      push(@exons,join("\t",@F));
+      $F[2]="cds";
+      push(@exons,join("\t",@F));
+    }
+    }END{
+      if(not($id eq "")){
+        print "$chrom\tSNAP\tmRNA\t$start\t$end\t.\t$dir\t.\tID=$id";
+        print join("",@exons);
+      }
+    }' > $GENOME.snap.gff.tmp && \
+  mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
   gffcompare -T -r $GENOME.snap.gff $GENOME.unused_proteins.gff -o $GENOME.snapcompare && \
   grep -P 'class_code "(=|c)"' $GENOME.snapcompare.annotated.gtf |\
-  grep -v "contained_in" |\
-  perl -F'\t' -ane '{if($F[8]=~/^transcript_id\s\"(\S+)\";\sgene_id/){print $1,"\n"}}' > $GENOME.snap_match.txt.tmp && \
+    grep -v "contained_in" |\
+    perl -F'\t' -ane '{if($F[8]=~/^transcript_id\s\"(\S+)\";\sgene_id/){print $1,"\n"}}' > $GENOME.snap_match.txt.tmp && \
   mv $GENOME.snap_match.txt.tmp $GENOME.snap_match.txt && \
   touch snap.success && \
   if [ $DEBUG -lt 1 ];then
@@ -493,12 +497,52 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.palign.fixed.gff) $GENOMEFILE $GENOME.hmm > $GENOME.protein_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving aline the transcripts that do match proteins and rerun combine
-  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcript_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=10000;}}{if($F[2] eq "transcript"){$flag=0;$id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');}print if($flag);}' $GENOME.abundanceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf && \
-  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.protein_splice_scores.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[0]}=$f[1];}open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");while($line=<FILE>){chomp($line);@f=split(/\s+/,$line);$score{$f[1]}=10000;}}{if($F[2] eq "gene"){$flag=0;$id=$1 if($F[8] =~ /^ID=(\S+);geneID/); $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');}print if($flag);}' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff && \
+  perl -F'\t' -ane 'BEGIN{
+    open(FILE,"'$GENOME'.transcript_splice_scores.txt");
+    while($line=<FILE>){
+      chomp($line);
+      @f=split(/\s+/,$line);
+      $score{$f[0]}=$f[1];
+    }
+    open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
+    while($line=<FILE>){
+      chomp($line);
+      @f=split(/\s+/,$line);
+      $score{$f[0]}=10000;
+    }
+  }{
+    if($F[2] eq "transcript"){
+      $flag=0;
+      $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
+      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
+    }
+    print if($flag);
+  }' $GENOME.abundanceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf && \
+  perl -F'\t' -ane 'BEGIN{
+    open(FILE,"'$GENOME'.protein_splice_scores.txt");
+    while($line=<FILE>){
+      chomp($line);
+      @f=split(/\s+/,$line);
+      $score{$f[0]}=$f[1];
+    }open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
+    while($line=<FILE>){
+      chomp($line);
+      @f=split(/\s+/,$line);
+      $score{$f[1]}=10000;
+    }
+  }{
+    if($F[2] eq "gene"){
+      $flag=0;
+      $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
+      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
+    }
+    print if($flag);
+  }' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff && \
   #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.spliceFiltered.gff $GENOME.abundanceFiltered.spliceFiltered.gtf && \
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered && \
-  cat $GENOME.palign.fixed.spliceFiltered.gff |  combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+  cat $GENOME.palign.fixed.spliceFiltered.gff | \
+    combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.transcript_splice_scores.txt $GENOME.protein_splice_scores.txt $GENOME.transcripts_to_keep.txt 
@@ -509,10 +553,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     log "Filtering unused protein only loci" && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
     ufasta one $GENOME.unused.faa |\
-    awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |sort -k2,2 -S 10% |uniq -c -f 1 |awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
+      awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |\
+      sort -k2,2 -S 10% |\
+      uniq -c -f 1 |\
+      awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
-    filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
+      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.snap_match.txt $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
     if [ $DEBUG -lt 1 ];then
       rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff
@@ -532,7 +579,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
       add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9~/ORF type:complete/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
-      perl -F'\t' -ane 'BEGIN{
+        perl -F'\t' -ane 'BEGIN{
           open(FILE,"'$GENOME'.lncRNA.u.blastp");
           while($line=<FILE>){
             $line=~/^(.+)\.p\d+/;
@@ -570,32 +617,36 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffcompare -STC $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.gtf -o $GENOME.all && \
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff \
       <(cat $GENOME.protref.snap.annotated.gtf |\
-      perl -F'\t' -ane '{
-        if($F[8]=~/cmp_ref "(\S+)"; class_code "(=|k)"/){
-          $h{$1}=1;
-        }
-      }END{
-        $flag=0;
-        open(FILE,"'$GENOME'.snap.gff");
-        while($line=<FILE>){
-          chomp($line);
-          @F=split(/\t/,$line);
-          if($F[2] eq "mRNA"){
-            $flag=defined($h{substr($F[8],3)}) ? 1:0;
-            $F[2]="gene";
+        perl -F'\t' -ane '{
+          if($F[8]=~/cmp_ref "(\S+)"; class_code "(=|k)"/){
+            $h{$1}=1;
           }
-          print join("\t",@F),"\n" if($flag);
-        }
-      }') >  $GENOME.palign.all.gff && \
+        }END{
+          $flag=0;
+          open(FILE,"'$GENOME'.snap.gff");
+          while($line=<FILE>){
+            chomp($line);
+            @F=split(/\t/,$line);
+            if($F[2] eq "mRNA"){
+              $flag=defined($h{substr($F[8],3)}) ? 1:0;
+              $F[2]="gene";
+            }
+            print join("\t",@F),"\n" if($flag);
+          }
+        }') >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
     log "Checking for and repairing broken ORFs" && \
-    cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
+    cat $GENOME.palign.all.gff | \
+      filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \
+      gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
     mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
-    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
+    cat $GENOME.palign.all.gff | \
+      check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
-    cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.u.cds.gff) | ufasta extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp &&\
+    cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.u.cds.gff) | \
+      ufasta extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp &&\
     mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa && \
     rm -rf $GENOME.broken_cds.fa.transdecoder* && \
     TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
@@ -608,36 +659,41 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.hmm <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) 1>combine.out 2>&1 && \
-    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
+    cat $GENOME.palign.all.gff | \
+      combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.hmm <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) 1>combine.out 2>&1 && \
+    gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
+      awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
     mv $GENOME.gff.tmp $GENOME.gff  && \
     rm -f $GENOME.{k,u,unused_proteins}.gff.tmp && \
     touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
   else
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff \
       <(cat $GENOME.protref.snap.annotated.gtf |\
-      perl -F'\t' -ane '{
-        if($F[8]=~/cmp_ref "(\S+)"; class_code "(=|k)"/){
-          $h{$1}=1;
-        }
-      }END{
-        $flag=0;
-        open(FILE,"'$GENOME'.snap.gff");
-        while($line=<FILE>){
-          chomp($line);
-          @F=split(/\t/,$line);
-          if($F[2] eq "mRNA"){
-            $flag=defined($h{substr($F[8],3)}) ? 1:0;
-            $F[2]="gene";
+        perl -F'\t' -ane '{
+          if($F[8]=~/cmp_ref "(\S+)"; class_code "(=|k)"/){
+            $h{$1}=1;
           }
-          print join("\t",@F),"\n" if($flag);
-        }
-      }') >  $GENOME.palign.all.gff && \
+        }END{
+          $flag=0;
+          open(FILE,"'$GENOME'.snap.gff");
+          while($line=<FILE>){
+            chomp($line);
+            @F=split(/\t/,$line);
+            if($F[2] eq "mRNA"){
+              $flag=defined($h{substr($F[8],3)}) ? 1:0;
+              $F[2]="gene";
+            }
+            print join("\t",@F),"\n" if($flag);
+          }
+        }') >  $GENOME.palign.all.gff && \
     gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
     log "Checking for and repairing broken ORFs" && \
-    cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
+    cat $GENOME.palign.all.gff | \
+      filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \
+      gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
     mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
-    cat $GENOME.palign.all.gff |  check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
+    cat $GENOME.palign.all.gff | \
+      check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
     mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
     mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
     mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -654,9 +710,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
     fi
     rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-    cat $GENOME.palign.all.gff |  combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.hmm <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) 1>combine.out 2>&1 && \
+    cat $GENOME.palign.all.gff | \
+      combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.hmm <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) 1>combine.out 2>&1 && \
     gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
-    awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
+      awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
     mv $GENOME.gff.tmp $GENOME.gff && \
     rm -f $GENOME.{k,u,unused_proteins}.gff.tmp  && \
     touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
@@ -686,7 +743,8 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
   ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
   mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
-  ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -c | perl -ane '{($gene,$junk)=split(/-/,$F[1]);$max_count{$gene}=$F[0] if($max_count{$gene}<$F[0]);$transcripts{$gene}.="$F[1]\n";}END{foreach $k(keys %max_count){if($max_count{$k}==1){print $transcripts{$k}}}}') $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && \
+  ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -c | \
+    perl -ane '{($gene,$junk)=split(/-/,$F[1]);$max_count{$gene}=$F[0] if($max_count{$gene}<$F[0]);$transcripts{$gene}.="$F[1]\n";}END{foreach $k(keys %max_count){if($max_count{$k}==1){print $transcripts{$k}}}}') $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && \
   mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   if [ -s $GENOME.proteins.mex.fasta ] && [ -s $GENOME.proteins.sex.fasta ];then
     makeblastdb -dbtype prot  -input_type fasta -in  $GENOME.proteins.mex.fasta -out $GENOME.proteins.mex 1>makeblastdb.sex2mex.out 2>&1 && \
