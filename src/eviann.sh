@@ -17,7 +17,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 LIFTOVER=0
-JUNCTION_THRESHOLD=4
+JUNCTION_THRESHOLD=7
 GC=
 RC=
 NC=
@@ -37,9 +37,9 @@ exit 1
 function usage {
  echo "Usage: eviann.sh [options]"
  echo "Options:"
- echo " -t INT     number of threads, default: 1"
- echo " -g FILE    MANDATORY:genome fasta file default: none"
- echo " -r FILE    file containing list of filenames of reads from transcriptome sequencing experiments, default: none
+ echo " -t INT       number of threads, default: 1"
+ echo " -g FILE      MANDATORY:genome fasta file default: none"
+ echo " -r FILE      file containing list of filenames of reads from transcriptome sequencing experiments, default: none
  
   FORMAT OF THIS FILE:
   Each line in the file must refer to sequencing data from a single experiment.
@@ -64,14 +64,16 @@ function usage {
  
   Absense of a tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
  "
- echo " -e FILE    fasta file with assembled transcripts from related species, default: none"
- echo " -p FILE    fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
- echo " -m INT     max intron size, default: 250000"
- echo " -l         liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
- echo " -f         perform functional annotation, default: not set"
- echo " --debug    keep intermediate output files, default: not set"
- echo " --verbose  verbose run, default: not set"
- echo " --version  report version and exit, default: not set"
+ echo " -e FILE      fasta file with assembled transcripts from related species, default: none"
+ echo " -p FILE      fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
+ echo " -s FILE      fasta file with UniProt-SwissProt proteins.  EviAnn uses a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch."
+ echo " -m INT       max intron size, default: 250000"
+ echo " --liftover   liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
+ echo " --functional perform functional annotation, default: not set"
+ echo " --debug      keep intermediate output files, default: not set"
+ echo " --verbose    verbose run, default: not set"
+ echo " --version    report version and exit."
+ echo " --help       display this message and exit."
  echo ""
  echo " -r or -e MUST be supplied."
 }

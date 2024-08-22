@@ -89,11 +89,8 @@ while($line=<STDIN>){
 }
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
 my $similarity_threshold=0;
-if(defined($liftover) && $liftover>0){
-  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.95)]);
-  $similarity_threshold=$f[0];
-}else{
-  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.8)]);
+if(not(defined($liftover)) || $liftover<1){
+  my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.9)]);
   $similarity_threshold=$f[0];
 }
 print "#similarity threshold $similarity_threshold\n";
