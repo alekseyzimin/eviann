@@ -17,7 +17,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 LIFTOVER=0
-JUNCTION_THRESHOLD=8
+JUNCTION_THRESHOLD=4
 GC=
 RC=
 NC=
@@ -614,8 +614,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   gffcompare -T -r $GENOME.snap.gff $GENOME.abundanceFiltered.gtf -o $GENOME.protref.snap && \
   if [ -s $GENOME.best_unused_proteins.gff ];then
 #now we have additional proteins produced by transdecoder, let's use them all
-    gffcompare -STC $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.gtf -o $GENOME.all && \
-    gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff \
+    gffcompare -STC $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all && \
+    gffread $GENOME.palign.fixed.spliceFiltered.gff $GENOME.u.cds.gff \
       <(cat $GENOME.protref.snap.annotated.gtf |\
         perl -F'\t' -ane '{
           if($F[8]=~/cmp_ref "(\S+)"; class_code "(=|k)"/){
@@ -667,7 +667,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -f $GENOME.{k,u,unused_proteins}.gff.tmp && \
     touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
   else
-    gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff \
+    gffread $GENOME.palign.fixed.spliceFiltered.gff $GENOME.u.cds.gff \
       <(cat $GENOME.protref.snap.annotated.gtf |\
         perl -F'\t' -ane '{
           if($F[8]=~/cmp_ref "(\S+)"; class_code "(=|k)"/){
@@ -686,7 +686,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
             print join("\t",@F),"\n" if($flag);
           }
         }') >  $GENOME.palign.all.gff && \
-    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.gtf && \
+    gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.abundanceFiltered.spliceFiltered.gtf && \
     log "Checking for and repairing broken ORFs" && \
     cat $GENOME.palign.all.gff | \
       filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \

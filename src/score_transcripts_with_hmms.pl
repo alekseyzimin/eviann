@@ -84,6 +84,13 @@ if(defined($ARGV[2])){
           $donor_freq[$i][4]=0;
           $i++;
         }
+        #reset frequencies at the splice sites to not penalize non-canonical splicing that much
+        $donor_freq[3][0]=0;
+        $donor_freq[3][1]=0;
+        $donor_freq[3][3]=0;
+        $donor_freq[4][0]=0;
+        $donor_freq[4][1]=0;
+        $donor_freq[4][2]=0;
       }elsif($line=~/^Acceptor/){
         $line=<FILE>;
         my $i=0;
@@ -98,6 +105,13 @@ if(defined($ARGV[2])){
           $acceptor_freq[$i][4]=0;
           $i++;
         }
+        #reset frequencies at the splice sites to not penalize non-canonical splicing that much
+        $acceptor_freq[25][1]=0;
+        $acceptor_freq[25][2]=0;
+        $acceptor_freq[25][3]=0;
+        $acceptor_freq[26][0]=0;
+        $acceptor_freq[26][1]=0;
+        $acceptor_freq[26][3]=0;
       }elsif($line=~/^Start/){
         $line=<FILE>;
         my $i=0;
@@ -151,6 +165,6 @@ for my $g(keys %transcript_gff){
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
     }
   }
-  print "$g $transcript_junction_score{$g}\n";
+  print "$g $transcript_junction_score{$g} $donor_seq $acceptor_seq\n";
 }  
 
