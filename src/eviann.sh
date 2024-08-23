@@ -126,6 +126,7 @@ do
             ;;
         -l|--liftover)
             LIFTOVER=1
+            JUNCTION_THRESHOLD=-1000
             log "Liftover mode ON"
             ;;
         -f|--functional)
@@ -496,11 +497,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
-#do not use splice filtering for liftover
-  if [ $LIFTOVER -gt 0 ];then
-    cp $GENOME.gtf $GENOME.spliceFiltered.gtf.tmp && \
-    mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf
-  fi
 #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
   cat $GENOME.palign.fixed.gff | \
@@ -543,11 +539,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
-    #do not use splice filtering for liftover
-    if [ $LIFTOVER -gt 0 ];then
-      cp $GENOME.unused_proteins.gff $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
-      mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff
-    fi
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     ufasta one $GENOME.unused.faa |\
       awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |\
