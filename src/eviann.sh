@@ -372,7 +372,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       print join("\t",@F) if($flag);
     }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
-    rm -f $GENOME.tmp.{combined.gtf,tracking,loci,redundant.gtf} $GENOME.tmp && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+    rm -f $GENOME.tmp.{combined.gtf,tracking,loci,redundant.gtf} $GENOME.tmp $GENOME.max_tpm.samples.txt && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
   else
     error_exit "one or more Stringtie jobs failed to run properly"
   fi
@@ -506,7 +506,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.spliceFiltered.annotated.gtf.bak > $GENOME.protref.spliceFiltered.annotated.gtf.tmp && \
   mv $GENOME.protref.spliceFiltered.annotated.gtf.tmp $GENOME.protref.spliceFiltered.annotated.gtf && \
-  rm -f $GENOME.protref.annotated.gtf.bak && \
+  rm -f $GENOME.protref.spliceFiltered.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
@@ -546,9 +546,12 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       uniq -c -f 1 |\
       awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
+    rm -f $GENOME.unused.faa && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
       filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.snap_match.txt $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
-    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
+    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
+    rm -f $GENOME.protein_count.txt && \
+    touch merge.unused.success
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then
@@ -678,12 +681,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #cleanup
   if [ $DEBUG -lt 1 ];then
     rm -rf SNAP
+    rm -f $GENOME.snapcompare.{loci,stats,tracking,annotated.gtf} $GENOME.snapcompare
     rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.transcript_splice_scores.txt $GENOME.transcripts_to_keep.txt
-    rm -f $GENOME.all.{loci,stats,tracking} 
-    rm -f $GENOME.protref.all.{loci,stats,tracking}
-    rm -f $GENOME.protref.snap.{loci,stats,tracking}
+    rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
+    rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
+    rm -f $GENOME.protref.snap.{loci,stats,tracking,annotated.gtf} $GENOME.protref.snap
     rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
-    rm -rf $GENOME.all.{combined,redundant}.gtf $GENOME.all $GENOME.palign.all.gff $GENOME.protref.all.annotated.class.gff $GENOME.protref.all.annotated.gtf $GENOME.protref.all $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
+    rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
   fi
   rm -f merge.{unused,u}.success pseudo_detect.success
 fi
