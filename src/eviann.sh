@@ -470,9 +470,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }' > $GENOME.snap.gff.tmp && \
   mv $GENOME.snap.gff.tmp ../$GENOME.snap.gff) && \
   touch snap.success && \
-  if [ $DEBUG -lt 1 ];then
-    rm -rf SNAP 
-  fi
   #now we have SNAP HMM's -- let's score the splice sites for transcripts and aligned proteins
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.hmm > $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
@@ -497,7 +494,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
     }
     print if($flag);
-  }' $GENOME.gtf > $GENOME.spliceFiltered.gtf && \
+  }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
+  mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
+#do not use splice filtering for liftover
+  if [ $LIFTOVER -gt 0 ];then
+    cp $GENOME.gtf $GENOME.spliceFiltered.gtf.tmp && \
+    mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf
+  fi
 #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
   cat $GENOME.palign.fixed.gff | \
@@ -513,9 +516,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
-  if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.transcript_splice_scores.txt $GENOME.transcripts_to_keep.txt 
-  fi
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
@@ -541,7 +541,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
       }
       print if($flag);
-    }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff && \
+    }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
+    mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
+    #do not use splice filtering for liftover
+    if [ $LIFTOVER -gt 0 ];then
+      cp $GENOME.unused_proteins.gff $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
+      mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff
+    fi
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     ufasta one $GENOME.unused.faa |\
       awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |\
@@ -552,9 +558,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
       filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.snap_match.txt $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && touch merge.unused.success
-    if [ $DEBUG -lt 1 ];then
-      rm -rf $GENOME.protein_count.txt $GENOME.unused.faa $GENOME.unused_proteins.gff
-    fi
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then
@@ -591,9 +594,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff && touch merge.u.success
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
-  fi
-  if [ $DEBUG -lt 1 ];then
-    rm -rf $GENOME.u.gff $GENOME.lncRNA.fa.transdecoder.{gff3,bed}
   fi
   log "Working on final merge"
   gffcompare -T -r $GENOME.snap.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.protref.snap && \
@@ -684,7 +684,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp && \
   touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
   rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
+#cleanup
   if [ $DEBUG -lt 1 ];then
+    rm -rf SNAP
+    rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.transcript_splice_scores.txt $GENOME.transcripts_to_keep.txt
     rm -f $GENOME.all.{loci,stats,tracking} 
     rm -f $GENOME.protref.all.{loci,stats,tracking}
     rm -f $GENOME.protref.snap.{loci,stats,tracking}
