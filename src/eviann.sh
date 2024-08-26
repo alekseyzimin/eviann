@@ -681,8 +681,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #cleanup
   if [ $DEBUG -lt 1 ];then
     rm -rf SNAP
+    rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
     rm -f $GENOME.snapcompare.{loci,stats,tracking,annotated.gtf} $GENOME.snapcompare
-    rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.transcript_splice_scores.txt $GENOME.transcripts_to_keep.txt
+    rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
     rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
     rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
     rm -f $GENOME.protref.snap.{loci,stats,tracking,annotated.gtf} $GENOME.protref.snap

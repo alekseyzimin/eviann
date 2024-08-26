@@ -9,6 +9,7 @@ my $scf="";
 my $seq="";
 my $score_fix_threshold=2;
 my $score_threshold=2;
+my $fix_range=5;
 #these are genetic codes for HMMs
 my %code=();
 $code{"A"}=0;
@@ -165,7 +166,7 @@ for my $g(keys %transcript_gff){
         if($donor_junction_score<$acceptor_junction_score){
           #print "DEBUG trying to improve donor junction with score $donor_junction_score seq $donor_seq\n";
           if($gff_fields[6] eq "+"){
-            for(my $i=-3;$i<4;$i++){
+            for(my $i=-$fix_range;$i<=$fix_range;$i++){
               next if($i==0 || not(uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]+$i,2)) eq "GT"));
               $new_donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3+$i,9));
               $new_donor_junction_score=score_donor_seq($new_donor_seq);
@@ -178,7 +179,7 @@ for my $g(keys %transcript_gff){
               }
             }
           }else{
-            for(my $i=-3;$i<4;$i++){
+            for(my $i=-$fix_range;$i<=$fix_range;$i++){
               next if($i==0 || not(uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]+$i-3,2)) eq "AC"));
               $new_donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-7+$i,9));
               $new_donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
@@ -195,7 +196,7 @@ for my $g(keys %transcript_gff){
           }
         }else{
           if($gff_fields[6] eq "+"){
-            for(my $i=-3;$i<4;$i++){
+            for(my $i=-$fix_range;$i<$fix_range;$i++){
               next if($i==0 || not(uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]+$i-3,2)) eq "AG"));
               $new_acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-28+$i,30));
               $new_acceptor_junction_score=score_acceptor_seq($new_acceptor_seq);
@@ -208,7 +209,7 @@ for my $g(keys %transcript_gff){
               }
             }
           }else{
-            for(my $i=-3;$i<4;$i++){
+            for(my $i=-$fix_range;$i<=$fix_range;$i++){
               next if($i==0 || not(uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]+$i,2)) eq "CT"));
               $new_acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3+$i,30));
               $new_acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
