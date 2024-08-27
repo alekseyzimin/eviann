@@ -417,7 +417,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   log "Computing PWM matrices at splice junctions" && \
-  compute_junction_scores.pl $GENOME.k.gff $GENOMEFILE > $GENOME.pwm.tmp && \
+  gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
+    perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
+    compute_junction_scores.pl $GENOMEFILE > $GENOME.pwm.tmp && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm > $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \

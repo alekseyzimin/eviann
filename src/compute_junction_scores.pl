@@ -20,9 +20,26 @@ $code{"t"}=3;
 $code{"N"}=4;
 $code{"n"}=4;
 
-#here we load up all transcripts that matched proteins
+#we load the genome sequences
 open(FILE,$ARGV[0]);
+#print "DEBUG Loading genome sequence\n";
 while(my $line=<FILE>){
+  chomp($line);
+  if($line=~ /^>/){
+    if(not($scf eq "")){
+      $genome_seqs{$scf}=$seq;
+      $seq="";
+    }
+    my @f=split(/\s+/,$line);
+    $scf=substr($f[0],1);
+  }else{
+    $seq.=$line;
+  }
+}
+$genome_seqs{$scf}=$seq if(not($scf eq ""));
+
+#here we load up all transcripts that matched proteins
+while(my $line=<STDIN>){
   chomp($line);
   my @gff_fields=split(/\t/,$line);
   my @attributes=split(";",$gff_fields[8]);
@@ -56,24 +73,6 @@ if(defined($transcript{$geneID})){
   $transcript_cds_stop{$geneID}=$CDS_stop;
 }
 @exons=();
-
-#we load the genome sequences
-open(FILE,$ARGV[1]);
-#print "DEBUG Loading genome sequence\n";
-while(my $line=<FILE>){
-  chomp($line);
-  if($line=~ /^>/){
-    if(not($scf eq "")){
-      $genome_seqs{$scf}=$seq;
-      $seq="";
-    }
-    my @f=split(/\s+/,$line);
-    $scf=substr($f[0],1);
-  }else{
-    $seq.=$line;
-  } 
-}   
-$genome_seqs{$scf}=$seq if(not($scf eq ""));
 
 #initialize PWMs
 for(my $i=0;$i<30;$i++){
