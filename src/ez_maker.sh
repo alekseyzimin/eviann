@@ -40,11 +40,11 @@ function usage {
  echo "Options:"
  echo "-t <number of threads, default:1>"
  echo "-g <MANDATORY:genome fasta file with full path>"
- echo "-p <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
+ echo "-r <file containing list of filenames paired Illumina reads from RNAseq experiment, one pair of /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
  echo "-u <file containing list of filenames of unpaired Illumina reads from RNAseq experiment, one /path/filename per line; if files are fasta, add "fasta" as the third field on the line>"
  echo "--rmlib <fasta file with species-specific repeats produced by RepeatModeler>"
  echo "-e <fasta file with transcripts from related species>"
- echo "-r <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
+ echo "-p <MANDATORY:fasta file of protein sequences to be used with the transcripts for annotation>"
  echo "-s <MANDATORY:fasta file of uniprot proteins>"
  echo "-m <max intron size, default: 100000>"
  echo "-d <add de novo gene finding pass with SNAP>"
@@ -82,7 +82,7 @@ do
             GENOMEFILE="$2"
             shift
             ;;
-        -p|--paired)
+        -r|--rnaseq)
             RNASEQ_PAIRED="$2"
             shift
             ;;
@@ -90,7 +90,7 @@ do
             ALT_EST="$2"
             shift
             ;;
-        -r|--proteins)
+        -p|--proteins)
             PROTEINFILE="$2"
             shift
             ;;
@@ -168,14 +168,14 @@ if [ ! -e align.success ];then
   log "aligning RNAseq reads"
   echo "#!/bin/bash" >hisat2.sh
   if [ -s $ALT_EST ];then
-    echo "if [ ! -s tissue0.bam ];then hisat2 $GENOME.hst -f --dta -p $NUM_THREADS -U $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam;fi" >> hisat2.sh
+    echo "if [ ! -s tissue0.bam ];then hisat2 -x $GENOME.hst -f --dta -p $NUM_THREADS -U $ALT_EST 2>tissue0.err | samtools view -bhS /dev/stdin > tissue0.bam.tmp && mv tissue0.bam.tmp tissue0.bam;fi" >> hisat2.sh
   fi
   if [ -s $RNASEQ_PAIRED ];then
     awk 'BEGIN{n=1}{
     if($NF == "fasta"){
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 -x '$GENOME'.hst -f --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }else{
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 -x '$GENOME'.hst --dta -p '$NUM_THREADS' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }
     }' $RNASEQ_PAIRED >> hisat2.sh
   fi
@@ -186,9 +186,9 @@ if [ ! -e align.success ];then
     fi
     awk 'BEGIN{n=int("'$START'");}{
     if($NF == "fasta"){
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 -x '$GENOME'.hst -f --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }else{
-      print "if [ ! -s tissue"n".bam ];then hisat2 '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
+      print "if [ ! -s tissue"n".bam ];then hisat2 -x '$GENOME'.hst --dta -p '$NUM_THREADS' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam; fi"; n++
     }}' $RNASEQ_UNPAIRED >> hisat2.sh
   fi
   bash ./hisat2.sh && touch align.success && rm -f sort.success || error_exit "Alignment with HISAT2 failed, please check if reads files exist"
