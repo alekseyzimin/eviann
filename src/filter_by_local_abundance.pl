@@ -32,8 +32,8 @@ for $l(keys %transcripts_at_xloc_same_cds){
   #print "DEBUG top $tr count $top_count class $class threshold $threshold\n";
   for(my $i=0;$i<=$#transcripts;$i++){
     my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
-    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold || (weight_function($count,$tpm) >= $threshold*.5 && ($class eq "=" || $class eq "k")));
-    #print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold);
+    #print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold || (weight_function($count,$tpm) >= $threshold*.5 && ($class eq "=" || $class eq "k")));
+    print "$tr:$count:$tpm\n" if(weight_function($count,$tpm) >= $threshold);
   }
 }
 
