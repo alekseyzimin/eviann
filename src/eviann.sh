@@ -416,7 +416,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-#we use preliminary "k" file to train SNAP, because this file contains the most reliable transcripts/proteins
   log "Computing PWM matrices at splice junctions" && \
   compute_junction_scores.pl $GENOME.k.gff $GENOMEFILE > $GENOME.pwm.tmp && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
