@@ -28,12 +28,11 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/filter_by_class_code.pl \
 	src/filter_unused_proteins.pl \
 	src/convert_miniprot_gff.pl \
+	src/compute_junction_scores.pl \
 	src/score_transcripts_with_hmms.pl \
 	exonerate \
 	makeblastdb blastp tblastn \
 	gffread gffcompare trmap \
 	stringtie \
 	miniprot \
-	TransDecoder-v5.7.1.tar.gz \
-	snap.tgz
-
+	TransDecoder-v5.7.1.tar.gz

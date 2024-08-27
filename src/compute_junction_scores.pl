@@ -1,0 +1,132 @@
+#!/usr/bin/env perl
+#This code adds gene and CDS record for every locus in GFF file
+my $geneID="";
+my @exons=();
+my %transcript_gff;
+my $protID="";
+my $dir="";
+my $scf="";
+my $seq="";
+#these are genetic codes for HMMs
+my %code=();
+$code{"A"}=0;
+$code{"a"}=0;
+$code{"C"}=1;
+$code{"c"}=1;
+$code{"G"}=2;
+$code{"g"}=2;
+$code{"T"}=3;
+$code{"t"}=3;
+$code{"N"}=4;
+$code{"n"}=4;
+
+#here we load up all transcripts that matched proteins
+open(FILE,$ARGV[0]);
+while(my $line=<FILE>){
+  chomp($line);
+  my @gff_fields=split(/\t/,$line);
+  my @attributes=split(";",$gff_fields[8]);
+  if($gff_fields[2] eq "transcript" || $gff_fields[2] eq "mRNA"){
+    if(defined($transcript{$geneID})){
+      $transcript_gff{$geneID}=[@exons];
+      $transcript_cds_start{$geneID}=$CDS_start;
+      $transcript_cds_stop{$geneID}=$CDS_stop;
+    }
+    $CDS_start=-1;
+    $CDS_stop=-1;
+    @exons=();
+    $locID=substr($attributes[1],7);#this is the gene_id
+    $geneID=substr($attributes[0],3);#this is the transcript_id
+    $transcript{$geneID}=$line;
+  }elsif($gff_fields[2] eq "exon"){
+    push(@exons,$line) if(defined($transcript{$geneID}));
+  }elsif($gff_fields[2] eq "CDS"){
+    if($gff_fields[6] eq "+"){
+      $CDS_start=$gff_fields[3] if($CDS_start==-1);
+      $CDS_stop=$gff_fields[4];
+    }else{
+      $CDS_stop=$gff_fields[3] if($CDS_stop==-1);
+      $CDS_start=$gff_fields[4];
+    }
+  }
+}
+if(defined($transcript{$geneID})){
+  $transcript_gff{$geneID}=[@exons];
+  $transcript_cds_start{$geneID}=$CDS_start;
+  $transcript_cds_stop{$geneID}=$CDS_stop;
+}
+@exons=();
+
+#we load the genome sequences
+open(FILE,$ARGV[1]);
+#print "DEBUG Loading genome sequence\n";
+while(my $line=<FILE>){
+  chomp($line);
+  if($line=~ /^>/){
+    if(not($scf eq "")){
+      $genome_seqs{$scf}=$seq;
+      $seq="";
+    }
+    my @f=split(/\s+/,$line);
+    $scf=substr($f[0],1);
+  }else{
+    $seq.=$line;
+  } 
+}   
+$genome_seqs{$scf}=$seq if(not($scf eq ""));
+
+#initialize PWMs
+for(my $i=0;$i<30;$i++){
+  for(my $j=0;$j<4;$j++){
+    $donor_pwm[$i][$j]=0;
+    $acceptor_pwm[$i][$j]=0;
+  }
+}
+
+#we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
+my $w=1;
+for my $g(keys %transcript_gff){
+  #print "DEBUG: processing transcript $g\n";
+  my @gff_fields=();
+  for(my $j=1;$j<=$#{$transcript_gff{$g}};$j++){
+    @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+    die("Genome sequence $gff_fields[0] needed for transcript $g not found!") if(not(defined($genome_seqs{$gff_fields[0]})));
+    if($j>0){
+      my @gff_fields_prev=split(/\t/,${$transcript_gff{$g}}[$j-1]);
+      if($gff_fields[6] eq "+"){
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,9));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-28,30));
+      }else{
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-7,9));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,30));
+        $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+        $donor_seq=reverse($donor_seq);
+        $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+        $acceptor_seq=reverse($acceptor_seq);
+      }
+ #    print "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
+      for(my $i=0;$i<9;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++;}
+      for(my $i=0;$i<30;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++;}
+      $w++;
+    }
+  }
+}  
+
+#OUTPUT PWMs
+print "zoeHMM\n";
+print "Donor\nGT WMM\n";
+for(my $i=0;$i<9;$i++){
+  for(my $j=0;$j<4;$j++){
+    printf("%.2f ", log($donor_pwm[$i][$j]/$w*4.12+1e-10));
+  }
+  print "\n";
+}
+print "NN TRM\n";
+print "Acceptor\nAG WMM\n";
+for(my $i=0;$i<30;$i++){
+  for(my $j=0;$j<4;$j++){
+    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4.12+1e-10));
+  } 
+  print "\n";
+} 
+print "NN TRM\n";
