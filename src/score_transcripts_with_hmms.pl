@@ -85,12 +85,12 @@ if(defined($ARGV[2])){
           $i++;
         }
         #reset frequencies at the splice sites to not penalize non-canonical splicing that much
-        $donor_freq[3][0]=0;
-        $donor_freq[3][1]=0;
-        $donor_freq[3][3]=0;
-        $donor_freq[4][0]=0;
-        $donor_freq[4][1]=0;
-        $donor_freq[4][2]=0;
+        #$donor_freq[3][0]=0;
+        #$donor_freq[3][1]=0;
+        #$donor_freq[3][3]=0;
+        #$donor_freq[4][0]=0;
+        #$donor_freq[4][1]=0;
+        #$donor_freq[4][2]=0;
       }elsif($line=~/^Acceptor/){
         $line=<FILE>;
         my $i=0;
@@ -106,12 +106,12 @@ if(defined($ARGV[2])){
           $i++;
         }
         #reset frequencies at the splice sites to not penalize non-canonical splicing that much
-        $acceptor_freq[25][1]=0;
-        $acceptor_freq[25][2]=0;
-        $acceptor_freq[25][3]=0;
-        $acceptor_freq[26][0]=0;
-        $acceptor_freq[26][1]=0;
-        $acceptor_freq[26][3]=0;
+        #$acceptor_freq[25][1]=0;
+        #$acceptor_freq[25][2]=0;
+        #$acceptor_freq[25][3]=0;
+        #$acceptor_freq[26][0]=0;
+        #$acceptor_freq[26][1]=0;
+        #$acceptor_freq[26][3]=0;
       }elsif($line=~/^Start/){
         $line=<FILE>;
         my $i=0;
