@@ -51,19 +51,28 @@ while(my $line=<STDIN>){
     }
     $CDS_start=-1;
     $CDS_stop=-1;
+    $first_exon_start=-1;
+    $first_exon_end=-1;
+    $last_exon_end=-1;
+    $last_exon_start=-1;
     @exons=();
     $locID=substr($attributes[1],7);#this is the gene_id
     $geneID=substr($attributes[0],3);#this is the transcript_id
     $transcript{$geneID}=$line;
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}));
+    $first_exon_start=$gff_fields[3] if($first_exon_start==-1);
+    $first_exon_end=$gff_fields[4] if($first_exon_end==-1);
+    $last_exon_start=$gff_fields[3];
+    $last_exon_end=$gff_fields[4];
+#for now only use CDS that start or end inside the first/last exon
   }elsif($gff_fields[2] eq "CDS"){
     if($gff_fields[6] eq "+"){
-      $CDS_start=$gff_fields[3] if($CDS_start==-1);
-      $CDS_stop=$gff_fields[4];
+      $CDS_start=$gff_fields[3] if($gff_fields[4]==$first_exon_end && $gff_fields[4]-$gff_fields[3]>=6 && $gff_fields[3]-$first_exon_start>=9);
+      $CDS_stop=$gff_fields[4] if($gff_fields[3]==$last_exon_start);
     }else{
-      $CDS_stop=$gff_fields[3] if($CDS_stop==-1);
-      $CDS_start=$gff_fields[4];
+      $CDS_stop=$gff_fields[3] if($gff_fields[4]==$first_exon_end);
+      $CDS_start=$gff_fields[4] if($gff_fields[3]==$last_exon_start && $gff_fields[4]-$gff_fields[3]>=6 && $last_exon_end-$gff_fields[4]>=9);
     }
   }
 }
@@ -112,17 +121,19 @@ for my $g(keys %transcript_gff){
     }
   }
   #this is in general incorrect because this ignores splice sites -- need to make transcript sequences
-  @gff_fields=split(/\t/,$transcript{$g});
-  if($gff_fields[6] eq "+"){
-    $start_seq=uc(substr($genome_seqs{$gff_fields[0]},$transcript_cds_start{$g}-10,15));
-  }else{
-    $start_seq=uc(substr($genome_seqs{$gff_fields[0]},$transcript_cds_start{$g}-6,15));
-    $start_seq=~tr/ACGTNacgtn/TGCANtgcan/;
-    $start_seq=reverse($start_seq);
+  if($transcript_cds_start{$g}>-1){
+    @gff_fields=split(/\t/,$transcript{$g});
+    if($gff_fields[6] eq "+"){
+      $start_seq=uc(substr($genome_seqs{$gff_fields[0]},$transcript_cds_start{$g}-10,15));
+    }else{
+      $start_seq=uc(substr($genome_seqs{$gff_fields[0]},$transcript_cds_start{$g}-6,15));
+      $start_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+      $start_seq=reverse($start_seq);
+    }
+    for(my $i=0;$i<15;$i++) {$start_pwm[$i][$code{substr($start_seq,$i,1)}]++;}
+#print "DEBUG start $start_seq  $gff_fields[6]\n";
+    $sw++;
   }
-  for(my $i=0;$i<15;$i++) {$start_pwm[$i][$code{substr($start_seq,$i,1)}]++;}
-  #print "DEBUG start $start_seq  $gff_fields[6]\n";
-  $sw++;
 }  
 
 #OUTPUT PWMs
