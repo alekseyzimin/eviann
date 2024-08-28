@@ -114,7 +114,9 @@ for my $g(keys %transcript_gff){
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
       }
- #    print "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
+      $donor6{substr($donor_seq,0,3).substr($donor_seq,5,4)}++;
+      $acceptor6{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)}++;
+#    print "DEBUG donor $donor_seq acceptor $acceptor_seq ",substr($donor_seq,0,3).substr($donor_seq,5,4)," ",substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)," $gff_fields[6]\n";
       for(my $i=0;$i<9;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++;}
       for(my $i=0;$i<30;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++;}
       $w++;
@@ -162,3 +164,17 @@ for(my $i=0;$i<15;$i++){
   print "\n";
 }
 print "NNN TRM\n";
+my @keys = sort { $donor6{$b} <=> $donor6{$a} } keys(%donor6);
+print "SDonor\n";
+for my $k(@keys){
+  print "$k $donor6{$k}\n";
+}
+print "NNNNNN\n";
+@keys = sort { $acceptor6{$b} <=> $acceptor6{$a} } keys(%acceptor6);
+print "SAcceptor\n";
+for my $k(@keys){
+  print "$k $acceptor6{$k}\n";
+}
+print "NNNNNN\n";
+
+
