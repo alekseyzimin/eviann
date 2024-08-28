@@ -116,7 +116,7 @@ print "zoeHMM\n";
 print "Donor\nGT WMM\n";
 for(my $i=0;$i<9;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.2f ", log($donor_pwm[$i][$j]/$w*4.12+1e-10));
+    printf("%.2f ", log($donor_pwm[$i][$j]/$w*4.16+1e-10));
   }
   print "\n";
 }
@@ -124,7 +124,7 @@ print "NN TRM\n";
 print "Acceptor\nAG WMM\n";
 for(my $i=0;$i<30;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4.12+1e-10));
+    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4.16+1e-10));
   } 
   print "\n";
 } 

@@ -102,7 +102,7 @@ if(not(defined($liftover)) || $liftover<1){
       push(@uniq_scores,$F[0]);
     }
   }
-  $similarity_threshold=$uniq_scores[int($#uniq_scores*0.9)];
+  $similarity_threshold=$uniq_scores[int($#uniq_scores*0.95)];
 }
 print "#similarity threshold $similarity_threshold\n";
 my %h=();
