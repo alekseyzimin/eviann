@@ -139,6 +139,7 @@ for my $g(keys %transcript_gff){
 }  
 
 #OUTPUT PWMs
+my $sf=94.5;
 print "zoeHMM\n";
 print "Donor\nGT WMM\n";
 for(my $i=0;$i<9;$i++){

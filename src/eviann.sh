@@ -175,7 +175,7 @@ PROTEIN=`basename $PROTEINFILE`
 
 #checking is dependencies are installed
 log "Checking dependencies"
-for prog in $(echo "ufasta stringtie gffread gffcompare blastp tblastn makeblastdb miniprot snap TransDecoder.Predict TransDecoder.LongOrfs");do
+for prog in $(echo "ufasta stringtie gffread gffcompare blastp tblastn makeblastdb miniprot TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog in $MYPATH ... " && \
   which $prog || error_exit "$prog not found in $MYPATH, please make sure installation of EviAnn ran correctly!";
 done
