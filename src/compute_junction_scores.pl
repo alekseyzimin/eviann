@@ -79,11 +79,13 @@ for(my $i=0;$i<30;$i++){
   for(my $j=0;$j<4;$j++){
     $donor_pwm[$i][$j]=0;
     $acceptor_pwm[$i][$j]=0;
+    $start_pwm[$i][$j]=0;
   }
 }
 
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 my $w=1;
+my $sw=1;
 for my $g(keys %transcript_gff){
   #print "DEBUG: processing transcript $g\n";
   my @gff_fields=();
@@ -109,6 +111,18 @@ for my $g(keys %transcript_gff){
       $w++;
     }
   }
+  #this is in general incorrect because this ignores splice sites -- need to make transcript sequences
+  @gff_fields=split(/\t/,$transcript{$g});
+  if($gff_fields[6] eq "+"){
+    $start_seq=uc(substr($genome_seqs{$gff_fields[0]},$transcript_cds_start{$g}-10,15));
+  }else{
+    $start_seq=uc(substr($genome_seqs{$gff_fields[0]},$transcript_cds_start{$g}-6,15));
+    $start_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+    $start_seq=reverse($start_seq);
+  }
+  for(my $i=0;$i<15;$i++) {$start_pwm[$i][$code{substr($start_seq,$i,1)}]++;}
+  #print "DEBUG start $start_seq  $gff_fields[6]\n";
+  $sw++;
 }  
 
 #OUTPUT PWMs
@@ -129,3 +143,11 @@ for(my $i=0;$i<30;$i++){
   print "\n";
 } 
 print "NN TRM\n";
+print "Start\nATG WMM\n";
+for(my $i=0;$i<15;$i++){
+  for(my $j=0;$j<4;$j++){
+    printf("%.3f ",log($start_pwm[$i][$j]/$sw*4.16+1e-10));
+  }
+  print "\n";
+}
+print "NNN TRM\n";
