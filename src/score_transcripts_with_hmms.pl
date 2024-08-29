@@ -34,6 +34,8 @@ while(my $line=<FILE>){
     $locID=substr($attributes[1],7);#this is the gene_id
     $geneID=substr($attributes[0],3);#this is the transcript_id
     $transcript_junction_score{$geneID}=10000;
+    $transcript_acceptor_score{$geneID}=10000;
+    $transcript_donor_score{$geneID}=10000;
     $transcript{$geneID}=$line;
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}));
@@ -153,18 +155,22 @@ for my $g(keys %transcript_gff){
         $acceptor_seq=reverse($acceptor_seq);
         #print "DEBUG $g $gff_fields[6] $donor_seq $acceptor_seq\n";
       }
-      my $junction_score=0;
+      my $donor_score=0;
+      my $acceptor_score=0;
       for(my $i=0;$i<9;$i++){
-        $junction_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}];
+        $donor_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}];
         #print "DEBUG ",substr($donor_seq,$i,1)," ",$donor_freq[$i][$code{substr($donor_seq,$i,1)}],"\n";
       }
       for(my $i=0;$i<30;$i++){
-        $junction_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}];
+        $acceptor_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}];
         #print "DEBUG ",substr($acceptor_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}],"\n";
       }
+      my $junction_score=$donor_score+$acceptor_score;
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
+      $transcript_donor_score{$g}=$donor_score if($transcript_donor_score{$g}>$donor_score);
+      $transcript_acceptor_score{$g}=$acceptor_score if($transcript_acceptor_score{$g}>$donor_score);
     }
   }
-  print "$g $transcript_junction_score{$g} $donor_seq $acceptor_seq\n";
+  print "$g $transcript_junction_score{$g} $donor_seq $transcript_donor_score{$g} $acceptor_seq $transcript_acceptor_score{$g}\n";
 }  
 
