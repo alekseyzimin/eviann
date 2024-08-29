@@ -480,7 +480,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       if($F[2] eq "gene"){
         $flag=0;
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>'$JUNCTION_THRESHOLD');
+        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
