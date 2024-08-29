@@ -176,7 +176,7 @@ while(my $line=<FILE>){
 
 #we load SNAP HMMs
 if(defined($ARGV[4])){
-  print "DEBUG Loading SNAP HMMs\n";
+  print "DEBUG Loading PWMs\n";
   open(FILE,$ARGV[4]);
   $line=<FILE>;
   if($line =~ /^zoeHMM/){#check format
@@ -926,7 +926,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG ",substr($score_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index5 $score_seq $ext_score\n";
-          if($ext_score > 4){
+          if($ext_score > 5){
             $found_acceptor=1;
             $j=length($transcript_5pext);
           }
@@ -970,7 +970,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG ",substr($score_seq,$i,1)," ",$donor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index3 $score_seq $ext_score\n";
-          if($ext_score > 4){
+          if($ext_score > 3){
             $found_donor=1;
             $j=length($transcript_3pext);
           }
