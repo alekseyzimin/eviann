@@ -36,6 +36,7 @@ while(my $line=<FILE>){
     $transcript_junction_score{$geneID}=10000;
     $transcript_acceptor_score{$geneID}=10000;
     $transcript_donor_score{$geneID}=10000;
+    $transcript_hmm_score{$geneID}=10000;
     $transcript{$geneID}=$line;
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}));
@@ -128,11 +129,24 @@ if(defined($ARGV[2])){
           $coding_start_freq[$i][4]=0;
           $i++;
         }
+      }elsif($line=~/^SDonor/){
+        while($line=<FILE>){
+          chomp($line);
+          my @f=split(/\s+/,$line);
+          last if($f[0] eq "NNNNNN");
+          $sdonor{$f[0]}=$f[1];
+        }
+      }elsif($line=~/^SAcceptor/){
+        while($line=<FILE>){
+          chomp($line);
+          my @f=split(/\s+/,$line);
+          last if($f[0] eq "NNNNNN");
+          $sacceptor{$f[0]}=$f[1];
+        }
       }
     }
   }
 }
-
 
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){
@@ -166,11 +180,14 @@ for my $g(keys %transcript_gff){
         #print "DEBUG ",substr($acceptor_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}],"\n";
       }
       my $junction_score=$donor_score+$acceptor_score;
+      my $hmm_score=$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}+$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)};
+      #print "DEBUG $hmm_score ",$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}," ",$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)},"\n";
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
+      $transcript_hmm_score{$g}=$hmm_score if($transcript_hmm_score{$g}>$hmm_score);
       $transcript_donor_score{$g}=$donor_score if($transcript_donor_score{$g}>$donor_score);
       $transcript_acceptor_score{$g}=$acceptor_score if($transcript_acceptor_score{$g}>$donor_score);
     }
   }
-  print "$g $transcript_junction_score{$g} $donor_seq $transcript_donor_score{$g} $acceptor_seq $transcript_acceptor_score{$g}\n";
+  print "$g $transcript_junction_score{$g} $donor_seq $transcript_donor_score{$g} $acceptor_seq $transcript_acceptor_score{$g} $transcript_hmm_score{$g}\n";
 }  
 
