@@ -430,6 +430,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       chomp($line);
       @f=split(/\s+/,$line);
       $score{$f[0]}=$f[1];
+      $hmm_score{$f[0]}=$f[-3];
     }
     open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
     while($line=<FILE>){
@@ -441,7 +442,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     if($F[2] eq "transcript"){
       $flag=0;
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
-      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
+      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>'$JUNCTION_THRESHOLD');
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
@@ -473,12 +474,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         chomp($line);
         @f=split(/\s+/,$line);
         $score{$f[0]}=$f[1];
+        $hmm_score{$f[0]}=$f[-3];
       }
     }{
       if($F[2] eq "gene"){
         $flag=0;
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
+        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>'$JUNCTION_THRESHOLD');
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \

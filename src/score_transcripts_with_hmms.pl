@@ -36,6 +36,8 @@ while(my $line=<FILE>){
     $transcript_junction_score{$geneID}=10000;
     $transcript_acceptor_score{$geneID}=10000;
     $transcript_donor_score{$geneID}=10000;
+    $transcript_hmm_donor_score{$geneID}=10000;
+    $transcript_hmm_acceptor_score{$geneID}=10000;
     $transcript_hmm_score{$geneID}=10000;
     $transcript{$geneID}=$line;
   }elsif($gff_fields[2] eq "exon"){
@@ -133,14 +135,14 @@ if(defined($ARGV[2])){
         while($line=<FILE>){
           chomp($line);
           my @f=split(/\s+/,$line);
-          last if($f[0] eq "NNNNNN");
+          last if($line eq "NNNNNN");
           $sdonor{$f[0]}=$f[1];
         }
       }elsif($line=~/^SAcceptor/){
         while($line=<FILE>){
           chomp($line);
           my @f=split(/\s+/,$line);
-          last if($f[0] eq "NNNNNN");
+          last if($line eq "NNNNNN");
           $sacceptor{$f[0]}=$f[1];
         }
       }
@@ -180,14 +182,18 @@ for my $g(keys %transcript_gff){
         #print "DEBUG ",substr($acceptor_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}],"\n";
       }
       my $junction_score=$donor_score+$acceptor_score;
-      my $hmm_score=$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}+$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)};
+      my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
+      my $hmm_acceptor_score=defined($sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)})?$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}:-10000;
+      my $hmm_score=$hmm_donor_score+$hmm_acceptor_score;
       #print "DEBUG $hmm_score ",$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}," ",$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)},"\n";
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
+      $transcript_hmm_donor_score{$g}=$hmm_donor_score if($transcript_hmm_donor_score{$g}>$hmm_donor_score);
       $transcript_hmm_score{$g}=$hmm_score if($transcript_hmm_score{$g}>$hmm_score);
+      $transcript_hmm_acceptor_score{$g}=$hmm_acceptor_score if($transcript_hmm_acceptor_score{$g}>$hmm_acceptor_score);
       $transcript_donor_score{$g}=$donor_score if($transcript_donor_score{$g}>$donor_score);
       $transcript_acceptor_score{$g}=$acceptor_score if($transcript_acceptor_score{$g}>$donor_score);
     }
   }
-  print "$g $transcript_junction_score{$g} $donor_seq $transcript_donor_score{$g} $acceptor_seq $transcript_acceptor_score{$g} $transcript_hmm_score{$g}\n";
+  print "$g $transcript_junction_score{$g} $donor_seq $transcript_donor_score{$g} $acceptor_seq $transcript_acceptor_score{$g} $transcript_hmm_score{$g} $transcript_hmm_donor_score{$g} $transcript_hmm_acceptor_score{$g}\n";
 }  
 
