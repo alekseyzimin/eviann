@@ -17,7 +17,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 LIFTOVER=0
-JUNCTION_THRESHOLD=5
+JUNCTION_THRESHOLD=4
 GC=
 RC=
 NC=
@@ -394,7 +394,9 @@ PROTEIN=$PROTEIN.uniq
 
 if [ ! -e protein2genome.align.success ];then
   log "Aligning proteins to the genome with miniprot"
-  miniprot -p 0.95 -N 20 -k 5 -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
+  #we may need a bigger k for big genomes
+  KMERVALUE=`ls -lth $GENOMEFILE | perl -ane '{if($F[4]>4000000000){print "6";}else{print "5"}}'` && \
+  miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
     $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
   mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
   rm -f merge.success && \
@@ -493,9 +495,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
-    echo "" > $GENOME.reliable.txt && \
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
-      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.reliable.txt $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
+      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
     rm -f $GENOME.protein_count.txt && \
     touch merge.unused.success

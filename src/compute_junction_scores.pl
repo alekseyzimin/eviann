@@ -139,12 +139,11 @@ for my $g(keys %transcript_gff){
 }  
 
 #OUTPUT PWMs
-my $sf=94.5;
 print "zoeHMM\n";
 print "Donor\nGT WMM\n";
 for(my $i=0;$i<9;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.2f ", log($donor_pwm[$i][$j]/$w*4.16+1e-10));
+    printf("%.2f ", log($donor_pwm[$i][$j]/$w*4+1e-10));
   }
   print "\n";
 }
@@ -152,7 +151,7 @@ print "NN TRM\n";
 print "Acceptor\nAG WMM\n";
 for(my $i=0;$i<30;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4.16+1e-10));
+    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4+1e-10));
   } 
   print "\n";
 } 
@@ -160,7 +159,7 @@ print "NN TRM\n";
 print "Start\nATG WMM\n";
 for(my $i=0;$i<15;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.3f ",log($start_pwm[$i][$j]/$sw*4.16+1e-10));
+    printf("%.3f ",log($start_pwm[$i][$j]/$sw*4+1e-10));
   }
   print "\n";
 }

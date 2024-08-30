@@ -2,9 +2,8 @@
 #this code scores and filters unused protein alignments
 my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
-my $approved=$ARGV[2];
-my $counts_file=$ARGV[3];
-my $liftover=$ARGV[4];
+my $counts_file=$ARGV[2];
+my $liftover=$ARGV[3];
 my %similarity;
 my %contigs;
 
@@ -32,11 +31,6 @@ while($line=<FILE>){
     $similarity{$1}=$4+$3/100-1 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
   }
 }
-open(FILE,$approved);
-while($line=<FILE>){
-  chomp($line);
-  $approved{$line}=1;
-}
 
 open(FILE,$counts_file);
 while($line=<FILE>){
@@ -44,7 +38,6 @@ while($line=<FILE>){
   my ($name,$c)=split(/\s+/,$line);
   $pcount{$name}=$c;
 }
-
 
 #combined file on STDIN
 while($line=<STDIN>){
@@ -102,7 +95,7 @@ if(not(defined($liftover)) || $liftover<1){
       push(@uniq_scores,$F[0]);
     }
   }
-  $similarity_threshold=$uniq_scores[int($#uniq_scores*0.99)];
+  $similarity_threshold=$uniq_scores[$#uniq_scores];
 }
 print "#similarity threshold $similarity_threshold\n";
 my %h=();
@@ -110,7 +103,7 @@ my %hs=();
 my %hn=();
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
-  if(($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && ($F[0]>=$similarity_threshold || defined($approved{$F[2]}))){
+  if(($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
     $h{$F[2]}=1;#we mark the proteins to keep
