@@ -198,7 +198,7 @@ for my $g(keys %transcript_cds){
       $cds_start_on_transcript=$cds_end_on_transcript%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
-      $cds_end_on_transcript=length($transcript_seqs{$g})-$cds_start_on_transcript -(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
+      $cds_end_on_transcript=length($transcript_seqs{$g})-(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
@@ -299,7 +299,7 @@ for my $g(keys %transcript_cds){
       $cds_start_on_transcript=$cds_end_on_transcript%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
-      $cds_end_on_transcript=length($transcript_seqs{$g})-$cds_start_on_transcript -(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
+      $cds_end_on_transcript=length($transcript_seqs{$g})-(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
