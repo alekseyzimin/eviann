@@ -324,9 +324,10 @@ for my $g(keys %transcript_cds){
     }
 
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+
     if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
-      $cds_start_on_transcript=0;
-      $cds_end_on_transcript=length($transcript_seqs{$g});
+      $transcript_class{$g}="NA";
+      next;
     }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
       $cds_start_on_transcript=$cds_end_on_transcript%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
@@ -476,9 +477,10 @@ for my $g(keys %transcript_cds){
     }
    
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+
     if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
-      $cds_start_on_transcript=0;
-      $cds_end_on_transcript=length($transcript_seqs{$g});
+      $transcript_class{$g}="NA";
+      next;
     }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
       $cds_start_on_transcript=$cds_end_on_transcript%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
