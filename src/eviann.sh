@@ -416,7 +416,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
   cat $GENOME.palign.fixed.gff | \
-    combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+    combine_gene_protein_gff.pl $GENOME <( cat $GENOME.palign.fixed.gff | filter_by_class_code.pl $GENOME.protref.annotated.gtf | gffread -F ) $GENOMEFILE 1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   log "Computing PWM matrices at splice junctions" && \
   gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
