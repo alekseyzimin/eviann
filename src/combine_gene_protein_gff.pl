@@ -108,6 +108,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
     }
+    $class_code="NA" if($gff_fields[8] =~ /contained_in=/);
     if($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
