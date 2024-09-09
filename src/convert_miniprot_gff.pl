@@ -14,6 +14,7 @@ while($line=<STDIN>){
     $F[2]="gene";
     if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\d+.\d+);Positive=(\d+.\d+);\S*Target=(\S+)\s\d+\s\d+$/){
       $count=1;
+      $F[0]=~s/;/_/g;
       $parent="$5:$F[0]:$F[3]";
       if(not(defined($already_output{$parent}))){
         $flag=1;
