@@ -12,19 +12,21 @@ while($line=<STDIN>){
     }
     @output=();
     $F[2]="gene";
-    if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\d+.\d+);Positive=(\d+.\d+);\S*Target=(\S+)\s\d+\s\d+$/){
+    if($F[8] =~ /^ID=(\S+);Rank=(\S+);Identity=(\d+.\d+);Positive=(\d+.\d+);.*Target=(\S+)\s\d+\s\d+$/){
       $count=1;
-      $F[0]=~s/;/_/g;
-      $parent="$5:$F[0]:$F[3]";
+      $chrom=$F[0];
+      $target=$5;
+      $identity=$4*100;
+      $similarity=$3*100;
+      $chrom=~s/;/_/g;
+      $parent="$target:$chrom:$F[3]";
       if(not(defined($already_output{$parent}))){
         $flag=1;
         $already_output{$parent}=1;
       }else{
         $flag=0;
       }
-      $identity=$4*100;
-      $similarity=$3*100;
-      push(@output,join("\t",@F[0..7])."\tID=$5:$F[0]:$F[3];geneID=$5:$F[0]:$F[3];identity=$identity;similarity=$similarity\n") if($flag);
+      push(@output,join("\t",@F[0..7])."\tID=$target:$chrom:$F[3];geneID=$target:$chrom:$F[3];identity=$identity;similarity=$similarity\n") if($flag);
     }
   }elsif($F[2] eq "CDS"){
     if($count>1){
