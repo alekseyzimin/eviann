@@ -161,6 +161,27 @@ do
     shift
 done
 
+#checking inputs
+if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
+  error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
+fi
+if [ ! -s $UNIPROT ];then
+  error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa>"
+fi
+if [ ! -s $PROTEINFILE ];then
+  echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
+  export PROTEINFILE=`realpath $UNIPROT` && \
+  export PROTEIN=`basename $UNIPROT`
+fi
+if [ ! -s $GENOMEFILE ];then
+  error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
+fi
+
+NUM_PROTEINS=`grep '>' $PROTEINFILE |wc -l`
+if [ $NUM_PROTEINS -lt 1 ];then
+  error_exit "Invalid format for the proteins file $PROTEINFILE, must be in fasta format"
+fi
+
 #get absolute paths
 GENOMEFILE=`realpath $GENOMEFILE`
 PROTEINFILE=`realpath $PROTEINFILE`
@@ -193,27 +214,6 @@ if [ ! -s $UNIPROT ];then
   log "Unpacking Uniprot database" && \
   gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
   mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta 
-fi
-
-#checking inputs
-if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
-  error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
-fi
-if [ ! -s $UNIPROT ];then
-  error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa>"
-fi
-if [ ! -s $PROTEINFILE ];then
-  echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
-  export PROTEINFILE=`realpath $UNIPROT` && \
-  export PROTEIN=`basename $UNIPROT`
-fi
-if [ ! -s $GENOMEFILE ];then
-  error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
-fi
-
-NUM_PROTEINS=`grep '>' $PROTEINFILE |wc -l`
-if [ $NUM_PROTEINS -lt 1 ];then
-  error_exit "Invalid format for the proteins file $PROTEINFILE, must be in fasta format"
 fi
 
 if [ ! -e transcripts_assemble.success ];then
