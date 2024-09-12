@@ -161,6 +161,13 @@ do
     shift
 done
 
+#unpack uniprot
+if [ ! -s $UNIPROT ];then
+  log "Unpacking Uniprot database" && \
+  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
+  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta
+fi
+
 #checking inputs
 if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
   error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
@@ -208,13 +215,6 @@ echo "Checking if TransDecoder is properly installed and works"
 $MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
 $MYPATH/TransDecoder.LongOrfs --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.LongOrfs to see what is missing."
 log "All dependencies checks passed"
-
-#unpack uniprot
-if [ ! -s $UNIPROT ];then
-  log "Unpacking Uniprot database" && \
-  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
-  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta 
-fi
 
 if [ ! -e transcripts_assemble.success ];then
   if [ -s $ALT_EST ];then
