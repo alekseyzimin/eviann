@@ -491,6 +491,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
   mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
   ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
+  mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa && \
   rm -rf $GENOME.broken_cds.fa.transdecoder* && \
   TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
   makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
