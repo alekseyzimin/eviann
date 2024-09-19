@@ -423,7 +423,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     compute_junction_scores.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm > $GENOME.transcript_splice_scores.txt && \
-  perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
+  perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.transcript_splice_scores.txt");
@@ -443,14 +443,38 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     if($F[2] eq "transcript"){
       $flag=0;
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
-      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>'$JUNCTION_THRESHOLD');
+      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>0);
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
+  score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.palign.fixed.gff) $GENOMEFILE $GENOME.pwm > $GENOME.protein_splice_scores.txt && \
+    perl -F'\t' -ane 'BEGIN{
+      open(FILE,"'$GENOME'.protein_splice_scores.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $score{$f[0]}=$f[1];
+        $hmm_score{$f[0]}=$f[-3];
+      }
+      open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $score{$f[1]}=10000;
+      }
+    }{
+      if($F[2] eq "gene"){
+        $flag=0;
+        $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
+        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
+      }
+      print if($flag);
+    }' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff.tmp && \
+  mv $GENOME.palign.fixed.spliceFiltered.gff.tmp $GENOME.palign.fixed.spliceFiltered.gff && \
 #we compare and combine filtered proteins and transcripts files
-  gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
-  cat $GENOME.palign.fixed.gff | \
+  gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.spliceFiltered.gff $GENOME.spliceFiltered.gtf && \
+  cat $GENOME.palign.fixed.spliceFiltered.gff | \
     filter_by_class_code.pl $GENOME.protref.spliceFiltered.annotated.gtf | \
     filter_by_local_abundance.pl > $GENOME.transcripts_to_keep.txt.tmp && \
   mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
@@ -461,7 +485,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
   log "Fixing broken ORFs" && \
-  cat $GENOME.palign.fixed.gff | \
+  cat $GENOME.palign.fixed.spliceFiltered.gff | \
     check_cds.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
   mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
   mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
@@ -479,32 +503,14 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi
   rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
-  cat $GENOME.palign.fixed.gff | \
+  cat $GENOME.palign.fixed.spliceFiltered.gff | \
     combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.pwm 1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
-    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm > $GENOME.protein_splice_scores.txt && \
-    perl -F'\t' -ane 'BEGIN{
-      open(FILE,"'$GENOME'.protein_splice_scores.txt");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/\s+/,$line);
-        $score{$f[0]}=$f[1];
-        $hmm_score{$f[0]}=$f[-3];
-      }
-    }{
-      if($F[2] eq "gene"){
-        $flag=0;
-        $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $hmm_score{$id}>0);
-      }
-      print if($flag);
-    }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
-    mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
-    gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
+    gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
     ufasta one $GENOME.unused.faa |\
       awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |\
       sort -k2,2 -S 10% |\
@@ -512,8 +518,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
-    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
-      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
+    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
+      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
     rm -f $GENOME.protein_count.txt
   fi 
@@ -562,9 +568,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
   if [ -s $GENOME.u.cds.gff ];then
-    gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff
+    gffread $GENOME.palign.fixed.spliceFiltered.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff
   else
-    gffread $GENOME.palign.fixed.gff >  $GENOME.palign.all.gff 
+    gffread $GENOME.palign.fixed.spliceFiltered.gff >  $GENOME.palign.all.gff 
   fi
 # the file $GENOME.palign.all.gff contains all CDSs we need to use
   gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
