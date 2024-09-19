@@ -405,8 +405,7 @@ fi
 
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
-  rm -f merge.unused.success merge.u.success snap.success && \
-#we fix suspect introns in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
+#we fix suspect introns in the protein alignment files.  If an intron in protein alignment file has never been seen in transcripts, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
@@ -461,9 +460,27 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   rm -f $GENOME.protref.spliceFiltered.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
+  log "Fixing broken ORFs" && \
+  cat $GENOME.palign.fixed.gff | \
+    check_cds.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>check_cds.out 2>&1 && \
+  mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
+  mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
+  mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
+  ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
+  rm -rf $GENOME.broken_cds.fa.transdecoder* && \
+  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+  makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
+  blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.broken_cds.blastp.tmp && \
+  mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
+  TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
+  if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
+    awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+    mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
+  fi
+  rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
   cat $GENOME.palign.fixed.gff | \
-    combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE 1>combine.out 2>&1 && \
+    combine_gene_protein_gff.pl $GENOME <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.pwm 1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
@@ -498,8 +515,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
       filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
-    rm -f $GENOME.protein_count.txt && \
-    touch merge.unused.success
+    rm -f $GENOME.protein_count.txt
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then
@@ -533,7 +549,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
             }
           }
         }' > $GENOME.u.cds.gff.tmp && \
-      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff && touch merge.u.success
+      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
   fi
@@ -552,56 +568,30 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi
 # the file $GENOME.palign.all.gff contains all CDSs we need to use
   gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
-  log "Checking for and repairing broken ORFs" && \
   cat $GENOME.palign.all.gff | \
-    filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \
-    gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
-  mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
-  cat $GENOME.palign.all.gff | \
-    check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
-  mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
-  mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
-  mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
-  if [ -s $GENOME.u.cds.gff ];then
-    cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.u.cds.gff) | \
-      ufasta extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp && \
-      mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
-  else
-    ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
-    mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
-  fi
-  rm -rf $GENOME.broken_cds.fa.transdecoder* && \
-  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-  makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
-  blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.broken_cds.blastp.tmp && \
-  mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
-  TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
-  if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
-    awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
-    mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
-  fi
-  rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-  cat $GENOME.palign.all.gff | \
-    combine_gene_protein_gff.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $GENOME.fixed_cds.txt $GENOME.pwm <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) 1>combine.out 2>&1 && \
-  gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
+    combine_gene_protein_gff.pl \
+      $GENOME \
+      <(cat $GENOME.palign.all.gff | filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | gffread -F) \
+      $GENOMEFILE \
+      $GENOME.fixed_cds.txt \
+      $GENOME.pwm \
+      <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
+      1>combine.out 2>&1 && \
+  gffread -F -O --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
-  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp && \
   touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
-  rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
 #cleanup
   if [ $DEBUG -lt 1 ];then
-    rm -rf SNAP
-    rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
-    rm -f $GENOME.snapcompare.{loci,stats,tracking,annotated.gtf} $GENOME.snapcompare
+    rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
+    rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
+    rm -f $GENOME.u.gff $GENOME.unused_proteins.gff 
     rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
     rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
     rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
-    rm -f $GENOME.protref.snap.{loci,stats,tracking,annotated.gtf} $GENOME.protref.snap
     rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
     rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
   fi
-  rm -f merge.{unused,u}.success pseudo_detect.success
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
