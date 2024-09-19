@@ -467,7 +467,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       if($F[2] eq "gene"){
         $flag=0;
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD');
+        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>0);
       }
       print if($flag);
     }' $GENOME.palign.fixed.gff > $GENOME.palign.fixed.spliceFiltered.gff.tmp && \
@@ -509,8 +509,26 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
-    log "Filtering unused protein only loci" && \
-    gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.gff && \
+    log "Processing unused protein only loci" && \
+#more stringent splice site filtering here
+    perl -F'\t' -ane 'BEGIN{
+      open(FILE,"'$GENOME'.protein_splice_scores.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $score{$f[0]}=$f[1];
+        $hmm_score{$f[0]}=$f[-3];
+      }
+    }{
+      if($F[2] eq "gene"){
+        $flag=0;
+        $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
+        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $hmm_score{$id}>0);
+      }
+      print if($flag);
+    }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
+    mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
+    gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     ufasta one $GENOME.unused.faa |\
       awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |\
       sort -k2,2 -S 10% |\
@@ -518,8 +536,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
-    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.gff) | \
-      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
+    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
+      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
     rm -f $GENOME.protein_count.txt
   fi 
