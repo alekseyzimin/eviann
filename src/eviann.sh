@@ -512,6 +512,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Processing unused protein only loci" && \
 #more stringent splice site filtering here
+    fix_palign_splice_sites.pl  $GENOME.unused_proteins.gff $GENOMEFILE $GENOME.pwm | \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.protein_splice_scores.txt");
       while($line=<FILE>){
@@ -521,13 +522,15 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $hmm_score{$f[0]}=$f[-3];
       }
     }{
-      if($F[2] eq "gene"){
-        $flag=0;
-        $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $hmm_score{$id}>0);
+      if(not($F[0] =~ /^DEBUG/)){
+        if($F[2] eq "gene"){
+          $flag=0;
+          $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
+          $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $hmm_score{$id}>0);
+        }
+        print if($flag);
       }
-      print if($flag);
-    }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
+    }' > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     ufasta one $GENOME.unused.faa |\

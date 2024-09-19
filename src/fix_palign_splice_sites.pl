@@ -221,7 +221,7 @@ for my $g(keys %transcript_gff){
   }
   for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
     my @ff=split(/\t/,${$transcript_gff{$g}}[$j]);
-    print join("\t",@ff[0..1]),"\tCDS\t",join("\t",@ff[3..$#ff]),"\n";
+    print join("\t",@ff[0..1]),"\tcds\t",join("\t",@ff[3..$#ff]),"\n";
   }
 }
 
