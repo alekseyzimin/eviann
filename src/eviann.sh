@@ -405,7 +405,6 @@ fi
 
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
-  rm -f merge.unused.success merge.u.success snap.success && \
 #we fix suspect introns in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
@@ -508,8 +507,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
       filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
-    rm -f $GENOME.protein_count.txt && \
-    touch merge.unused.success
+    rm -f $GENOME.protein_count.txt
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then
@@ -543,7 +541,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
             }
           }
         }' > $GENOME.u.cds.gff.tmp && \
-      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff && touch merge.u.success
+      mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff 
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
   fi
@@ -603,11 +601,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
-  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp && \
   touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
-  rm -rf broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out && \
 #cleanup
   if [ $DEBUG -lt 1 ];then
+    rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
+    rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
     rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
     rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
     rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
@@ -615,7 +613,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
     rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
   fi
-  rm -f merge.{unused,u}.success pseudo_detect.success
 fi
 
 if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
@@ -661,7 +658,9 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff &&
     touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   else
-    cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
+    cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && \
+    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
+    touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   fi
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp 
