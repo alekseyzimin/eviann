@@ -25,6 +25,7 @@ my $scf="";
 my $seq="";
 my %used_proteins;
 my $ext_length=40;
+my $length_fraction=0.75;
 my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
 my %code=();
@@ -410,7 +411,7 @@ for my $g(keys %transcript_cds){
     }
 
 #check to see if we truncated the cds -- maybe it is a special protein?
-    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.5){
+    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*$length_fraction){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
@@ -561,7 +562,7 @@ for my $g(keys %transcript_cds){
       }
     }
 
-    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*.5){
+    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*$length_fraction){
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
       print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";

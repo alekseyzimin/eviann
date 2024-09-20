@@ -15,6 +15,7 @@ my $scf="";
 my $seq="";
 my %used_proteins;
 my $output_prefix=$ARGV[0];
+my $length_fraction=0.75;
 open(OUTFILE1,">$output_prefix".".good_cds.fa.tmp");
 open(OUTFILE2,">$output_prefix".".broken_cds.fa.tmp");
 open(OUTFILE3,">$output_prefix".".broken_ref.txt.tmp");
@@ -233,7 +234,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<0.5*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
+    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
@@ -334,7 +335,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<0.5*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
+    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
