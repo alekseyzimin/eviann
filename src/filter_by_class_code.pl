@@ -27,7 +27,6 @@ while(my $line=<STDIN>){#we just read in the whole file
   my @attributes=split(";",$gff_fields[8]);
   if($gff_fields[2] eq "gene"){
     if(not($protID eq "")){
-      $protein_cds{$protID}=[@exons];
       $protein_start{$protID}=$pstart;
       $protein_end{$protID}=$pend;
     }
@@ -35,15 +34,11 @@ while(my $line=<STDIN>){#we just read in the whole file
     $protID=substr($attributes[0],3);#this is protein name
     $pstart=$gff_fields[3];
     $pend=$gff_fields[4];
-    $pori=$gff_fields[6];
     die("error in line $line, protein ID $protID already exists in $protein{$protID}") if(defined($protein{$protID}));
     $protein{$protID}=$line;
-  }elsif($gff_fields[2] eq "CDS"){
-    push(@exons,$line);
   }
 }
 if(not($protID eq "")){
-  $protein_cds{$protID}=[@exons];
   $protein_start{$protID}=$pstart;
   $protein_end{$protID}=$pend;
 }
@@ -58,9 +53,9 @@ while(my $line=<FILE>){
   if($gtf_fields[2] eq "transcript"){
     my $tstart=$gtf_fields[3];
     my $tend=$gtf_fields[4];
-    my $geneID=$1 if($gtf_fields[8] =~ /transcript_id \"(\S+)\";/);
-    my $protID=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\";/);
-    my $class_code=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\";/);
+    my $geneID=$1 if($gtf_fields[8] =~ /transcript_id \"(\S+)\"; /);
+    my $protID=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\"; /);
+    my $class_code=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\"; /);
 
     if($class_code =~ /k|=|u/ || ($class_code =~ /n|j|m/  && ($protein_start{$protID} > $tstart-$ext_length  && $protein_end{$protID} < $tend+$ext_length))){
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})) && not($class_code eq "u"));

@@ -426,7 +426,7 @@ sub check_in_frame_stops{
   }
   if($in_frame_stop>-1){
     print "DEBUG found in-frame stop at $in_frame_stop\n";
-    $cds_end_on_transcript=$in_frame_stop
+    $cds_end_on_transcript=$in_frame_stop;
   }
   return($cds_end_on_transcript);
 }

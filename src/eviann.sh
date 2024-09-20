@@ -498,7 +498,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
     gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     ufasta one $GENOME.unused.faa |\
-      awk '{if($1 ~ /^>/){name=substr($1,2)}else{split(name,a,":");print name" "$1}}' |\
+      awk '{if($1 ~ /^>/){name=substr($1,2)}else{if($1~/^M/) print name" "$1}}' |\
       sort -k2,2 -S 10% |\
       uniq -c -f 1 |\
       awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
