@@ -470,7 +470,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     combine_gene_protein_gff.pl \
       $GENOME \
       <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) \
-      $GENOMEFILE 1>combine.out 2>&1 && \
+      $GENOMEFILE \
+      <(echo "") \
+      $GENOME.pwm \
+      1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them

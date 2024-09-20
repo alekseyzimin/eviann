@@ -228,6 +228,9 @@ if(defined($ARGV[4])){
       }
     }
   }
+}else{
+  #no extension
+  $ext_length=0;
 }
 
 #finally, if available we load the original transcript names
