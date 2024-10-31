@@ -66,7 +66,7 @@ while(my $line=<STDIN>){
     $last_exon_start=$gff_fields[3];
     $last_exon_end=$gff_fields[4];
 #for now only use CDS that start or end inside the first/last exon
-  }elsif($gff_fields[2] eq "CDS"){
+  }elsif(uc($gff_fields[2]) eq "CDS"){
     if($gff_fields[6] eq "+"){
       $CDS_start=$gff_fields[3] if($gff_fields[4]==$first_exon_end && $gff_fields[4]-$gff_fields[3]>=6 && $gff_fields[3]-$first_exon_start>=9);
       $CDS_stop=$gff_fields[4] if($gff_fields[3]==$last_exon_start);

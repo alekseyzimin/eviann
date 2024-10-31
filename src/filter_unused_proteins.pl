@@ -118,7 +118,7 @@ while($line=<FILE>){
   if($f[2] eq "gene"){
     $f[2]="transcript";
     $id=$1 if($f[8]=~ /ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)$/);
-  }elsif($f[2] eq "exon" || $f[2] eq "cds"){
+  }elsif($f[2] eq "exon" || uc($f[2]) eq "CDS"){
     $id=$1 if($f[8]=~ /Parent=(\S+)$/);
   }
   print join("\t",@f),"\n" if(defined($h{$id}));

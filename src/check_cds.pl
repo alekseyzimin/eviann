@@ -39,7 +39,7 @@ while(my $line=<STDIN>){#we just read in the whole file
     $pori=$gff_fields[6];
     die("error in line $line, protein ID $protID already exists in $protein{$protID}") if(defined($protein{$protID}));
     $protein{$protID}=$line;
-  }elsif($gff_fields[2] eq "CDS"){
+  }elsif(uc($gff_fields[2]) eq "CDS"){
     push(@exons,$line);
   }
 }

@@ -28,7 +28,7 @@ while($line=<STDIN>){
       }
       push(@output,join("\t",@F[0..7])."\tID=$target:$chrom:$F[3];geneID=$target:$chrom:$F[3];identity=$identity;similarity=$similarity\n") if($flag);
     }
-  }elsif($F[2] eq "CDS"){
+  }elsif(uc($F[2]) eq "CDS"){
     if($count>1){
       $F[2]="intron";
       if($F[6] eq "+"){

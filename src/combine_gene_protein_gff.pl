@@ -62,7 +62,7 @@ while(my $line=<STDIN>){#we just read in the whole file
     $pori=$gff_fields[6];
     die("error in line $line, protein ID $protID already exists in $protein{$protID}") if(defined($protein{$protID}));
     $protein{$protID}=$line;
-  }elsif($gff_fields[2] eq "CDS"){
+  }elsif(uc($gff_fields[2]) eq "CDS"){
     push(@exons,$line);
   }
 }
@@ -712,18 +712,18 @@ for my $locus(keys %transcripts_cds_loci){
         $i=1;
         if($transcript_cds_start_index<$transcript_cds_end_index){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
-          push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+          push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$start_cds\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
           $i++;
           for(my $j=$transcript_cds_start_index+1;$j<$transcript_cds_end_index;$j++){
             my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
-            push(@output,$gff_fields[0]."\tEviAnn\tcds\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+            push(@output,$gff_fields[0]."\tEviAnn\tCDS\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
             $i++;
           }
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]);
-          push(@output,$gff_fields[0]."\tEviAnn\tcds\t$gff_fields[3]\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+          push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$gff_fields[3]\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
         }else{#single exon
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
-          push(@output,$gff_fields[0]."\tEviAnn\tcds\t$start_cds\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+          push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$start_cds\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
         }
 #output second UTR
         $i=1;
@@ -848,7 +848,7 @@ foreach my $p(keys %protein){
   }
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
     my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
-    print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\tcds\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
+    print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\tCDS\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
   } 
 }
 

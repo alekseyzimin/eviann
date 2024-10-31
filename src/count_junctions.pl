@@ -34,7 +34,7 @@ while($line=<STDIN>){
     @cds=();
     @f=split(/;/,$F[8]);
     $seq=$F[0];
-  }elsif($F[2] eq "CDS"){
+  }elsif(uc($F[2]) eq "CDS"){
     push(@cds,"$F[3] $F[4]");
   }
 }
@@ -55,7 +55,7 @@ foreach $line (@gff){
     @f=split(/;/,$F[8]);
     $id=substr($f[0],3);
     $seq=$F[0];
-  }elsif($F[2] eq "CDS"){
+  }elsif(uc($F[2]) eq "CDS"){
     push(@cds,"$F[3] $F[4]");
   }
 }

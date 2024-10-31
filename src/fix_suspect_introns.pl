@@ -23,7 +23,7 @@ while($line=<STDIN>){
     print join("\t",@f),"\n";
     $prev_intron_good=0;
     $first_cds=1;
-  }elsif($f[2] eq "cds"){
+  }elsif(uc($f[2]) eq "CDS"){
     if($first_cds){
       $cds=[@f];
       $first_cds=0;

@@ -15,7 +15,7 @@ while($line=<FILE>){
   my @f=split(/\t/,$line);
   if($f[2] eq "mRNA"){
     $transc_l=$f[4];
-  }elsif($f[2] eq "CDS"){
+  }elsif(uc($f[2]) eq "CDS"){
     if(defined($cds_start{$f[0]})){
     #use the longer one
       if($cds_end{$f[0]}-$cds_start{$f[0]} < $f[4]-$f[3]){
