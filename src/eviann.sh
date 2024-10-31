@@ -504,7 +504,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
     mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
     rm -f $GENOME.unused.faa && \
-    gffread --cluster-only <(awk '{if($3=="cds" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
+    gffread --cluster-only <(awk '{if(toupper($3)=="CDS" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
       filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
     rm -f $GENOME.protein_count.txt
