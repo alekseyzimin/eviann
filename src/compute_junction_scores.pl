@@ -19,6 +19,23 @@ $code{"T"}=3;
 $code{"t"}=3;
 $code{"N"}=4;
 $code{"n"}=4;
+$code2{"AA"}=0;
+$code2{"AC"}=1;
+$code2{"AG"}=2;
+$code2{"AT"}=3;
+$code2{"CA"}=4;
+$code2{"CC"}=5;
+$code2{"CG"}=6;
+$code2{"CT"}=7;
+$code2{"GA"}=8;
+$code2{"GC"}=9;
+$code2{"GG"}=10;
+$code2{"GT"}=11;
+$code2{"TA"}=12;
+$code2{"TC"}=13;
+$code2{"TG"}=14;
+$code2{"TT"}=15;
+
 
 #we load the genome sequences
 open(FILE,$ARGV[0]);
@@ -90,6 +107,10 @@ for(my $i=0;$i<30;$i++){
     $acceptor_pwm[$i][$j]=0;
     $start_pwm[$i][$j]=0;
   }
+  for(my $j=0;$j<16;$j++){
+    $donor_cc_pwm[$i][$j]=0;
+    $acceptor_cc_pwm[$i][$j]=0;
+  }
 }
 
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
@@ -119,6 +140,9 @@ for my $g(keys %transcript_gff){
       print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
       for(my $i=0;$i<9;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++;}
       for(my $i=0;$i<30;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++;}
+      for(my $i=0;$i<8;$i++) {my $index=16; $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));$donor_cc_pwm[$i][$index]++;}
+      for(my $i=0;$i<29;$i++) {my $index=16; $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));$acceptor_cc_pwm[$i][$index]++;}
+
       $w++;
     }
   }
@@ -140,15 +164,15 @@ for my $g(keys %transcript_gff){
 
 #OUTPUT PWMs
 print "zoeHMM\n";
-print "Donor\nGT WMM\n";
+print "Donor WMM\n";
 for(my $i=0;$i<9;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.2f ", log($donor_pwm[$i][$j]/$w*4+1e-10));
+    printf("%.3f ", log($donor_pwm[$i][$j]/$w*4+1e-10));
   }
   print "\n";
 }
 print "NN TRM\n";
-print "Acceptor\nAG WMM\n";
+print "Acceptor WMM\n";
 for(my $i=0;$i<30;$i++){
   for(my $j=0;$j<4;$j++){
     printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4+1e-10));
@@ -156,7 +180,23 @@ for(my $i=0;$i<30;$i++){
   print "\n";
 } 
 print "NN TRM\n";
-print "Start\nATG WMM\n";
+print "Donor WAM\n";
+for(my $i=0;$i<8;$i++){
+  for(my $j=0;$j<16;$j++){
+    printf("%.3f ", log($donor_cc_pwm[$i][$j]/$w*16+1e-10));
+  }
+  print "\n";
+}
+print "NN TRM\n";
+print "Acceptor WAM\n";
+for(my $i=0;$i<29;$i++){
+  for(my $j=0;$j<16;$j++){
+    printf("%.3f ",log($acceptor_cc_pwm[$i][$j]/$w*16+1e-10));
+  }
+  print "\n";
+}
+print "NN TRM\n";
+print "Start ATG WMM\n";
 for(my $i=0;$i<15;$i++){
   for(my $j=0;$j<4;$j++){
     printf("%.3f ",log($start_pwm[$i][$j]/$sw*4+1e-10));

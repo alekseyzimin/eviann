@@ -19,6 +19,22 @@ $code{"T"}=3;
 $code{"t"}=3;
 $code{"N"}=4;
 $code{"n"}=4;
+$code2{"AA"}=0;
+$code2{"AC"}=1;
+$code2{"AG"}=2;
+$code2{"AT"}=3;
+$code2{"CA"}=4;
+$code2{"CC"}=5;
+$code2{"CG"}=6;
+$code2{"CT"}=7;
+$code2{"GA"}=8;
+$code2{"GC"}=9;
+$code2{"GG"}=10;
+$code2{"GT"}=11;
+$code2{"TA"}=12;
+$code2{"TC"}=13;
+$code2{"TG"}=14;
+$code2{"TT"}=15;
 
 #here we load up all transcripts that matched proteins
 open(FILE,$ARGV[0]);
@@ -75,43 +91,66 @@ if(defined($ARGV[2])){
   if($line =~ /^zoeHMM/){#check format
     while($line=<FILE>){
       chomp($line);
-      if($line=~/^Donor/){
-        $line=<FILE>;
+      if($line=~/^Donor WMM/){
         my $i=0;
         while($line=<FILE>){
           last if($line=~/NN TRM/);
           chomp($line);
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
-          for(my $j=0;$j<=3;$j++){
+          for(my $j=0;$j<4;$j++){
             $donor_freq[$i][$j]=$f[$j];
           }
           $donor_freq[$i][4]=0;
           $i++;
         }
-      }elsif($line=~/^Acceptor/){
-        $line=<FILE>;
+      }elsif($line=~/^Donor WAM/){
         my $i=0;
         while($line=<FILE>){
           last if($line=~/NN TRM/);
           chomp($line);
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
-          for(my $j=0;$j<=3;$j++){
+          for(my $j=0;$j<16;$j++){
+            $donor_cc_freq[$i][$j]=$f[$j];
+          }
+          $donor_cc_freq[$i][16]=0;
+          $i++;
+        }
+      }elsif($line=~/^Acceptor WMM/){
+        my $i=0;
+        while($line=<FILE>){
+          last if($line=~/NN TRM/);
+          chomp($line);
+          $line=~s/^\s+//;
+          my @f=split(/\s+/,$line);
+          for(my $j=0;$j<4;$j++){
             $acceptor_freq[$i][$j]=$f[$j];
           }
           $acceptor_freq[$i][4]=0;
           $i++;
         }
+      }elsif($line=~/^Acceptor WAM/){
+        my $i=0;
+        while($line=<FILE>){
+          last if($line=~/NN TRM/);
+          chomp($line);
+          $line=~s/^\s+//;
+          my @f=split(/\s+/,$line);
+          for(my $j=0;$j<16;$j++){
+            $acceptor_cc_freq[$i][$j]=$f[$j];
+          }
+          $acceptor_cc_freq[$i][16]=0;
+          $i++;
+        } 
       }elsif($line=~/^Start/){
-        $line=<FILE>;
         my $i=0;
         while($line=<FILE>){
           last if($line=~/NNN TRM/);
           chomp($line);
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
-          for(my $j=0;$j<=3;$j++){
+          for(my $j=0;$j<4;$j++){
             $coding_start_freq[$i][$j]=$f[$j];
           }
           $coding_start_freq[$i][4]=0;
@@ -147,7 +186,6 @@ for my $g(keys %transcript_gff){
       if($gff_fields[6] eq "+"){
         $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,9));
         $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-28,30));
-        #print "DEBUG $g $gff_fields[6] $donor_seq $acceptor_seq\n";
       }else{
         $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-7,9));
         $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,30));
@@ -155,19 +193,29 @@ for my $g(keys %transcript_gff){
         $donor_seq=reverse($donor_seq);
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
-        #print "DEBUG $g $gff_fields[6] $donor_seq $acceptor_seq\n";
       }
       my $donor_score=0;
       my $acceptor_score=0;
+      my $donor_cc_score=0;
+      my $acceptor_cc_score=0;
       for(my $i=0;$i<9;$i++){
         $donor_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}];
-        #print "DEBUG ",substr($donor_seq,$i,1)," ",$donor_freq[$i][$code{substr($donor_seq,$i,1)}],"\n";
       }
       for(my $i=0;$i<30;$i++){
         $acceptor_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}];
-        #print "DEBUG ",substr($acceptor_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}],"\n";
       }
-      my $junction_score=$donor_score+$acceptor_score;
+      for(my $i=0;$i<8;$i++){
+        $index=16;
+        $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));
+        $donor_cc_score+=$donor_cc_freq[$i][$index];
+      }
+      for(my $i=0;$i<29;$i++){
+        $index=16;
+        $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));
+        $acceptor_cc_score+=$acceptor_cc_freq[$i][$index];
+      }
+      #print "DEBUG $donor_seq $donor_score $donor_cc_score $acceptor_seq $acceptor_score $acceptor_cc_score\n";
+      my $junction_score=($donor_score+$acceptor_score+($donor_cc_score+$acceptor_cc_score)/2)/2;
       my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
       my $hmm_acceptor_score=defined($sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)})?$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}:-10000;
       my $hmm_score=$hmm_donor_score+$hmm_acceptor_score;
@@ -180,6 +228,6 @@ for my $g(keys %transcript_gff){
       $transcript_acceptor_score{$g}=$acceptor_score if($transcript_acceptor_score{$g}>$donor_score);
     }
   }
-  print "$g $transcript_junction_score{$g} $donor_seq $transcript_donor_score{$g} $acceptor_seq $transcript_acceptor_score{$g} $transcript_hmm_score{$g} $transcript_hmm_donor_score{$g} $transcript_hmm_acceptor_score{$g}\n";
+  print "$g $transcript_junction_score{$g} $transcript_hmm_score{$g}\n";
 }  
 
