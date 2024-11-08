@@ -215,10 +215,13 @@ for my $g(keys %transcript_gff){
         $acceptor_cc_score+=$acceptor_cc_freq[$i][$index];
       }
       #print "DEBUG $donor_seq $donor_score $donor_cc_score $acceptor_seq $acceptor_score $acceptor_cc_score\n";
-      my $junction_score=($donor_score+$acceptor_score+($donor_cc_score+$acceptor_cc_score)/2)/2;
+      #this here combined the PWM and WAM scores
+      my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_cc_score+$acceptor_cc_score)/2)*0.75;
       my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
       my $hmm_acceptor_score=defined($sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)})?$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}:-10000;
       my $hmm_score=$hmm_donor_score+$hmm_acceptor_score;
+      #my $junction_score=($donor_score+$acceptor_score);
+      #my $hmm_score=($donor_cc_score+$acceptor_cc_score)/2;
       #print "DEBUG $hmm_score ",$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}," ",$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)},"\n";
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
       $transcript_hmm_donor_score{$g}=$hmm_donor_score if($transcript_hmm_donor_score{$g}>$hmm_donor_score);
