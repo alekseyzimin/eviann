@@ -112,9 +112,9 @@ if(defined($ARGV[2])){
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
           for(my $j=0;$j<16;$j++){
-            $donor_cc_freq[$i][$j]=$f[$j];
+            $donor_hmm_freq[$i][$j]=$f[$j];
           }
-          $donor_cc_freq[$i][16]=0;
+          $donor_hmm_freq[$i][16]=0;
           $i++;
         }
       }elsif($line=~/^Acceptor WMM/){
@@ -138,9 +138,9 @@ if(defined($ARGV[2])){
           $line=~s/^\s+//;
           my @f=split(/\s+/,$line);
           for(my $j=0;$j<16;$j++){
-            $acceptor_cc_freq[$i][$j]=$f[$j];
+            $acceptor_hmm_freq[$i][$j]=$f[$j];
           }
-          $acceptor_cc_freq[$i][16]=0;
+          $acceptor_hmm_freq[$i][16]=0;
           $i++;
         } 
       }elsif($line=~/^Start/){
@@ -196,8 +196,8 @@ for my $g(keys %transcript_gff){
       }
       my $donor_score=0;
       my $acceptor_score=0;
-      my $donor_cc_score=0;
-      my $acceptor_cc_score=0;
+      my $donor_hmm_score=0;
+      my $acceptor_hmm_score=0;
       for(my $i=0;$i<9;$i++){
         $donor_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}];
       }
@@ -207,21 +207,24 @@ for my $g(keys %transcript_gff){
       for(my $i=0;$i<8;$i++){
         $index=16;
         $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));
-        $donor_cc_score+=$donor_cc_freq[$i][$index];
+        $donor_hmm_score+=$donor_hmm_freq[$i][$index];
       }
+      $donor_hmm_score+=$donor_freq[$i][$code{substr($donor_seq,0,1)}];
       for(my $i=0;$i<29;$i++){
         $index=16;
         $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));
-        $acceptor_cc_score+=$acceptor_cc_freq[$i][$index];
+        $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$index];
       }
-      #print "DEBUG $donor_seq $donor_score $donor_cc_score $acceptor_seq $acceptor_score $acceptor_cc_score\n";
+      $acceptor_hmm_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,0,1)}];
+      print "DEBUG $donor_seq $donor_score $donor_hmm_score $acceptor_seq $acceptor_score $acceptor_hmm_score\n";
       #this here combined the PWM and WAM scores
-      my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_cc_score+$acceptor_cc_score)/2)*0.75;
+      my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.45;
+      #my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)/2)*0.75;
       my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
       my $hmm_acceptor_score=defined($sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)})?$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}:-10000;
       my $hmm_score=$hmm_donor_score+$hmm_acceptor_score;
       #my $junction_score=($donor_score+$acceptor_score);
-      #my $hmm_score=($donor_cc_score+$acceptor_cc_score)/2;
+      #my $hmm_score=($donor_hmm_score+$acceptor_hmm_score)/2;
       #print "DEBUG $hmm_score ",$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}," ",$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)},"\n";
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
       $transcript_hmm_donor_score{$g}=$hmm_donor_score if($transcript_hmm_donor_score{$g}>$hmm_donor_score);
