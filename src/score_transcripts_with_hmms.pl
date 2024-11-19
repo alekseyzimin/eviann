@@ -211,13 +211,13 @@ for my $g(keys %transcript_gff){
         $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));
         $donor_hmm_score+=$donor_hmm_freq[$i][$index];
       }
-      $donor_hmm_score+=$donor_freq[$i][$code{substr($donor_seq,0,1)}];
+      $donor_hmm_score+=$donor_freq[0][$code{substr($donor_seq,0,1)}];
       for(my $i=0;$i<($acceptor_length-1);$i++){
         $index=16;
         $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$index];
       }
-      $acceptor_hmm_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,0,1)}];
+      $acceptor_hmm_score+=$acceptor_freq[$acceptor_length-1][$code{substr($acceptor_seq,0,1)}];
       #print "DEBUG $donor_seq $donor_score $donor_hmm_score $acceptor_seq $acceptor_score $acceptor_hmm_score\n";
       #this here combined the PWM and WAM scores
       my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
