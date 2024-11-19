@@ -216,22 +216,19 @@ for my $g(keys %transcript_gff){
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$index];
       }
       $acceptor_hmm_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,0,1)}];
-      print "DEBUG $donor_seq $donor_score $donor_hmm_score $acceptor_seq $acceptor_score $acceptor_hmm_score\n";
+      #print "DEBUG $donor_seq $donor_score $donor_hmm_score $acceptor_seq $acceptor_score $acceptor_hmm_score\n";
       #this here combined the PWM and WAM scores
-      #my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
-      my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)*0.5)*0.75;
+      my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
+      #my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)*0.5)*0.75;
       my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
       my $hmm_acceptor_score=defined($sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)})?$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}:-10000;
       my $hmm_score=$hmm_donor_score+$hmm_acceptor_score;
-      #my $junction_score=($donor_score+$acceptor_score);
-      #my $hmm_score=($donor_hmm_score+$acceptor_hmm_score)/2;
-      #print "DEBUG $hmm_score ",$sdonor{substr($donor_seq,0,3).substr($donor_seq,5,4)}," ",$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,3)},"\n";
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
-      $transcript_hmm_donor_score{$g}=$hmm_donor_score if($transcript_hmm_donor_score{$g}>$hmm_donor_score);
       $transcript_hmm_score{$g}=$hmm_score if($transcript_hmm_score{$g}>$hmm_score);
+      $transcript_hmm_donor_score{$g}=$hmm_donor_score if($transcript_hmm_donor_score{$g}>$hmm_donor_score);
       $transcript_hmm_acceptor_score{$g}=$hmm_acceptor_score if($transcript_hmm_acceptor_score{$g}>$hmm_acceptor_score);
-      $transcript_donor_score{$g}=$donor_score if($transcript_donor_score{$g}>$donor_score);
-      $transcript_acceptor_score{$g}=$acceptor_score if($transcript_acceptor_score{$g}>$donor_score);
+      $transcript_donor_score{$g}=$donor_hmm_score if($transcript_donor_score{$g}>$donor_hmm_score);
+      $transcript_acceptor_score{$g}=$acceptor_hmm_score if($transcript_acceptor_score{$g}>$acceptor_hmm_score);
     }
   }
   print "$g $transcript_junction_score{$g} $transcript_hmm_score{$g}\n";
