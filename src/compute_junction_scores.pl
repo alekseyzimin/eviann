@@ -7,6 +7,8 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
+my $donor_length=16;
+my $acceptor_length=30;
 #these are genetic codes for HMMs
 my %code=();
 $code{"A"}=0;
@@ -101,13 +103,13 @@ if(defined($transcript{$geneID})){
 @exons=();
 
 #initialize PWMs
-for(my $i=0;$i<30;$i++){
+for(my $i=0;$i<$acceptor_length;$i++){
   for(my $j=0;$j<4;$j++){
     $donor_pwm[$i][$j]=0;
     $acceptor_pwm[$i][$j]=0;
     $start_pwm[$i][$j]=0;
   }
-  for(my $j=0;$j<16;$j++){
+  for(my $j=0;$j<$acceptor_length;$j++){
     $donor_cc_pwm[$i][$j]=0;
     $acceptor_cc_pwm[$i][$j]=0;
   }
@@ -125,23 +127,23 @@ for my $g(keys %transcript_gff){
     if($j>0){
       my @gff_fields_prev=split(/\t/,${$transcript_gff{$g}}[$j-1]);
       if($gff_fields[6] eq "+"){
-        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,9));
-        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-28,30));
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,$donor_length));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($acceptor_length-2),$acceptor_length));
       }else{
-        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-7,9));
-        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,30));
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($donor_length-2),$donor_length));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,$acceptor_length));
         $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $donor_seq=reverse($donor_seq);
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
       }
       $donor6{substr($donor_seq,2,1).substr($donor_seq,5,4)}++;
-      $acceptor6{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}++;
+      $acceptor6{substr($acceptor_seq,$acceptor_length-9,4).substr($acceptor_seq,$acceptor_length-3,1)}++;
       print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
-      for(my $i=0;$i<9;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++;}
-      for(my $i=0;$i<30;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++;}
-      for(my $i=0;$i<8;$i++) {my $index=16; $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));$donor_cc_pwm[$i][$index]++;}
-      for(my $i=0;$i<29;$i++) {my $index=16; $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));$acceptor_cc_pwm[$i][$index]++;}
+      for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++;}
+      for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++;}
+      for(my $i=0;$i<($donor_length-1);$i++) {my $index=16; $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));$donor_cc_pwm[$i][$index]++;}
+      for(my $i=0;$i<($acceptor_length-1);$i++) {my $index=16; $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));$acceptor_cc_pwm[$i][$index]++;}
 
       $w++;
     }
@@ -165,7 +167,7 @@ for my $g(keys %transcript_gff){
 #OUTPUT PWMs
 print "zoeHMM\n";
 print "Donor WMM\n";
-for(my $i=0;$i<9;$i++){
+for(my $i=0;$i<$donor_length;$i++){
   for(my $j=0;$j<4;$j++){
     printf("%.3f ", log($donor_pwm[$i][$j]/$w*4+1e-10));
   }
@@ -173,7 +175,7 @@ for(my $i=0;$i<9;$i++){
 }
 print "NN TRM\n";
 print "Acceptor WMM\n";
-for(my $i=0;$i<30;$i++){
+for(my $i=0;$i<$acceptor_length;$i++){
   for(my $j=0;$j<4;$j++){
     printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4+1e-10));
   } 
@@ -181,7 +183,7 @@ for(my $i=0;$i<30;$i++){
 } 
 print "NN TRM\n";
 print "Donor WAM\n";
-for(my $i=0;$i<8;$i++){
+for(my $i=0;$i<($donor_length-1);$i++){
   for(my $j=0;$j<16;$j++){
     printf("%.3f ", log($donor_cc_pwm[$i][$j]/$w*16+1e-10));
   }
@@ -189,7 +191,7 @@ for(my $i=0;$i<8;$i++){
 }
 print "NN TRM\n";
 print "Acceptor WAM\n";
-for(my $i=0;$i<29;$i++){
+for(my $i=0;$i<($acceptor_length-1);$i++){
   for(my $j=0;$j<16;$j++){
     printf("%.3f ",log($acceptor_cc_pwm[$i][$j]/$w*16+1e-10));
   }

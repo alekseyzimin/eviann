@@ -35,6 +35,8 @@ $code2{"TA"}=12;
 $code2{"TC"}=13;
 $code2{"TG"}=14;
 $code2{"TT"}=15;
+my $donor_length=16;
+my $acceptor_length=30;
 
 #here we load up all transcripts that matched proteins
 open(FILE,$ARGV[0]);
@@ -184,11 +186,11 @@ for my $g(keys %transcript_gff){
     if($j>0 && defined($ARGV[2])){
       my @gff_fields_prev=split(/\t/,${$transcript_gff{$g}}[$j-1]);
       if($gff_fields[6] eq "+"){
-        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,9));
-        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-28,30));
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,$donor_length));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($acceptor_length-2),$acceptor_length));
       }else{
-        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-7,9));
-        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,30));
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($donor_length-2),$donor_length));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,$acceptor_length));
         $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $donor_seq=reverse($donor_seq);
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
@@ -198,19 +200,19 @@ for my $g(keys %transcript_gff){
       my $acceptor_score=0;
       my $donor_hmm_score=0;
       my $acceptor_hmm_score=0;
-      for(my $i=0;$i<9;$i++){
+      for(my $i=0;$i<$donor_length;$i++){
         $donor_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}];
       }
-      for(my $i=0;$i<30;$i++){
+      for(my $i=0;$i<$acceptor_length;$i++){
         $acceptor_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}];
       }
-      for(my $i=0;$i<8;$i++){
+      for(my $i=0;$i<($donor_length-1);$i++){
         $index=16;
         $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));
         $donor_hmm_score+=$donor_hmm_freq[$i][$index];
       }
       $donor_hmm_score+=$donor_freq[$i][$code{substr($donor_seq,0,1)}];
-      for(my $i=0;$i<29;$i++){
+      for(my $i=0;$i<($acceptor_length-1);$i++){
         $index=16;
         $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$index];

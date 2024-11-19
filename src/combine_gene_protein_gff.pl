@@ -42,6 +42,8 @@ $code{"n"}=4;
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
 open(OUTFILE4,">$output_prefix".".unused_proteins.gff.tmp");
+my $donor_length=16;
+my $acceptor_length=30;
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 #here we read in the aligned CDS features
@@ -918,14 +920,14 @@ sub fix_start_stop_codon_ext{
           print "DEBUG found acceptor at $j\n";
           my $index5=$j;
           my $ext_seq=uc($transcript_5pext.$transcript_seq);
-          if($index5>=25){
-            $score_seq=substr($ext_seq,$index5-25,30);
-          }elsif($index5<25){
-            $score_seq="N"x(25-$index5).substr($ext_seq,0,$index5+5);
+          if($index5>=($acceptor_length-5)){
+            $score_seq=substr($ext_seq,$index5-($acceptor_length-5),$acceptor_length);
+          }elsif($index5<($acceptor_length-5)){
+            $score_seq="N"x(($acceptor_length-5)-$index5).substr($ext_seq,0,$index5+5);
           }
 #score the extension
           $ext_score=0;
-          for(my $i=0;$i<30;$i++){
+          for(my $i=0;$i<$acceptor_length;$i++){
             $ext_score+=$acceptor_freq[$i][$code{substr($score_seq,$i,1)}];
             print "DEBUG ",substr($score_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
@@ -962,19 +964,19 @@ sub fix_start_stop_codon_ext{
           print "DEBUG found acceptor at $j\n";
           my $index3=$j;
           my $ext_seq=uc($transcript_seq.$transcript_3pext);
-          if(length($transcript_3pext)-$index3>=6){
-            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,9);
+          if(length($transcript_3pext)-$index3>=($donor-length-3)){
+            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,$donor_length);
           }else{
-            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3)."N"x(6-$index3);
+            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3)."N"x(($donor_length-3)-$index3);
           }
           #score the extension
           $ext_score=0;
-          for(my $i=0;$i<9;$i++){
+          for(my $i=0;$i<$donor_length;$i++){
             $ext_score+=$donor_freq[$i][$code{substr($score_seq,$i,1)}];
             print "DEBUG ",substr($score_seq,$i,1)," ",$donor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index3 $score_seq $ext_score\n";
-          if($ext_score > 3){
+          if($ext_score > 4){
             $found_donor=1;
             $j=length($transcript_3pext);
           }
