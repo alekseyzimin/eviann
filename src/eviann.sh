@@ -447,7 +447,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     if($F[2] eq "transcript"){
       $flag=0;
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
-      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>'$JUNCTION_THRESHOLD');
+      $flag=1 if($score{$id}>('$JUNCTION_THRESHOLD'-0.4) || $hmm_score{$id}>('$JUNCTION_THRESHOLD'+1));
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
