@@ -964,7 +964,7 @@ sub fix_start_stop_codon_ext{
           print "DEBUG found acceptor at $j\n";
           my $index3=$j;
           my $ext_seq=uc($transcript_seq.$transcript_3pext);
-          if(length($transcript_3pext)-$index3>=($donor-length-3)){
+          if(length($transcript_3pext)-$index3>=($donor_length-3)){
             $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,$donor_length);
           }else{
             $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3)."N"x(($donor_length-3)-$index3);

@@ -233,6 +233,6 @@ for my $g(keys %transcript_gff){
       $transcript_acceptor_score{$g}=$acceptor_hmm_score if($transcript_acceptor_score{$g}>$acceptor_hmm_score);
     }
   }
-  print "$g $transcript_junction_score{$g} $transcript_hmm_score{$g}\n";
+  print "$g $transcript_junction_score{$g} $transcript_hmm_score{$g} $transcript_donor_score{$g} $transcript_acceptor_score{$g}\n";
 }  
 
