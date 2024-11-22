@@ -24,7 +24,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $ext_length=40;
+my $ext_length=54;
 my $length_fraction=0.75;
 my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
@@ -897,6 +897,8 @@ sub fix_start_stop_codon_ext{
   my $transcript_seq=$_[2];
   my $transcript_5pext=$_[3];
   my $transcript_3pext=$_[4];
+  my $found_acceptor=0;
+  my $found_donor=0;
   my $ext_length=length($transcript_5pext);
   #we do not do 5' extension if the first codon is start
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
@@ -911,28 +913,26 @@ sub fix_start_stop_codon_ext{
     $cds_start_on_transcript=$cds_start_on_transcript_ext-$ext_length;
     print "DEBUG no 5p extension $cds_start_on_transcript_ext\n";
   }else{
+    print "DEBUG checking 5p extension\n";
     $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
     #check the extension for AG -- acceptor sites, if found, do not extend
-    my $found_acceptor=0;
     if(defined($ARGV[4])){
       for(my $j=3;$j<length($transcript_5pext)-2;$j++){
-        if(substr($transcript_5pext,$j,2) eq "AG"){
-          print "DEBUG found acceptor at $j\n";
+        if(uc(substr($transcript_5pext,$j,2)) eq "AG"){
           my $index5=$j;
           my $ext_seq=uc($transcript_5pext.$transcript_seq);
-          if($index5>=($acceptor_length-5)){
-            $score_seq=substr($ext_seq,$index5-($acceptor_length-5),$acceptor_length);
-          }elsif($index5<($acceptor_length-5)){
-            $score_seq="N"x(($acceptor_length-5)-$index5).substr($ext_seq,0,$index5+5);
-          }
+          my $score_seq=substr($ext_seq,$index5-($acceptor_length-5),$acceptor_length<length($ext_seq) ? $acceptor_length : length($ext_seq));
+          print "DEBUG found acceptor at $j in $transcript_5pext, scoring $score_seq\n";
 #score the extension
           $ext_score=0;
-          for(my $i=0;$i<$acceptor_length;$i++){
-            $ext_score+=$acceptor_freq[$i][$code{substr($score_seq,$i,1)}];
-            print "DEBUG ",substr($score_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
+          for(my $i=0;($i<$acceptor_length &&  $i<length($score_seq));$i++){
+            my $base="N";
+            $base=substr($score_seq,$i,1) if(defined(substr($score_seq,$i,1)));
+            $ext_score+=$donor_freq[$i][$code{$base}];
+            print "DEBUG $base ",$acceptor_freq[$i][$code{$base}],"\n";
           }
           print "DEBUG $index5 $score_seq $ext_score\n";
-          if($ext_score > 5){
+          if($ext_score > 3){
             $found_acceptor=1;
             $j=length($transcript_5pext);
           }
@@ -956,27 +956,25 @@ sub fix_start_stop_codon_ext{
     print "DEBUG no 3p extension $cds_end_on_transcript_ext\n";
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
   }else{
+    print "DEBUG checking 3p extension\n";
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
-    my $found_donor=0;
     if(defined($ARGV[4])){
       for(my $j=0;$j<length($transcript_3pext)-3;$j++){
-        if(substr($transcript_3pext,$j,2) eq "GT"){
-          print "DEBUG found acceptor at $j\n";
+        if(uc(substr($transcript_3pext,$j,2)) eq "GT"){
           my $index3=$j;
           my $ext_seq=uc($transcript_seq.$transcript_3pext);
-          if(length($transcript_3pext)-$index3>=($donor_length-3)){
-            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,$donor_length);
-          }else{
-            $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3)."N"x(($donor_length-3)-$index3);
-          }
+          my $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,$donor_length<length($ext_seq) ? $donor_length : length($ext_seq));
+          print "DEBUG found donor at $j in $transcript_3pext, scoring $score_seq\n";
           #score the extension
           $ext_score=0;
-          for(my $i=0;$i<$donor_length;$i++){
-            $ext_score+=$donor_freq[$i][$code{substr($score_seq,$i,1)}];
-            print "DEBUG ",substr($score_seq,$i,1)," ",$donor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
+          for(my $i=0;($i<$donor_length && $i<length($score_seq));$i++){
+            my $base="N";
+            $base=substr($score_seq,$i,1) if(defined(substr($score_seq,$i,1)));
+            $ext_score+=$donor_freq[$i][$code{$base}];
+            print "DEBUG $base ",$donor_freq[$i][$code{$base}],"\n";
           }
           print "DEBUG $index3 $score_seq $ext_score\n";
-          if($ext_score > 4){
+          if($ext_score > 5){
             $found_donor=1;
             $j=length($transcript_3pext);
           }

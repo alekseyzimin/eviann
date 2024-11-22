@@ -219,7 +219,6 @@ for my $g(keys %transcript_gff){
       }
       $acceptor_hmm_score+=$acceptor_freq[$acceptor_length-1][$code{substr($acceptor_seq,$acceptor_length-1,1)}];
       #print "DEBUG $donor_seq $donor_score $donor_hmm_score $acceptor_seq $acceptor_score $acceptor_hmm_score\n";
-      #this here combined the PWM and WAM scores
       my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
       #my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)*0.5)*0.75;
       my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
