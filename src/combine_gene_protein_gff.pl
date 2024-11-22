@@ -25,7 +25,7 @@ my $scf="";
 my $seq="";
 my %used_proteins;
 my $ext_length=54;
-my $length_fraction=0.75;
+my $length_fraction=0.65;
 my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
 my %code=();
@@ -411,9 +411,9 @@ for my $g(keys %transcript_cds){
 
 #check to see if we truncated the cds -- maybe it is a special protein?
     if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*$length_fraction){
+      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript $cds_length\n";
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
-      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
       $transcript_class{$g}="NA";
       next;
     }
@@ -562,9 +562,9 @@ for my $g(keys %transcript_cds){
     }
 
     if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*$length_fraction){
+      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript $cds_length\n";
       $cds_end_on_transcript=$cds_end_on_transcript_original;
       $cds_start_on_transcript=$cds_start_on_transcript_original;
-      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript \n";
       $transcript_class{$g}="NA";
       next;
     }
@@ -921,17 +921,21 @@ sub fix_start_stop_codon_ext{
         if(uc(substr($transcript_5pext,$j,2)) eq "AG"){
           my $index5=$j;
           my $ext_seq=uc($transcript_5pext.$transcript_seq);
-          my $score_seq=substr($ext_seq,$index5-($acceptor_length-5),$acceptor_length<length($ext_seq) ? $acceptor_length : length($ext_seq));
+          my $start_index=$index5-$acceptor_length+5;
+          $start_index=0 if($start_index<0);
+          my $score_seq=substr($ext_seq,$start_index,$index5-$acceptor_length+5 >=0 ? $acceptor_length : $index5+5);
           print "DEBUG found acceptor at $j in $transcript_5pext, scoring $score_seq\n";
 #score the extension
           $ext_score=0;
-          for(my $i=0;($i<$acceptor_length &&  $i<length($score_seq));$i++){
+          $start_index=0;
+          $start_index=$acceptor_length-length($score_seq) if(length($score_seq)<$acceptor_length);
+          for(my $i=$start_index;$i<$acceptor_length;$i++){
             my $base="N";
-            $base=substr($score_seq,$i,1) if(defined(substr($score_seq,$i,1)));
-            $ext_score+=$donor_freq[$i][$code{$base}];
+            $base=substr($score_seq,$i-$start_index,1) if(defined(substr($score_seq,$i-$start_index,1)));
+            $ext_score+=$acceptor_freq[$i][$code{$base}];
             print "DEBUG $base ",$acceptor_freq[$i][$code{$base}],"\n";
           }
-          print "DEBUG $index5 $score_seq $ext_score\n";
+          print "DEBUG $index5 $score_seq $ext_score $start_index\n";
           if($ext_score > 3){
             $found_acceptor=1;
             $j=length($transcript_5pext);
