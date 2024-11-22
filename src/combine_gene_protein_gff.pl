@@ -25,7 +25,7 @@ my $scf="";
 my $seq="";
 my %used_proteins;
 my $ext_length=54;
-my $length_fraction=0.65;
+my $length_fraction=0.7;
 my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
 my %code=();
