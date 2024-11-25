@@ -63,10 +63,16 @@ while(my $line=<FILE>){
       my @gff_fields=split(/\t/,$exons[0]);
       $gff_fields[3]=$protein_start{$transcript_cds{$geneID}} if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
       $gff_fields[3]=1 if($gff_fields[3]<1);
+      $tstart=$gff_fields[3];
       $exons[0]=join("\t",@gff_fields);
-      my @gff_fields=split(/\t/,$exons[-1]);
+      @gff_fields=split(/\t/,$exons[-1]);
       $gff_fields[4]=$protein_end{$transcript_cds{$geneID}} if($gff_fields[4]<$protein_end{$transcript_cds{$geneID}});
+      $tend=$gff_fields[4];
       $exons[-1]=join("\t",@gff_fields);
+      @gff_fields=split(/\t/,$transcript{$geneID});
+      $gff_fields[3]=$tstart;
+      $gff_fields[4]=$tend;
+      $transcript{$geneID}=join("\t",@gff_fields);
       $transcript_gff{$geneID}=[@exons];
       $transcript_ori{$geneID}=$tori;
     }elsif(defined($transcript_u{$geneID})){
