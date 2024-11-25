@@ -217,7 +217,8 @@ for my $g(keys %transcript_gff){
         $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$index];
       }
-      $acceptor_hmm_score+=$acceptor_freq[$acceptor_length-1][$code{substr($acceptor_seq,$acceptor_length-1,1)}];
+      $acceptor_hmm_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}];
+      #$acceptor_hmm_score+=$acceptor_freq[$acceptor_length-1][$code{substr($acceptor_seq,$acceptor_length-1,1)}];
       #print "DEBUG $donor_seq $donor_score $donor_hmm_score $acceptor_seq $acceptor_score $acceptor_hmm_score\n";
       my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
       #my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)*0.5)*0.75;
