@@ -24,7 +24,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $ext_length=54;
+my $ext_length=33;
 my $length_fraction=0.7;
 my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
@@ -936,7 +936,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG $base ",$acceptor_freq[$i][$code{$base}],"\n";
           }
           print "DEBUG $index5 $score_seq $ext_score $start_index\n";
-          if($ext_score > 3){
+          if($ext_score > 4){
             $found_acceptor=1;
             $j=length($transcript_5pext);
           }
