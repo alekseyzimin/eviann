@@ -44,5 +44,5 @@ return(weight_function($fb[1],$fb[2]) <=> weight_function($fa[1],$fa[2]));
 }
  
 sub weight_function{
-  return($_[0]*$_[1]**0.1);
+  return($_[0]*$_[1]**0.25);
 }
