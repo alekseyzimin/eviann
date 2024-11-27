@@ -517,7 +517,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -S -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
     makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 && \
-    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp1.out > $GENOME.lncRNA.blastp.tmp && \
+    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 5 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp1.out > $GENOME.lncRNA.blastp.tmp && \
     mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
@@ -586,7 +586,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
   TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
   if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
-    awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+    perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.broken_cds.blastp");while($line=<FILE>){@f=split(/\./,$line);$h{$f[0]}=1}}{print "$F[0] $F[6] $F[7]\n" if(defined($h{$F[0]}) && $#F>7 && not($F[3] =~ /ORF_type:internal/));}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+#    awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
     mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
   fi
   rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
