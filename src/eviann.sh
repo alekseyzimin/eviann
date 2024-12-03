@@ -436,8 +436,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
-    $num_introns=int(<FILE>);
-    $index= $num_introns>=32768 ? 3 : 1;
+    $index = int(<FILE>) >= 32768 ? 3 : 1;
     open(FILE,"'$GENOME'.transcript_splice_scores.txt");
     while($line=<FILE>){
       chomp($line);
@@ -490,8 +489,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm > $GENOME.protein_splice_scores.txt && \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.num_introns.txt");
-      $num_introns=int(<FILE>);
-      $index= $num_introns>=32768 ? 3 : 1;
+      $index = int(<FILE>) >= 32768 ? 3 : 1;
       open(FILE,"'$GENOME'.protein_splice_scores.txt");
       while($line=<FILE>){
         chomp($line);
