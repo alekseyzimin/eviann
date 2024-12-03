@@ -192,7 +192,7 @@ if(defined($ARGV[4])){
   if($line =~ /^zoeHMM/){#check format
     while($line=<FILE>){
       chomp($line);
-      if($line=~/^Donor WMM/){
+      if($line=~/^Donor 0HMM/){
         my $i=0;
         while($line=<FILE>){
           last if($line=~/NN TRM/);
@@ -205,7 +205,7 @@ if(defined($ARGV[4])){
           $donor_freq[$i][4]=0;
           $i++;
         }
-      }elsif($line=~/^Acceptor WMM/){
+      }elsif($line=~/^Acceptor 0HMM/){
         my $i=0;
         while($line=<FILE>){
           last if($line=~/NN TRM/);

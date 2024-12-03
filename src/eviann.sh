@@ -434,7 +434,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     while($line=<FILE>){
       chomp($line);
       @f=split(/\s+/,$line);
-      $score{$f[0]}=$f[1];
+      $score{$f[0]}=$f[3];
       $hmm_score{$f[0]}=$f[2];
     }
     open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
@@ -485,7 +485,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       while($line=<FILE>){
         chomp($line);
         @f=split(/\s+/,$line);
-        $score{$f[0]}=$f[1];
+        $score{$f[0]}=$f[3];
         $hmm_score{$f[0]}=$f[2];
       }
     }{

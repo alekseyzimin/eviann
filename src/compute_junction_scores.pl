@@ -9,35 +9,27 @@ my $scf="";
 my $seq="";
 my $donor_length=16;
 my $acceptor_length=30;
-#these are genetic codes for HMMs
+#these are genetic codes for Markov chains
 my %code=();
-$code{"A"}=0;
-$code{"a"}=0;
-$code{"C"}=1;
-$code{"c"}=1;
-$code{"G"}=2;
-$code{"g"}=2;
-$code{"T"}=3;
-$code{"t"}=3;
-$code{"N"}=4;
-$code{"n"}=4;
-$code2{"AA"}=0;
-$code2{"AC"}=1;
-$code2{"AG"}=2;
-$code2{"AT"}=3;
-$code2{"CA"}=4;
-$code2{"CC"}=5;
-$code2{"CG"}=6;
-$code2{"CT"}=7;
-$code2{"GA"}=8;
-$code2{"GC"}=9;
-$code2{"GG"}=10;
-$code2{"GT"}=11;
-$code2{"TA"}=12;
-$code2{"TC"}=13;
-$code2{"TG"}=14;
-$code2{"TT"}=15;
-
+my %code2=();
+my %code3=();
+my @narray=("A","C","G","T");
+#initialize code hashes
+$n=0;
+$n2=0;
+$n3=0;
+for($i=0;$i<4;$i++){
+  $code{$narray[$i]}=$n;
+  $n++;
+  for($j=0;$j<4;$j++){
+    $code2{"$narray[$i]$narray[$j]"}=$n2;
+    $n2++;
+    for($k=0;$k<4;$k++){
+      $code3{"$narray[$i]$narray[$j]$narray[$k]"}=$n3;
+      $n3++;
+    }
+  }
+}
 
 #we load the genome sequences
 open(FILE,$ARGV[0]);
@@ -140,11 +132,12 @@ for my $g(keys %transcript_gff){
       $donor6{substr($donor_seq,2,1).substr($donor_seq,5,4)}++;
       $acceptor6{substr($acceptor_seq,$acceptor_length-9,4).substr($acceptor_seq,$acceptor_length-3,1)}++;
       print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
-      for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++;}
-      for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++;}
-      for(my $i=0;$i<($donor_length-1);$i++) {my $index=16; $index=$code2{substr($donor_seq,$i,2)} if(defined($code2{substr($donor_seq,$i,2)}));$donor_cc_pwm[$i][$index]++;}
-      for(my $i=0;$i<($acceptor_length-1);$i++) {my $index=16; $index=$code2{substr($acceptor_seq,$i,2)} if(defined($code2{substr($acceptor_seq,$i,2)}));$acceptor_cc_pwm[$i][$index]++;}
-
+      for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++ if(defined($code{substr($donor_seq,$i,1)}));}
+      for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
+      for(my $i=0;$i<($donor_length-1);$i++) {$donor2_pwm[$i][$code2{substr($donor_seq,$i,2)}]++ if(defined($code2{substr($donor_seq,$i,2)}));}
+      for(my $i=0;$i<($acceptor_length-1);$i++) {$acceptor2_pwm[$i][$code2{substr($acceptor_seq,$i,2)}]++ if(defined($code2{substr($acceptor_seq,$i,2)}));}
+      for(my $i=0;$i<($donor_length-2);$i++) {$donor3_pwm[$i][$code3{substr($donor_seq,$i,3)}]++ if(defined($code3{substr($donor_seq,$i,3)}));}
+      for(my $i=0;$i<($acceptor_length-2);$i++) {$acceptor3_pwm[$i][$code3{substr($acceptor_seq,$i,3)}]++ if(defined($code3{substr($acceptor_seq,$i,3)}));}
       $w++;
     }
   }
@@ -166,7 +159,7 @@ for my $g(keys %transcript_gff){
 
 #OUTPUT PWMs
 print "zoeHMM\n";
-print "Donor WMM\n";
+print "Donor 0HMM\n";
 for(my $i=0;$i<$donor_length;$i++){
   for(my $j=0;$j<4;$j++){
     printf("%.3f ", log($donor_pwm[$i][$j]/$w*4+1e-10));
@@ -174,7 +167,7 @@ for(my $i=0;$i<$donor_length;$i++){
   print "\n";
 }
 print "NN TRM\n";
-print "Acceptor WMM\n";
+print "Acceptor 0HMM\n";
 for(my $i=0;$i<$acceptor_length;$i++){
   for(my $j=0;$j<4;$j++){
     printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4+1e-10));
@@ -182,18 +175,34 @@ for(my $i=0;$i<$acceptor_length;$i++){
   print "\n";
 } 
 print "NN TRM\n";
-print "Donor WAM\n";
+print "Donor 1HMM\n";
 for(my $i=0;$i<($donor_length-1);$i++){
   for(my $j=0;$j<16;$j++){
-    printf("%.3f ", log($donor_cc_pwm[$i][$j]/$w*16+1e-10));
+    printf("%.3f ", log($donor2_pwm[$i][$j]/$w*16+1e-10));
   }
   print "\n";
 }
 print "NN TRM\n";
-print "Acceptor WAM\n";
+print "Acceptor 1HMM\n";
 for(my $i=0;$i<($acceptor_length-1);$i++){
   for(my $j=0;$j<16;$j++){
-    printf("%.3f ",log($acceptor_cc_pwm[$i][$j]/$w*16+1e-10));
+    printf("%.3f ",log($acceptor2_pwm[$i][$j]/$w*16+1e-10));
+  }
+  print "\n";
+}
+print "NN TRM\n";
+print "Donor 2HMM\n";
+for(my $i=0;$i<($donor_length-2);$i++){
+  for(my $j=0;$j<64;$j++){
+    printf("%.3f ", log($donor3_pwm[$i][$j]/$w*64+1e-10));
+  }
+  print "\n";
+}
+print "NN TRM\n";
+print "Acceptor 2HMM\n";
+for(my $i=0;$i<($acceptor_length-2);$i++){
+  for(my $j=0;$j<64;$j++){
+    printf("%.3f ",log($acceptor3_pwm[$i][$j]/$w*64+1e-10));
   }
   print "\n";
 }
