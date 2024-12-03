@@ -423,6 +423,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   log "Computing PWM matrices at splice junctions" && \
   gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
+      perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
+      awk -F'\t'  '{print $3}' |\
+      uniq -c |\
+      awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt && \
+  gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
     perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
     compute_junction_scores.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
@@ -430,12 +435,15 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   perl -F'\t' -ane 'BEGIN{
+    open(FILE,"'$GENOME'.num_introns.txt");
+    $num_introns=int(<FILE>);
+    $index= $num_introns>=32768 ? 3 : 1;
     open(FILE,"'$GENOME'.transcript_splice_scores.txt");
     while($line=<FILE>){
       chomp($line);
       @f=split(/\s+/,$line);
-      $score{$f[0]}=$f[3];
-      $hmm_score{$f[0]}=$f[2];
+      $score{$f[0]}=$f[$index];
+      $ex_score{$f[0]}=$f[2];
     }
     open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
     while($line=<FILE>){
@@ -447,7 +455,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     if($F[2] eq "transcript"){
       $flag=0;
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
-      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $hmm_score{$id}>'$JUNCTION_THRESHOLD');
+      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $ex_score{$id}>'$JUNCTION_THRESHOLD');
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
@@ -481,18 +489,21 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     log "Filtering unused protein only loci" && \
     score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm > $GENOME.protein_splice_scores.txt && \
     perl -F'\t' -ane 'BEGIN{
+      open(FILE,"'$GENOME'.num_introns.txt");
+      $num_introns=int(<FILE>);
+      $index= $num_introns>=32768 ? 3 : 1;
       open(FILE,"'$GENOME'.protein_splice_scores.txt");
       while($line=<FILE>){
         chomp($line);
         @f=split(/\s+/,$line);
-        $score{$f[0]}=$f[3];
-        $hmm_score{$f[0]}=$f[2];
+        $score{$f[0]}=$f[$index];
+        $ex_score{$f[0]}=$f[2];
       }
     }{
       if($F[2] eq "gene"){
         $flag=0;
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $hmm_score{$id}>0);
+        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $ex_score{$id}>0);
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
@@ -606,6 +617,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 #cleanup
   if [ $DEBUG -lt 1 ];then
+    rm -f $GENOME.num_introns.txt
     rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
     rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
     rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
