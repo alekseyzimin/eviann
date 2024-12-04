@@ -37,7 +37,7 @@ while(my $line=<FILE>){
   chomp($line);
   my @gff_fields=split(/\t/,$line);
   my @attributes=split(";",$gff_fields[8]);
-  if($gff_fields[2] eq "transcript"){
+  if($gff_fields[2] eq "transcript" || $gff_fields[2] eq "mRNA" ){
     if(defined($transcript{$geneID})){
       $transcript_gff{$geneID}=[@exons];
     }
