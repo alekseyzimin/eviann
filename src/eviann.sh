@@ -416,9 +416,12 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl \
-      $GENOME \
-      <( cat $GENOME.palign.fixed.gff | filter_by_class_code.pl $GENOME.protref.annotated.gtf | gffread -F ) \
-      $GENOMEFILE \
+      --prefix $GENOME \
+      --annotated <( cat $GENOME.palign.fixed.gff | filter_by_class_code.pl $GENOME.protref.annotated.gtf | gffread -F ) \
+      --genome $GENOMEFILE \
+      --pwms <(echo "") \
+      --transdecoder  <(echo "") \
+      --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   log "Computing PWM matrices at splice junctions" && \
@@ -475,11 +478,12 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl \
-      $GENOME \
-      <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) \
-      $GENOMEFILE \
-      <(echo "") \
-      $GENOME.pwm \
+      --prefix $GENOME \
+      --annotated <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) \
+      --genome $GENOMEFILE \
+      --transdecoder <(echo "") \
+      --pwms $GENOME.pwm \
+      --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
@@ -602,12 +606,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
   cat $GENOME.palign.all.gff | \
     combine_gene_protein_gff.pl \
-      $GENOME \
-      $GENOME.protref.all.annotated.class.gff \
-      $GENOMEFILE \
-      $GENOME.fixed_cds.txt \
-      $GENOME.pwm \
-      <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
+      --prefix $GENOME \
+      --annotated $GENOME.protref.all.annotated.class.gff \
+      --genome $GENOMEFILE \
+      --transdecoder $GENOME.fixed_cds.txt \
+      --pwms $GENOME.pwm \
+      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
+      --include_stop \
       1>combine.out 2>&1 && \
   gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \

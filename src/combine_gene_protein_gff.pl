@@ -1,5 +1,23 @@
 #!/usr/bin/env perl
 #This code adds gene and CDS record for every locus in GFF file
+use Getopt::Long;
+my $output_prefix="output";
+my $annotated_gff=$output_prefix.".protref.annotated.gff";
+my $transdecoder_start_stop=$output_prefix.".fixed_cds.txt";
+my $pwms=$output_prefix.".pwm";
+my $names=$output_prefix.".original_names.txt";
+my $include_stop=0;
+my $ext_length=33;
+GetOptions ("prefix=s"   => \$output_prefix,      # string
+    "annotated=s" => \$annotated_gff,
+    "genome=s" => \$genome,
+    "transdecoder=s" => \$transdecoder_start_stop, 
+    "pwms=s" => \$pwms,
+    "names=s" => \$names, 
+    "ext=i" => \$ext_length,
+    "include_stop"  => \$include_stop)   # flag
+or die("Error in command line arguments\n");
+my $add_stop_coord = $include_stop==1 ? 3 : 0; 
 my $geneID="";
 my @exons=();
 my %loci;
@@ -24,9 +42,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $ext_length=33;
 my $length_fraction=0.7;
-my $output_prefix=$ARGV[0];
 #these are genetic codes for HMMs
 my %code=();
 $code{"A"}=0;
@@ -77,7 +93,7 @@ if(not($protID eq "")){
 
 #this is output of gffcompare -r protalign.gtf ../GCF_000001735.4_TAIR10.1_genomic.clean.fna.gtf -o protref
 #here we load up all transcripts that matched proteins
-open(FILE,$ARGV[1]);
+open(FILE,$annotated_gff);
 while(my $line=<FILE>){
   chomp($line);
   my @gff_fields=split(/\t/,$line);
@@ -157,7 +173,7 @@ if(defined($transcript{$geneID})){
 @exons=();
 
 #we load the genome sequences
-open(FILE,$ARGV[2]);
+open(FILE,$genome);
 print "DEBUG Loading genome sequence\n";
 while(my $line=<FILE>){
   chomp($line);
@@ -175,7 +191,7 @@ while(my $line=<FILE>){
 $genome_seqs{$scf}=$seq if(not($scf eq ""));
 
 #we load the adjusted cds start and stop coordinates
-open(FILE,$ARGV[3]);
+open(FILE,$transdecoder_start_stop);
   print "DEBUG Loading CDS start/stop coordinates from TransDecoder\n";
 while(my $line=<FILE>){
   chomp($line);
@@ -185,9 +201,9 @@ while(my $line=<FILE>){
 }
 
 #we load SNAP HMMs
-if(defined($ARGV[4])){
+if(defined($pwms)){
   print "DEBUG Loading PWMs\n";
-  open(FILE,$ARGV[4]);
+  open(FILE,$pwms);
   $line=<FILE>;
   if($line =~ /^zoeHMM/){#check format
     while($line=<FILE>){
@@ -241,8 +257,8 @@ if(defined($ARGV[4])){
 
 #finally, if available we load the original transcript names
 my %original_transcript_name=();
-if(defined($ARGV[5])){
-  open(FILE,$ARGV[5]);
+if(defined($names)){
+  open(FILE,$names);
   while(my $line=<FILE>){
     chomp($line);
     @f=split(/\s+/,$line);
@@ -379,7 +395,7 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}) if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))); #try to extend
     #at this point we did all we could to fix the coding region; last thing that remains is to make sure the stop codon is included both into the cds and the transcript
     #from here on we assume that the stop codon is included!!!
-    $cds_end_on_transcript+=3;
+    $cds_end_on_transcript+=$add_stop_coord;
     #make sure we are not out of the transcript!!!
     $transcript_seqs_3pext_actual{$g}=substr($transcript_seqs_3pext{$g},0,length($transcript_seqs_3pext_actual{$g})+3) if($cds_end_on_transcript > length($transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g}));
 
@@ -445,7 +461,7 @@ for my $g(keys %transcript_cds){
     }
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-$add_stop_coord,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
@@ -532,7 +548,7 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}) if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(uc($first_codon) eq "ATG") || not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA"))); #try to extend
 #at this point we did all we could to fix the coding region; last thing that remains is to make sure the stop codon is included both into the cds and the transcript
 #from here on we assume that the stop codon is included!!!
-    $cds_end_on_transcript+=3;
+    $cds_end_on_transcript+=$add_stop_coord;
 #make sure we are not out of the transcript!!!
     $transcript_seqs_3pext_actual{$g}=substr($transcript_seqs_3pext{$g},0,length($transcript_seqs_3pext_actual{$g})+3) if($cds_end_on_transcript > length($transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g}));
 
@@ -597,7 +613,7 @@ for my $g(keys %transcript_cds){
     }
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-$add_stop_coord,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(uc($first_codon) eq "ATG");
     $transcript_cds_end_codon{$g}=$last_codon if(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA");
