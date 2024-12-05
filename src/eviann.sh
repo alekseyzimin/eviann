@@ -341,7 +341,9 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
         }
         $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
         print join("\t",@F);
-      }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.gtf &&  touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+      }' > $GENOME.gtf.tmp && mv $GENOME.gtf.tmp $GENOME.merged.gtf && \
+      touch transcripts_merge.success && \
+      rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
     log "Merging transcripts"
     gffcompare -STC  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
@@ -371,7 +373,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       $F[8]=~s/transcript_id \"$transcript\";/transcript_id \"$new_transcript_id\";/;
       print join("\t",@F) if($flag);
     }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
-    mv $GENOME.tmp2.combined.gtf $GENOME.gtf && \
+    mv $GENOME.tmp2.combined.gtf $GENOME.merged.gtf && \
     rm -f $GENOME.tmp.{combined.gtf,tracking,loci,redundant.gtf} $GENOME.tmp $GENOME.max_tpm.samples.txt && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
   else
     error_exit "one or more Stringtie jobs failed to run properly"
@@ -406,11 +408,29 @@ fi
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments"
 #we fix suspect introns in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
-  gffread -F  <( fix_suspect_introns.pl $GENOME.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
+  gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
-  gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
+  gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.merged.gtf && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
+#here we fix missing orientations in the GTF transcripts file
+  perl -F'\t' -ane '{
+    if($F[2] eq "transcript" && $F[8]=~/^transcript_id "(\S+)"; gene_id/){
+      $ori{$1}=$F[6];
+    }
+  }END{
+    open(FILE,"'$GENOME'.merged.gtf");
+    while($line=<FILE>){
+      chomp($line);
+      @f=split(/\t/,$line);
+      if($f[6] eq "."){
+        $f[8]=~/^transcript_id "(\S+)"; gene_id/;
+        $f[6]=$ori{$1} if(defined($ori{$1}));
+      }
+      print join("\t",@f)."\n" unless($f[6] eq ".");
+    }
+  }' $GENOME.protref.annotated.gtf > $GENOME.gtf.tmp && \
+  mv $GENOME.gtf.tmp $GENOME.gtf && \
 #here we combine the transcripts and protein matches
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
@@ -562,9 +582,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Working on final merge"
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffcompare -STC $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
+    gffcompare -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
   else
-    gffcompare -STC $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
+    gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
   if [ -s $GENOME.u.cds.gff ];then

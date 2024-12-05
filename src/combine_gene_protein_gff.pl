@@ -631,7 +631,7 @@ for my $g(keys %transcript_cds){
 for my $g(keys %transcript_cds){
   next if($transcript_class{$g} eq "NA");
   @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[0]);
-  my $intron_chain="$gff_fields_p[0] $gff_fields_p[3] $gff_fields_p[4]";
+  my $intron_chain="$gff_fields_p[0] $gff_fields_p[6] $gff_fields_p[3] $gff_fields_p[4]";
   for(my $j=1;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
     @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
     $intron_chain.=" $gff_fields_p[3] $gff_fields_p[4]";
@@ -871,11 +871,11 @@ foreach my $p(keys %protein){
   my $ptend=$gff_fields_p[4]+$fake_utr<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+$fake_utr:length($genome_seqs{$gff_fields_p[0]});
 
   my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[0]);
-  my $intron_chain="$gff_fields_c[0] $gff_fields_c[3] $gff_fields_c[4]";
+  my $intron_chain="$gff_fields_c[0] $gff_fields_c[6] $gff_fields_c[3] $gff_fields_c[4]";
   for(my $j=1;$j<=$#{$protein_cds{$p}};$j++){
     $intron_chain.=" $gff_fields_c[3] $gff_fields_c[4]";
   }
-  #next if(defined($used_protein_intron_chains{$intron_chain}));
+  next if(defined($used_protein_intron_chains{$intron_chain}));
 
   print OUTFILE4 "$gff_fields_p[0]\tEviAnnP\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
