@@ -4,7 +4,7 @@ use Getopt::Long;
 my $output_prefix="output";
 my $annotated_gff=$output_prefix.".protref.annotated.gff";
 my $transdecoder_start_stop=$output_prefix.".fixed_cds.txt";
-my $pwms=$output_prefix.".pwm";
+my $pwms;
 my $names=$output_prefix.".original_names.txt";
 my $include_stop=0;
 my $ext_length=33;
@@ -961,7 +961,7 @@ sub fix_start_stop_codon_ext{
     print "DEBUG checking 5p extension\n";
     $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
     #check the extension for AG -- acceptor sites, if found, do not extend
-    if(defined($ARGV[4])){
+    if(defined($pwms)){
       for(my $j=3;$j<length($transcript_5pext)-2;$j++){
         if(uc(substr($transcript_5pext,$j,2)) eq "AG"){
           my $index5=$j;
@@ -1007,7 +1007,7 @@ sub fix_start_stop_codon_ext{
   }else{
     print "DEBUG checking 3p extension\n";
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
-    if(defined($ARGV[4])){
+    if(defined($pwms)){
       for(my $j=0;$j<length($transcript_3pext)-3;$j++){
         if(uc(substr($transcript_3pext,$j,2)) eq "GT"){
           my $index3=$j;
