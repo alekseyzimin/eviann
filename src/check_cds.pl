@@ -150,12 +150,18 @@ $genome_seqs{$scf}=$seq if(not($scf eq ""));
 for my $g(keys %transcript_gff){
   $transcript_seqs{$g}="";
   my @gff_fields=();
+  @gff_fields=split(/\t/,${$transcript_gff{$g}}[0]);
+  $transcript_extra_codon{$g}=substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-4,3) if($gff_fields[6] eq "-");
+  @gff_fields=split(/\t/,${$transcript_gff{$g}}[-1]);
+  $transcript_extra_codon{$g}=substr($genome_seqs{$gff_fields[0]},$gff_fields[4],3) if($gff_fields[6] eq "+");
   for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
     @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
     die("Genome sequence $gff_fields[0] needed for transcript $g not found!") if(not(defined($genome_seqs{$gff_fields[0]})));
     $transcript_seqs{$g}.=substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-1,$gff_fields[4]-$gff_fields[3]+1);
   }
   if($gff_fields[6] eq "-"){
+    $transcript_extra_codon{$g}=~tr/ACGTNacgtn/TGCANtgcan/;
+    $transcript_extra_codon{$g}=reverse($transcript_extra_codon{$g});
     $transcript_seqs{$g}=~tr/ACGTNacgtn/TGCANtgcan/;
     $transcript_seqs{$g}=reverse($transcript_seqs{$g});
   }
@@ -212,10 +218,10 @@ for my $g(keys %transcript_cds){
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
-      if(uc(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) eq "ATG"){
+      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
         print "end\n";
         $cds_length-=$cds_length%3;
-      }elsif(uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TGA"){
+      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3))){
         $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
@@ -228,7 +234,7 @@ for my $g(keys %transcript_cds){
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    print "DEBUG $first_codon $last_codon extra $transcript_extra_codon{$g} start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
 #checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
@@ -240,7 +246,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
+    if((not(valid_stop($last_codon) || ($cds_end_on_transcript_original==length($transcript_seqs{$g}) && valid_stop($transcript_extra_codon{$g}))) || not(valid_start($first_codon)))||($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
@@ -313,10 +319,10 @@ for my $g(keys %transcript_cds){
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
-      if(uc(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) eq "ATG"){
+      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
         print "end\n";
         $cds_length-=$cds_length%3;
-      }elsif(uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAG" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TAA" || uc(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3)) eq "TGA"){
+      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3))){
         $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
@@ -329,7 +335,7 @@ for my $g(keys %transcript_cds){
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
+    print "DEBUG $first_codon $last_codon extra $transcript_extra_codon{$g} start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
 #checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
@@ -341,7 +347,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    if((not(uc($last_codon) eq "TAG" || uc($last_codon) eq "TAA" || uc($last_codon) eq "TGA") || not(uc($first_codon) eq "ATG"))||($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
+    if(not(valid_stop($last_codon) || ($cds_end_on_transcript_original==length($transcript_seqs{$g}) && valid_stop($transcript_extra_codon{$g}))) || not(valid_start($first_codon)) || ($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
@@ -380,13 +386,13 @@ sub fix_start_stop_codon{
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
 
-  if(not(uc($first_codon) eq "ATG")){
+  if(not(valid_start($first_codon))){
     my $i;
     my $found=0;
     for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      $found=$i if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+      $found=$i if(valid_start(substr($transcript_seq,$i,3)));
       #stop if found a stop
-      last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
+      last if(valid_stop(substr($transcript_seq,$i,3)));
     } 
     if($found>0){
       print "DEBUG found new start codon upstream at $found\n";
@@ -394,7 +400,7 @@ sub fix_start_stop_codon{
     }else{ 
       print "DEBUG failed to find new start codon, looking downstream\n";
       for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
-        last if(uc(substr($transcript_seq,$i,3)) eq "ATG");
+        last if(valid_start(substr($transcript_seq,$i,3)));
       }
       if($i<$cds_end_on_transcript){
         print "DEBUG found new start codon downstream at $i\n";
@@ -404,10 +410,10 @@ sub fix_start_stop_codon{
       }
     }
   }
-  if(not(uc($last_codon) eq "TAA" || uc($last_codon) eq "TAG" || uc($last_codon) eq "TGA") && $cds_end_on_transcript<length($transcript_seq)-1){
+  if(not(valid_stop($last_codon)) && $cds_end_on_transcript<length($transcript_seq)-1){
     my $i;
     for($i=$cds_end_on_transcript+3;$i<length($transcript_seq);$i+=3){
-      last if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA");
+      last if(valid_stop(substr($transcript_seq,$i,3)));
     } 
     if($i<length($transcript_seq)){
       print "DEBUG found new stop codon downstream at $i\n";
@@ -419,6 +425,24 @@ sub fix_start_stop_codon{
   return($cds_start_on_transcript,$cds_end_on_transcript);
 }
 
+sub valid_start{
+  my $codon=$_[0];
+  if(length($codon)==3 && uc($codon) eq "ATG"){
+    return(1);
+  }else{
+    return(0);
+  }
+} 
+
+sub valid_stop{
+  my $codon=$_[0];
+  if(length($codon)==3 && (uc($codon) eq "TAG" || uc($codon) eq "TAA" || uc($codon) eq "TGA")){
+    return(1);
+  }else{
+    return(0);
+  }
+}
+
 sub check_in_frame_stops{
   my $in_frame_stop=-1;  
   my $cds_start_on_transcript=$_[0];
@@ -426,7 +450,7 @@ sub check_in_frame_stops{
   my $transcript_seq=$_[2];
   print "DEBUG checking for in-frame stops $cds_start_on_transcript $cds_end_on_transcript\n";
   for($i=$cds_start_on_transcript;$i<$cds_end_on_transcript;$i+=3){
-    if(uc(substr($transcript_seq,$i,3)) eq "TAA" || uc(substr($transcript_seq,$i,3)) eq "TAG" || uc(substr($transcript_seq,$i,3)) eq "TGA"){
+    if(valid_stop(substr($transcript_seq,$i,3))){
       $in_frame_stop=$i;
       last;
     }
