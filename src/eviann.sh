@@ -530,18 +530,15 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
-    gffread -V -y $GENOME.unused.faa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
-    ufasta one $GENOME.unused.faa |\
-      awk '{if($1 ~ /^>/){name=substr($1,2)}else{if($1~/^M/) print name" "$1}}' |\
-      sort -k2,2 -S 10% |\
-      uniq -c -f 1 |\
-      awk '{print $2" "$1}' > $GENOME.protein_count.txt.tmp && \
-    mv $GENOME.protein_count.txt.tmp $GENOME.protein_count.txt && \
-    rm -f $GENOME.unused.faa && \
+    gffread -V -x $GENOME.unused.fa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     gffread --cluster-only <(awk '{if(toupper($3)=="CDS" || $3=="transcript") print $0}' $GENOME.unused_proteins.spliceFiltered.gff) | \
-      filter_unused_proteins.pl $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff $GENOME.protein_count.txt $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
+      filter_unused_proteins.pl \
+        $GENOMEFILE \
+        $GENOME.unused_proteins.spliceFiltered.gff \
+        <(ufasta one $GENOME.unused.fa | awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(toupper($1)~/^ATG/ && length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}') \
+        $LIFTOVER > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
-    rm -f $GENOME.protein_count.txt
+    rm -f $GENOME.unused.fa
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then
