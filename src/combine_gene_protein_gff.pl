@@ -1049,33 +1049,30 @@ sub fix_start_stop_codon{
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
-  my $i;
-  my @found=();
-  my @fscores=();
-  for($i=$cds_start_on_transcript;$i>=0;$i-=3){
+  my $foundU=-1;
+  for(my $i=$cds_start_on_transcript;$i>=0;$i-=3){
     if(valid_start(substr($transcript_seq,$i,3))){
-      push(@found,$i);
-      my $score=0;
-      push(@fscores,$score);
+      $foundU=$i;
     }
 #stop if found a stop
     last if(valid_stop(substr($transcript_seq,$i,3)));
   } 
-  if(scalar(@found)>0){
-    $cds_start_on_transcript=$found[-1];
+  if($foundU>-1){
+    $cds_start_on_transcript=$foundU;
     print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
   }else{ 
     print "DEBUG failed to find new start codon, looking downstream\n";
-    my $foundU=-1;
-    for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
+    my $foundD=-1;
+    for(my $i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
       if(valid_start(substr($transcript_seq,$i,3))){
-        $foundU=$i;
+        $foundD=$i;
         last;
       }
+      last if(valid_stop(substr($transcript_seq,$i,3)));
     }
-    if($foundU>-1){
-      print "DEBUG found new start codon upstream at $foundU\n";
-      $cds_start_on_transcript=$foundU;
+    if($foundD>-1){
+      print "DEBUG found new start codon upstream at $foundD\n";
+      $cds_start_on_transcript=$foundD;
     }else{
       print "DEBUG failed to find new start codon\n";
     }

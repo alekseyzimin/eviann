@@ -385,42 +385,48 @@ sub fix_start_stop_codon{
   my $transcript_seq=$_[2];
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
-
-  if(not(valid_start($first_codon))){
-    my $i;
-    my $found=0;
-    for($i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      $found=$i if(valid_start(substr($transcript_seq,$i,3)));
-      #stop if found a stop
+  print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
+  my $foundU=-1;
+  for(my $i=$cds_start_on_transcript;$i>=0;$i-=3){
+    if(valid_start(substr($transcript_seq,$i,3))){
+      $foundU=$i;
+    }
+#stop if found a stop
+    last if(valid_stop(substr($transcript_seq,$i,3)));
+  }
+  if($foundU>-1){
+    $cds_start_on_transcript=$foundU;
+    print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
+  }else{
+    print "DEBUG failed to find new start codon, looking downstream\n";
+    my $foundD=-1;
+    for(my $i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
+      if(valid_start(substr($transcript_seq,$i,3))){
+        $foundD=$i;
+        last;
+      }
       last if(valid_stop(substr($transcript_seq,$i,3)));
-    } 
-    if($found>0){
-      print "DEBUG found new start codon upstream at $found\n";
-      $cds_start_on_transcript=$found;
-    }else{ 
-      print "DEBUG failed to find new start codon, looking downstream\n";
-      for($i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
-        last if(valid_start(substr($transcript_seq,$i,3)));
-      }
-      if($i<$cds_end_on_transcript){
-        print "DEBUG found new start codon downstream at $i\n";
-        $cds_start_on_transcript=$i;
-      }else{
-        print "DEBUG failed to find new start codon\n";
-      }
+    }
+    if($foundD>-1){
+      print "DEBUG found new start codon upstream at $foundD\n";
+      $cds_start_on_transcript=$foundD;
+    }else{
+      print "DEBUG failed to find new start codon\n";
     }
   }
-  if(not(valid_stop($last_codon)) && $cds_end_on_transcript<length($transcript_seq)-1){
+  if(not(valid_stop($last_codon))){
     my $i;
-    for($i=$cds_end_on_transcript+3;$i<length($transcript_seq);$i+=3){
+    for($i=$cds_start_on_transcript+3;$i<length($transcript_seq);$i+=3){
       last if(valid_stop(substr($transcript_seq,$i,3)));
-    } 
+    }
     if($i<length($transcript_seq)){
       print "DEBUG found new stop codon downstream at $i\n";
       $cds_end_on_transcript=$i;
     }else{
       print "DEBUG failed to find new stop codon downstream\n";
     }
+  }else{
+    print "DEBUG last codon is stop $last_codon $cds_end_on_transcript\n";
   }
   return($cds_start_on_transcript,$cds_end_on_transcript);
 }
