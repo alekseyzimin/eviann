@@ -446,11 +446,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   log "Computing PWM matrices at splice junctions" && \
   gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
-      perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
-      awk -F'\t'  '{print $3}' |\
-      uniq -c |\
-      awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt && \
-  gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
+    tee >(perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print $F[2],"\n" if($flag)}' | uniq -c | awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt) | \
     perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
     compute_junction_scores.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
@@ -475,9 +471,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }
   }{
     if($F[2] eq "transcript"){
-      $flag=0;
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
-      $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' || $ex_score{$id}>'$JUNCTION_THRESHOLD');
+      $flag=($score{$id}>'$JUNCTION_THRESHOLD' || $ex_score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
@@ -494,7 +489,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   rm -f $GENOME.protref.spliceFiltered.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
-  #exit;
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl \
@@ -523,9 +517,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       }
     }{
       if($F[2] eq "gene"){
-        $flag=0;
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=1 if($score{$id}>'$JUNCTION_THRESHOLD' && $ex_score{$id}>0);
+        $flag=($score{$id}>'$JUNCTION_THRESHOLD' && $ex_score{$id}>0) ? 1 : 0;
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
@@ -617,7 +610,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
   if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
     perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.broken_cds.blastp");while($line=<FILE>){@f=split(/\./,$line);$h{$f[0]}=1}}{print "$F[0] $F[6] $F[7]\n" if(defined($h{$F[0]}) && $#F>7 && not($F[3] =~ /ORF_type:internal/));}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
-#    awk -F '\t' '{if(NF>8 && !($4 ~/ORF_type:internal/)) print $1" "$7" "$8}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
     mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
   fi
   rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
