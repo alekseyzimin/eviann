@@ -70,22 +70,22 @@ while($line=<STDIN>){
       }elsif($cds_genome_start>=$fe[3] && $cds_genome_start<=$fe[4] && $cds_genome_end>=$fe[3] && $cds_genome_end<=$fe[4]){
         #this means that the CDS starts and ends within $exons[$i]
         print join("\t",@fe[0..1]),"\tfive_prime_UTR\t$fe[3]\t",$cds_genome_start-1,"\t",join("\t",@fe[5..$#fe]),"\n" if($cds_genome_start>$fe[3]);
-        print join("\t",@fe[0..1]),"\tcds\t$cds_genome_start\t$cds_genome_end\t",join("\t",@fe[5..$#fe]),"\n";
+        print join("\t",@fe[0..1]),"\tCDS\t$cds_genome_start\t$cds_genome_end\t",join("\t",@fe[5..$#fe]),"\n";
         print join("\t",@fe[0..1]),"\tthree_prime_UTR\t",$cds_genome_end+1,"\t",join("\t",@fe[4..$#fe]),"\n" if($cds_genome_end<$fe[4]);
       }elsif($cds_genome_start>=$fe[3] && $cds_genome_start<=$fe[4] && $cds_genome_end>$fe[4]){
         #this means that the CDS started within $exons[$i], but ends beyond
         print join("\t",@fe[0..1]),"\tfive_prime_UTR\t$fe[3]\t",$cds_genome_start-1,"\t",join("\t",@fe[5..$#fe]),"\n" if($cds_genome_start>$fe[3]);
-        print join("\t",@fe[0..1]),"\tcds\t$cds_genome_start\t",join("\t",@fe[4..$#fe]),"\n";
+        print join("\t",@fe[0..1]),"\tCDS\t$cds_genome_start\t",join("\t",@fe[4..$#fe]),"\n";
       }elsif($cds_genome_end>=$fe[3] && $cds_genome_end<=$fe[4] && $cds_genome_start<$fe[3]){
         #this means that the CDS started before but ends inside the current exon
-        print join("\t",@fe[0..1]),"\tcds\t$fe[3]\t$cds_genome_end\t",join("\t",@fe[5..$#fe]),"\n";
+        print join("\t",@fe[0..1]),"\tCDS\t$fe[3]\t$cds_genome_end\t",join("\t",@fe[5..$#fe]),"\n";
         print join("\t",@fe[0..1]),"\tthree_prime_UTR\t",$cds_genome_end+1,"\t",join("\t",@fe[4..$#fe]),"\n" if($cds_genome_end<$fe[4]);
       }elsif($cds_genome_end<$fe[3]){
         #this means that the CDS ended and the whole exon is 3' UTR
         print join("\t",@fe[0..1]),"\tthree_prime_UTR\t",join("\t",@fe[3..$#fe]),"\n";
       }else{
         #this means that the whole exon contains CDS
-        print join("\t",@fe[0..1]),"\tcds\t",join("\t",@fe[3..$#fe]),"\n";
+        print join("\t",@fe[0..1]),"\tCDS\t",join("\t",@fe[3..$#fe]),"\n";
       }
     }
     $remember_exons=0;

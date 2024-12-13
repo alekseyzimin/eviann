@@ -9,6 +9,7 @@ my $names=$output_prefix.".original_names.txt";
 my $include_stop=0;
 my $ext_length=33;
 my $keep_contains=0;
+my $final_pass=0;
 GetOptions ("prefix=s"   => \$output_prefix,      # string
     "annotated=s" => \$annotated_gff,
     "genome=s" => \$genome,
@@ -17,7 +18,8 @@ GetOptions ("prefix=s"   => \$output_prefix,      # string
     "names=s" => \$names, 
     "ext=i" => \$ext_length,
     "keep_contains" => \$keep_contains,
-    "include_stop"  => \$include_stop)   # flag
+    "include_stop"  => \$include_stop,
+    "final_pass" => \$final_pass)   # flag
 or die("Error in command line arguments\n");
 my $add_stop_coord = $include_stop==1 ? 3 : 0; 
 my $discard_contains = $keep_contains==1 ? 0 : 1;
@@ -840,8 +842,10 @@ for my $locus(keys %transcripts_only_loci){
     my $transcriptID=substr($attributes_t[0],3);#this is the source transcript ID
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
-    next if(($num_samples<2 || $tpm<2) && $transcriptID =~ /^MSTRG/ && substr($attributes_t[0],3) =~ /^TCONS/);#require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
-    next if(scalar(@{$transcript_gff_u{$t}})<2 && substr($attributes_t[0],3) =~ /^TCONS/); #must be multi-exon if final output
+    print "DEBUG u $final_pass transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
+    next if(($tpm < 3 || $num_samples < 2 ) && $transcriptID =~ /^MSTRG/ && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
+    next if(scalar(@{$transcript_gff_u{$t}})<2 && $final_pass); #must be multi-exon if final output
+    print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;
     push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
     my $i=1;

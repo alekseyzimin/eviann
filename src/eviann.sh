@@ -624,6 +624,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --pwms $GENOME.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
       --include_stop \
+      --final_pass \
       1>combine.out 2>&1 && \
   gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
