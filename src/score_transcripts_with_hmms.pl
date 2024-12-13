@@ -244,12 +244,12 @@ for my $g(keys %transcript_gff){
       my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
       my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.31;
       #my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)*0.5)*0.75;
-      my $hmm_donor_score=defined($sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)})?$sdonor{substr($donor_seq,2,1).substr($donor_seq,5,4)}:-10000;
-      my $hmm_acceptor_score=defined($sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)})?$sacceptor{substr($acceptor_seq,21,4).substr($acceptor_seq,27,1)}:-10000;
-      my $hmm_score=$hmm_donor_score+$hmm_acceptor_score;
+      my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
+      my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
+      my $fix_score=$fix_donor_score+$fix_acceptor_score;
       $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
       $transcript_junction2_score{$g}=$junction2_score if($transcript_junction2_score{$g}>$junction2_score);
-      $transcript_hmm_score{$g}=$hmm_score if($transcript_hmm_score{$g}>$hmm_score);
+      $transcript_hmm_score{$g}=$fix_score if($transcript_hmm_score{$g}>$fix_score);
     }
   }
   print "$g $transcript_junction_score{$g} $transcript_hmm_score{$g} $transcript_junction2_score{$g}\n";

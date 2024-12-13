@@ -129,8 +129,8 @@ for my $g(keys %transcript_gff){
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
       }
-      $donor6{substr($donor_seq,2,1).substr($donor_seq,5,4)}++;
-      $acceptor6{substr($acceptor_seq,$acceptor_length-9,4).substr($acceptor_seq,$acceptor_length-3,1)}++;
+      $donor7{substr($donor_seq,2,7)}++;
+      $acceptor7{substr($acceptor_seq,$acceptor_length-9,7)}++;
       print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
       for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++ if(defined($code{substr($donor_seq,$i,1)}));}
       for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
@@ -215,16 +215,16 @@ for(my $i=0;$i<15;$i++){
   print "\n";
 }
 print "NNN TRM\n";
-my @keys = sort { $donor6{$b} <=> $donor6{$a} } keys(%donor6);
+my @keys = sort { $donor7{$b} <=> $donor7{$a} } keys(%donor7);
 print "SDonor\n";
 for my $k(@keys){
-  print "$k ",log($donor6{$k}/$w*10000),"\n";
+  print "$k ",log($donor7{$k}/$w*10000),"\n";
 }
 print "NNNNNN\n";
-@keys = sort { $acceptor6{$b} <=> $acceptor6{$a} } keys(%acceptor6);
+@keys = sort { $acceptor7{$b} <=> $acceptor7{$a} } keys(%acceptor7);
 print "SAcceptor\n";
 for my $k(@keys){
-  print "$k ",log($acceptor6{$k}/$w*10000),"\n";
+  print "$k ",log($acceptor7{$k}/$w*10000),"\n";
 }
 print "NNNNNN\n";
 

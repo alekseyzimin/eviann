@@ -457,6 +457,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     open(FILE,"'$GENOME'.num_introns.txt");
     $index = int(<FILE>) >= 4096 ? 3 : 1;
     open(FILE,"'$GENOME'.transcript_splice_scores.txt");
+    #open(FILE,"/home/bchen103/junction_scores/junction_score_summary_cov2.txt");
     while($line=<FILE>){
       chomp($line);
       @f=split(/\s+/,$line);
@@ -473,6 +474,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     if($F[2] eq "transcript"){
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
       $flag=($score{$id}>'$JUNCTION_THRESHOLD' || $ex_score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
+      #$flag=($score{$id}>0.0001) ? 1 : 0;
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
