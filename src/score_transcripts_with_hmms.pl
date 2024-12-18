@@ -28,8 +28,8 @@ for($i=0;$i<4;$i++){
     }
   }
 }
-my $donor_length=16;
-my $acceptor_length=30;
+my $donor_length;
+my $acceptor_length;
 
 #here we load up all transcripts that matched proteins
 open(FILE,$ARGV[0]);
@@ -95,6 +95,7 @@ if(defined($ARGV[2])){
           }
           $i++;
         }
+        $donor_length=$i;
       }elsif($line=~/^Donor 1HMM/){
         my $i=0;
         while($line=<FILE>){
@@ -131,6 +132,7 @@ if(defined($ARGV[2])){
           }
           $i++;
         }
+        $acceptor_length=$i;
       }elsif($line=~/^Acceptor 1HMM/){
         my $i=0;
         while($line=<FILE>){

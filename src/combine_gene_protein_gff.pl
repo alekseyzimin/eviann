@@ -64,8 +64,8 @@ $code{"n"}=4;
 open(OUTFILE1,">$output_prefix".".k.gff.tmp");
 open(OUTFILE3,">$output_prefix".".u.gff.tmp");
 open(OUTFILE4,">$output_prefix".".unused_proteins.gff.tmp");
-my $donor_length=16;
-my $acceptor_length=30;
+my $donor_length;
+my $acceptor_length;
 
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 #here we read in the aligned CDS features
@@ -227,6 +227,7 @@ if(defined($pwms)){
           $donor_freq[$i][4]=0;
           $i++;
         }
+        $donor_length=$i;
       }elsif($line=~/^Acceptor 0HMM/){
         my $i=0;
         while($line=<FILE>){
@@ -240,6 +241,7 @@ if(defined($pwms)){
           $acceptor_freq[$i][4]=0;
           $i++;
         }
+        $acceptor_length=$i;
       }elsif($line=~/^Start/){
         my $i=0;
         while($line=<FILE>){
