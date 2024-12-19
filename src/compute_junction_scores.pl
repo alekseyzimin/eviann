@@ -7,7 +7,7 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
-my $donor_length=16;
+my $donor_length=15;
 my $acceptor_length=30;
 #these are genetic codes for Markov chains
 my %code=();
@@ -129,6 +129,7 @@ for my $g(keys %transcript_gff){
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
       }
+      next if($donor_seq=~/N/ || $acceptor_seq=~/N/);
       $donor7{substr($donor_seq,2,7)}++;
       $acceptor7{substr($acceptor_seq,$acceptor_length-9,7)}++;
       print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[6]\n";
@@ -218,13 +219,13 @@ print "NNN TRM\n";
 my @keys = sort { $donor7{$b} <=> $donor7{$a} } keys(%donor7);
 print "SDonor\n";
 for my $k(@keys){
-  print "$k ",log($donor7{$k}/$w*10000),"\n";
+  print "$k ",log($donor7{$k}/$w*8192),"\n";
 }
 print "NNNNNN\n";
 @keys = sort { $acceptor7{$b} <=> $acceptor7{$a} } keys(%acceptor7);
 print "SAcceptor\n";
 for my $k(@keys){
-  print "$k ",log($acceptor7{$k}/$w*10000),"\n";
+  print "$k ",log($acceptor7{$k}/$w*8192),"\n";
 }
 print "NNNNNN\n";
 
