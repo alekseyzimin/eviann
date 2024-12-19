@@ -455,14 +455,17 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
-    $index = int(<FILE>) >= 4096 ? 3 : 1;
+    $num_introns=int(<FILE>);
+    $index=2;
+    $index++ if($num_introns >= 1024);
+    $index++ if($num_introns >= 4096);
     open(FILE,"'$GENOME'.transcript_splice_scores.txt");
     #open(FILE,"/home/bchen103/junction_scores/junction_score_summary_cov2.txt");
     while($line=<FILE>){
       chomp($line);
       @f=split(/\s+/,$line);
       $score{$f[0]}=$f[$index];
-      $ex_score{$f[0]}=$f[2];
+      $ex_score{$f[0]}=$f[1];
     }
     open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
     while($line=<FILE>){
@@ -509,13 +512,16 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm > $GENOME.protein_splice_scores.txt && \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.num_introns.txt");
-      $index = int(<FILE>) >= 4096 ? 3 : 1;
+      $index = 2;
+      $num_introns = int(<FILE>);
+      $index++ if($num_introns >= 1024);
+      $index++ if($num_introns >= 4096);
       open(FILE,"'$GENOME'.protein_splice_scores.txt");
       while($line=<FILE>){
         chomp($line);
         @f=split(/\s+/,$line);
         $score{$f[0]}=$f[$index];
-        $ex_score{$f[0]}=$f[2];
+        $ex_score{$f[0]}=$f[1];
       }
     }{
       if($F[2] eq "gene"){

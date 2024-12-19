@@ -44,9 +44,10 @@ while(my $line=<FILE>){
     @exons=();
     $locID=substr($attributes[1],7);#this is the gene_id
     $geneID=substr($attributes[0],3);#this is the transcript_id
-    $transcript_junction_score{$geneID}=10000;
+    $transcript_junction0_score{$geneID}=10000;
+    $transcript_junction1_score{$geneID}=10000;
     $transcript_junction2_score{$geneID}=10000;
-    $transcript_hmm_score{$geneID}=10000;
+    $transcript_fix_score{$geneID}=10000;
     $transcript{$geneID}=$line;
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}));
@@ -241,19 +242,20 @@ for my $g(keys %transcript_gff){
       $acceptor_hmm2_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       $acceptor_hmm2_score+=$acceptor_hmm_freq[0][$code2{substr($acceptor_seq,0,2)}] if(defined($code2{substr($acceptor_seq,0,2)}));
 
-      #$acceptor_hmm_score+=$acceptor_freq[$acceptor_length-1][$code{substr($acceptor_seq,$acceptor_length-1,1)}];
       #print "DEBUG $donor_seq  $donor_score $donor_hmm_score $donor_hmm2_score  $acceptor_seq $acceptor_score $acceptor_hmm_score $acceptor_hmm2_score\n";
-      my $junction_score=($donor_hmm_score+$acceptor_hmm_score)*0.46;
+      #here we calibrate the scores so that they are universal
+      my $junction0_score=($donor_score+$acceptor_score);
+      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.45;
       my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.31;
-      #my $junction_score=($donor_score+$acceptor_score)*0.25+(($donor_hmm_score+$acceptor_hmm_score)*0.5)*0.75;
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
       my $fix_score=$fix_donor_score+$fix_acceptor_score;
-      $transcript_junction_score{$g}=$junction_score if($transcript_junction_score{$g}>$junction_score);
+      $transcript_junction0_score{$g}=$junction0_score if($transcript_junction0_score{$g}>$junction0_score);
+      $transcript_junction1_score{$g}=$junction1_score if($transcript_junction1_score{$g}>$junction1_score);
       $transcript_junction2_score{$g}=$junction2_score if($transcript_junction2_score{$g}>$junction2_score);
-      $transcript_hmm_score{$g}=$fix_score if($transcript_hmm_score{$g}>$fix_score);
+      $transcript_fix_score{$g}=$fix_score if($transcript_fix_score{$g}>$fix_score);
     }
   }
-  print "$g $transcript_junction_score{$g} $transcript_hmm_score{$g} $transcript_junction2_score{$g}\n";
+  print "$g $transcript_fix_score{$g} $transcript_junction0_score{$g} $transcript_junction1_score{$g} $transcript_junction2_score{$g}\n";
 }  
 
