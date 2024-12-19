@@ -9,6 +9,7 @@ my $scf="";
 my $seq="";
 my $donor_length=15;
 my $acceptor_length=30;
+my $score_floor_value=1e-10;
 #these are genetic codes for Markov chains
 my %code=();
 my %code2=();
@@ -163,7 +164,7 @@ print "zoeHMM\n";
 print "Donor 0HMM\n";
 for(my $i=0;$i<$donor_length;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.3f ", log($donor_pwm[$i][$j]/$w*4+1e-10));
+    printf("%.3f ", log($donor_pwm[$i][$j]/$w*4+$score_floor_value));
   }
   print "\n";
 }
@@ -171,7 +172,7 @@ print "NN TRM\n";
 print "Acceptor 0HMM\n";
 for(my $i=0;$i<$acceptor_length;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4+1e-10));
+    printf("%.3f ",log($acceptor_pwm[$i][$j]/$w*4+$score_floor_value));
   } 
   print "\n";
 } 
@@ -179,7 +180,7 @@ print "NN TRM\n";
 print "Donor 1HMM\n";
 for(my $i=0;$i<($donor_length-1);$i++){
   for(my $j=0;$j<16;$j++){
-    printf("%.3f ", log($donor2_pwm[$i][$j]/$w*16+1e-10));
+    printf("%.3f ", log($donor2_pwm[$i][$j]/$w*16+$score_floor_value));
   }
   print "\n";
 }
@@ -187,7 +188,7 @@ print "NN TRM\n";
 print "Acceptor 1HMM\n";
 for(my $i=0;$i<($acceptor_length-1);$i++){
   for(my $j=0;$j<16;$j++){
-    printf("%.3f ",log($acceptor2_pwm[$i][$j]/$w*16+1e-10));
+    printf("%.3f ",log($acceptor2_pwm[$i][$j]/$w*16+$score_floor_value));
   }
   print "\n";
 }
@@ -195,7 +196,7 @@ print "NN TRM\n";
 print "Donor 2HMM\n";
 for(my $i=0;$i<($donor_length-2);$i++){
   for(my $j=0;$j<64;$j++){
-    printf("%.3f ", log($donor3_pwm[$i][$j]/$w*64+1e-10));
+    printf("%.3f ", log($donor3_pwm[$i][$j]/$w*64+$score_floor_value));
   }
   print "\n";
 }
@@ -203,7 +204,7 @@ print "NN TRM\n";
 print "Acceptor 2HMM\n";
 for(my $i=0;$i<($acceptor_length-2);$i++){
   for(my $j=0;$j<64;$j++){
-    printf("%.3f ",log($acceptor3_pwm[$i][$j]/$w*64+1e-10));
+    printf("%.3f ",log($acceptor3_pwm[$i][$j]/$w*64+$score_floor_value));
   }
   print "\n";
 }
@@ -211,7 +212,7 @@ print "NN TRM\n";
 print "Start ATG WMM\n";
 for(my $i=0;$i<15;$i++){
   for(my $j=0;$j<4;$j++){
-    printf("%.3f ",log($start_pwm[$i][$j]/$sw*4+1e-10));
+    printf("%.3f ",log($start_pwm[$i][$j]/$sw*4+$score_floor_value));
   }
   print "\n";
 }
