@@ -47,6 +47,8 @@ while(my $line=<FILE>){
     $transcript_junction0_score{$geneID}=10000;
     $transcript_junction1_score{$geneID}=10000;
     $transcript_junction2_score{$geneID}=10000;
+    $transcript_donor2_score{$geneID}=10000;
+    $transcript_acceptor2_score{$geneID}=10000;
     $transcript_fix_score{$geneID}=10000;
     $transcript{$geneID}=$line;
   }elsif($gff_fields[2] eq "exon"){
@@ -253,9 +255,11 @@ for my $g(keys %transcript_gff){
       $transcript_junction0_score{$g}=$junction0_score if($transcript_junction0_score{$g}>$junction0_score);
       $transcript_junction1_score{$g}=$junction1_score if($transcript_junction1_score{$g}>$junction1_score);
       $transcript_junction2_score{$g}=$junction2_score if($transcript_junction2_score{$g}>$junction2_score);
+      $transcript_donor2_score{$g}=$donor_hmm2_score if($transcript_donor2_score{$g}>$donor_hmm2_score);
+      $transcript_acceptor2_score{$g}=$acceptor_hmm2_score if($transcript_acceptor2_score{$g}>$acceptor_hmm2_score);
       $transcript_fix_score{$g}=$fix_score if($transcript_fix_score{$g}>$fix_score);
     }
   }
-  print "$g $transcript_fix_score{$g} $transcript_junction0_score{$g} $transcript_junction1_score{$g} $transcript_junction2_score{$g}\n";
+  print "$g $transcript_fix_score{$g} $transcript_junction0_score{$g} $transcript_junction1_score{$g} $transcript_junction2_score{$g} $transcript_donor2_score{$g} $transcript_acceptor2_score{$g}\n";
 }  
 
