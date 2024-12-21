@@ -471,14 +471,15 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     while($line=<FILE>){
       chomp($line);
       @f=split(/\s+/,$line);
-      $ex_score{$f[0]}=10000;
+      $reliable{$f[0]}=1;
     }
   }{
     if($F[2] eq "transcript"){
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
       ($name,$samples,$tpm)=split(/:/,$id);
       $score{$id}+=2 if($tpm > 10||$samples>1);
-      $score{$id}+=4 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
+      $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
+      $score{$id}+=4 if($reliable{$id});
       $flag=($score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
       #$flag=($score{$id}>0.0001) ? 1 : 0;
     }
