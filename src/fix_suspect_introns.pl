@@ -17,6 +17,7 @@ my $first_cds=1;
 while($line=<STDIN>){
   chomp($line);
   @f=split(/\t/,$line);
+  $f[7]=".";
   if($f[2] eq "gene"){
     print join("\t",@{$cds}),"\n" unless($first_cds);
     print join("\t",@{$cds}[0..1]),"\texon\t",join("\t",@{$cds}[3..$#{$cds}]),"\n" unless($first_cds);
