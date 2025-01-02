@@ -8,6 +8,7 @@ export BATCH_SIZE=1000000
 export MAX_INTRON=250000
 export MIN_TPM=0.25
 export DEBUG=0
+export PARTIAL=0
 UNIPROT="uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
@@ -68,6 +69,7 @@ function usage {
  echo " -p FILE      fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
  echo " -s FILE      fasta file with UniProt-SwissProt proteins.  EviAnn uses a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch."
  echo " -m INT       max intron size, default: 250000"
+ echo " --partial    include transcripts with partial (mising start or stop codon) CDS in the output"
  echo " --liftover   liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " --functional perform functional annotation, default: not set"
  echo " --debug      keep intermediate output files, default: not set"
@@ -132,6 +134,10 @@ do
         -f|--functional)
             FUNCTIONAL=1
             log "Will perform functional annotation"
+            ;;
+        --partial)
+            PARTIAL=1
+            log "Will include transcripts with partial (mising start or stop codon) CDS in the output"
             ;;
         -m|--max-intron)
             MAX_INTRON="$2"
@@ -636,6 +642,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
       --include_stop \
       --final_pass \
+      --output_partial $PARTIAL \
       1>combine.out 2>&1 && \
   gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
