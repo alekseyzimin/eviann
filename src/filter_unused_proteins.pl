@@ -80,30 +80,13 @@ while($line=<STDIN>){
     }
   }
 }
+
 my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scores;
-my $similarity_threshold=0;
-if(not(defined($liftover)) || $liftover<1){
-  #my @f=split(/\s+/,$scores_sorted[int($#scores_sorted*.95)]);
-  my @uniq_scores=();
-  my %hs=();
-  my %hn=();
-  for(my $i=0;$i<=$#scores_sorted;$i++){
-    my @F=split(/\s+/,$scores_sorted[$i]);
-    if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99){
-      $hn{$F[1]}+=1;#this is the number of proteins per locus
-      $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-      push(@uniq_scores,$F[0]);
-    }
-  }
-  $similarity_threshold=$uniq_scores[$#uniq_scores];
-}
-print "#similarity threshold $similarity_threshold\n";
 my %h=();
 my %hs=();
 my %hn=();
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
-  #if(($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99) && $F[0]>=$similarity_threshold){
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
