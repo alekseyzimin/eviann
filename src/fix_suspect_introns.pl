@@ -44,9 +44,12 @@ while($line=<STDIN>){
     }
   }elsif($f[2] eq "intron"){
     $intron_size=$f[4]-$f[3]; 
-    $intron_suspect=0; 
-    for($i=11;$i<60;$i+=3){
-      $intron_suspect=1 if($intron_size==$i);
+    my $intron_suspect=0; 
+    for($i=7;$i<40;$i+=3){
+      if($intron_size==$i){
+        $intron_suspect=1;
+        last;
+      }
     }
     $prev_intron_good=1;
     $prev_intron_good=0  if(not(defined($introndb{"$f[0] $f[3] $f[4]"})) && $intron_suspect); 
