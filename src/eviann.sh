@@ -557,32 +557,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -S -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 && \
-    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db uniprot  -max_target_seqs 5 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp1.out > $GENOME.lncRNA.blastp.tmp && \
-    mv $GENOME.lncRNA.blastp.tmp $GENOME.lncRNA.u.blastp && \
-    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.lncRNA.u.blastp 1>transdecoder.Predict.out 2>&1
+    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only  1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
       add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9~/ORF type:complete/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
-        perl -F'\t' -ane 'BEGIN{
-          open(FILE,"'$GENOME'.lncRNA.u.blastp");
-          while($line=<FILE>){
-            $line=~/^(.+)\.p\d+/;
-            $f=$1;
-            $f=~s/_lncRNA//;
-            $h{$f}=1;
-          }
-        }{
-          unless($F[2] eq "exon" || $F[2] eq "gene" || $F[2] =~ /_UTR/ || $F[8] =~/_lncRNA/){
-            @f=split(/;|:/,$F[8]); 
-            if(defined($h{substr($f[0],3)})){
-              if($F[2] eq "mRNA"){
-                print join("\t",@F[0..1]),"\tgene\t",join("\t",@F[3..8]);
-              }else{
-                print join("\t",@F);
-              }
-            }
-          }
-        }' > $GENOME.u.cds.gff.tmp && \
+      gffread -C | \
+      perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "mRNA"); print join("\t",@F);}' > $GENOME.u.cds.gff.tmp && \
       mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff 
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
