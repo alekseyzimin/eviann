@@ -125,7 +125,7 @@ while(my $line=<FILE>){
       $transcript_gff{$geneID}=[@exons];
       $transcript_ori{$geneID}=$tori;
     }elsif(defined($transcript_u{$geneID})){
-      unless($#exons==-1){#not interested in single exon
+      if($#exons > 0){#not interested in single exon
         $transcript_gff_u{$geneID}=[@exons];
       }
     }
