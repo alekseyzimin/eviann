@@ -3,7 +3,6 @@
 my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
 my $counts_file=$ARGV[2];
-my $liftover=$ARGV[3];
 my %similarity;
 my %contigs;
 
@@ -24,8 +23,10 @@ while($line=<FILE>){
 }
 $contigs{$cn}=$seq if(length($seq)>0);
 
+my @unused=();
 open(FILE,$unused_proteins_file);
 while($line=<FILE>){
+  push(@unused,$line);
   my @F=split(/\t/,$line);
   if($F[2] eq "gene"){
     $similarity{$1}=$4+$3/100-1 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
@@ -43,10 +44,9 @@ while($line=<FILE>){
 while($line=<STDIN>){
   chomp($line);
   my @f=split(/\t/,$line);
-  if($f[2] eq "transcript"){
+  if($f[2] eq "gene"){
     my $transcript_id;
     my $gene_id;
-    my $tcount;
     my $startcodon;
     my $stopcodon;
     if($f[8]=~/ID=(\S+);locus=(\S+)$/){
@@ -70,10 +70,7 @@ while($line=<STDIN>){
       $seq=~tr/acgtACGT/tgcaTGCA/;
       $stopcodon=uc(reverse($seq));
     }
-    $codon_count=0;
-    $codon_count++ if($startcodon eq "ATG"); 
-    $codon_count++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA"); 
-    if($codon_count==2){
+    if($startcodon eq "ATG" && ($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA")){
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id");
       #print "DEBUG $score $gene_id $transcript_id $ori\n";
@@ -94,17 +91,16 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
   }
 }
 
-open(FILE,$unused_proteins_file);
-while($line=<FILE>){
-  chomp($line);
-  my @f=split(/\t/,$line);
+my $flag=0;
+foreach my $l(@unused){
+  chomp($l);
+  my @f=split(/\t/,$l);
   my $id="";
   if($f[2] eq "gene"){
     $f[2]="transcript";
     $id=$1 if($f[8]=~ /ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)$/);
-  }elsif($f[2] eq "exon" || uc($f[2]) eq "CDS"){
-    $id=$1 if($f[8]=~ /Parent=(\S+)$/);
+    $flag=defined($h{$id}) ? 1 : 0;
   }
-  print join("\t",@f),"\n" if(defined($h{$id}));
+  print join("\t",@f),"\n" if($flag);
 }
 
