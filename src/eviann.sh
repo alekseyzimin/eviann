@@ -542,14 +542,16 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
-    gffread -V -x $GENOME.unused.fa -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff && \
     gffread --cluster-only $GENOME.unused_proteins.spliceFiltered.gff | \
       filter_unused_proteins.pl \
         $GENOMEFILE \
         $GENOME.unused_proteins.spliceFiltered.gff \
-        <(ufasta one $GENOME.unused.fa | awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(toupper($1)~/^ATG/ && length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}') > $GENOME.best_unused_proteins.gff.tmp && \
-    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
-    rm -f $GENOME.unused.fa
+        <(gffread -V -x /dev/stdout -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff | \
+          ufasta one | \
+          awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(toupper($1)~/^ATG/ && length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
+        ) \
+      > $GENOME.best_unused_proteins.gff.tmp && \
+    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff 
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then
@@ -600,7 +602,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
   fi
   rm -rf $GENOME.broken_cds.fa.transdecoder* && \
-  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa 1>transdecoder.LongOrfs.out 2>&1 && \
+  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa -m 30 1>transdecoder.LongOrfs.out 2>&1 && \
   makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
   blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.broken_cds.blastp.tmp && \
   mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \

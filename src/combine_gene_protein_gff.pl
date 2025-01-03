@@ -50,7 +50,7 @@ my $dir="";
 my $scf="";
 my $seq="";
 my %used_proteins;
-my $length_fraction=0.7;
+my $length_fraction=0.75;
 #these are genetic codes for HMMs
 my %code=();
 $code{"A"}=0;
