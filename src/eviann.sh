@@ -67,7 +67,7 @@ function usage {
  "
  echo " -e FILE      fasta file with assembled transcripts from related species, default: none"
  echo " -p FILE      fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
- echo " -s FILE      fasta file with UniProt-SwissProt proteins to use in functional annotation.  EviAnn uses a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch."
+ echo " -s FILE      fasta file with UniProt-SwissProt proteins to use in functional annotation or if proteins from close relatives are not available.  EviAnn uses a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch. THe database is available at: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
  echo " -m INT       max intron size, default: 250000"
  echo " --partial    include transcripts with partial (mising start or stop codon) CDS in the output"
  echo " --liftover   liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"

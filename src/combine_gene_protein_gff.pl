@@ -480,6 +480,7 @@ for my $g(keys %transcript_cds){
     }else{
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without a start or a stop
     }
+    $transcript_class{$g}="NA" if(not($transcript_class{$g} =~ /j|=|k|c/) && $cds_length<$length_fraction*length($transcript_seqs{$g}));#poor match and CDS too short
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
 
   }else{#reverse orientation
@@ -636,8 +637,8 @@ for my $g(keys %transcript_cds){
     }else{
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
     }
-#$transcript_class{$g}="NA" if(($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING") && $transcript_source{$g} eq "EviAnnP");#we eliminate incomplete transcripts derived from protein alignments
-      print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
+    $transcript_class{$g}="NA" if(not($transcript_class{$g} =~ /j|=|k|c/) && $cds_length<$length_fraction*length($transcript_seqs{$g}));#poor match and CDS too short
+    print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
   }
 }
 
