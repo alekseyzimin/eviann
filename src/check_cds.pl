@@ -347,7 +347,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    if(not(valid_stop($last_codon) || ($cds_end_on_transcript_original==length($transcript_seqs{$g}) && valid_stop($transcript_extra_codon{$g}))) || not(valid_start($first_codon)) || ($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
+    if((not(valid_stop($last_codon) || ($cds_end_on_transcript_original==length($transcript_seqs{$g}) && valid_stop($transcript_extra_codon{$g}))) || not(valid_start($first_codon))) || ($cds_end_on_transcript-$cds_start_on_transcript)<$length_fraction*($cds_end_on_transcript_original-$cds_start_on_transcript_original)){
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
