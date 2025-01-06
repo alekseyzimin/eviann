@@ -602,7 +602,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
   fi
   rm -rf $GENOME.broken_cds.fa.transdecoder* && \
-  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa -m 30 1>transdecoder.LongOrfs.out 2>&1 && \
+  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa -m 75 1>transdecoder.LongOrfs.out 2>&1 && \
   makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
   blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.broken_cds.blastp.tmp && \
   mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
