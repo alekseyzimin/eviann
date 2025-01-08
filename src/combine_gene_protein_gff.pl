@@ -156,6 +156,7 @@ while(my $line=<FILE>){
       $transcript_class{$geneID}=$class_code;
       $transcript_origin{$geneID}=$gff_fields[1];
       $transcripts_cds_loci{$locID}.="$geneID ";
+      $transcript_cds_modified{$geneID}=0;
     }
     $transcript_class{$geneID}="NA" if($gff_fields[8] =~ /contained_in=/ && $discard_contains);
   }elsif($gff_fields[2] eq "exon"){
@@ -206,6 +207,7 @@ while(my $line=<FILE>){
   my ($geneID, $cds_start,$cds_stop)=split(/\s+/,$line);
   $transcript_cds_start_on_transcript{$geneID}=$cds_start;
   $transcript_cds_stop_on_transcript{$geneID}=$cds_stop-3;
+  $transcript_cds_modified{$geneID}=1;
 }
 
 #we load SNAP HMMs
@@ -367,14 +369,17 @@ for my $g(keys %transcript_cds){
     }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
       $cds_start_on_transcript=$cds_end_on_transcript%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+      $transcript_cds_modified{$g}=1;
     }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
       $cds_end_on_transcript=length($transcript_seqs{$g})-(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+      $transcript_cds_modified{$g}=1;
     }
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
+      $transcript_cds_modified{$g}=1;
       if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
         print "end\n";
         $cds_length-=$cds_length%3;
@@ -480,7 +485,7 @@ for my $g(keys %transcript_cds){
     }else{
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without a start or a stop
     }
-    $transcript_class{$g}="NA" if(not($transcript_class{$g} =~ /j|=|k|c/) && $cds_length<$length_fraction*length($transcript_seqs{$g}));#poor match and CDS too short
+    $transcript_class{$g}="NA" if((not($transcript_class{$g} =~ /j|=|k|c/) && $transcript_cds_modified{$g}) && $cds_length<$length_fraction*length($transcript_seqs{$g}));#poor match and CDS too short
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
 
   }else{#reverse orientation
@@ -525,13 +530,16 @@ for my $g(keys %transcript_cds){
     }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
       $cds_start_on_transcript=$cds_end_on_transcript%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+      $transcript_cds_modified{$g}=1;
     }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
       $cds_end_on_transcript=length($transcript_seqs{$g})-(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+      $transcript_cds_modified{$g}=1;
     }
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
 
     if($cds_length %3 >0){
+      $transcript_cds_modified{$g}=1;
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
       if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
         print "end\n";
@@ -637,7 +645,7 @@ for my $g(keys %transcript_cds){
     }else{
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" || $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
     }
-    $transcript_class{$g}="NA" if(not($transcript_class{$g} =~ /j|=|k|c/) && $cds_length<$length_fraction*length($transcript_seqs{$g}));#poor match and CDS too short
+    $transcript_class{$g}="NA" if((not($transcript_class{$g} =~ /j|=|k|c/) && $transcript_cds_modified{$g}) && $cds_length<$length_fraction*length($transcript_seqs{$g}));#poor match and CDS too short
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
   }
 }
