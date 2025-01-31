@@ -38,9 +38,9 @@ exit 1
 function usage {
  echo "Usage: eviann.sh [options]"
  echo "Options:"
- echo " -t INT       number of threads, default: 1"
- echo " -g FILE      MANDATORY:genome fasta file default: none"
- echo " -r FILE      file containing list of filenames of reads from transcriptome sequencing experiments, default: none
+ echo " -t INT           number of threads, default: 1"
+ echo " -g FILE          MANDATORY:genome fasta file default: none"
+ echo " -r FILE          file containing list of filenames of reads from transcriptome sequencing experiments, default: none
  
   FORMAT OF THIS FILE:
   Each line in the file must refer to sequencing data from a single experiment.
@@ -65,17 +65,19 @@ function usage {
  
   Absense of a tag assumes fastq tag and expects one or a pair of /path/filename.fastq on the line.
  "
- echo " -e FILE      fasta file with assembled transcripts from related species, default: none"
- echo " -p FILE      fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
- echo " -s FILE      fasta file with UniProt-SwissProt proteins to use in functional annotation or if proteins from close relatives are not available.  EviAnn uses a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch. THe database is available at: https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
- echo " -m INT       max intron size, default: 250000"
- echo " --partial    include transcripts with partial (mising start or stop codon) CDS in the output"
- echo " --liftover   liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
- echo " --functional perform functional annotation, default: not set"
- echo " --debug      keep intermediate output files, default: not set"
- echo " --verbose    verbose run, default: not set"
- echo " --version    report version and exit."
- echo " --help       display this message and exit."
+ echo " -e FILE          fasta file with assembled transcripts from related species, default: none"
+ echo " -p FILE          fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
+ echo " -s FILE          fasta file with UniProt-SwissProt proteins to use in functional annotation or if proteins from close relatives are not available.  EviAnn uses "
+ echo "                      a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch. THe database is available at:"
+ echo "                      https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
+ echo " -m INT           max intron size, default: 250000"
+ echo " --partial        include transcripts with partial (mising start or stop codon) CDS in the output"
+ echo " --liftover       liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
+ echo " -f|--functional  perform functional annotation, default: not set"
+ echo " --debug          keep intermediate output files, default: not set"
+ echo " --verbose        verbose run, default: not set"
+ echo " --version        report version and exit."
+ echo " --help           display this message and exit."
  echo ""
  echo " -r or -e MUST be supplied."
 }
@@ -147,7 +149,7 @@ do
             set -x
             ;;
         --version)
-            echo "version 2.0.0"
+            echo "version 2.0.1"
             exit 0
             ;;
         --debug)
@@ -172,6 +174,10 @@ if [ ! -s $UNIPROT ];then
   log "Unpacking Uniprot database" && \
   gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
   mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta
+else
+  zcat -f $UNIPROT > uniprot_sprot.nonred.85.fasta.tmp && \
+  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta && \
+  UNIPROT=uniprot_sprot.nonred.85.fasta
 fi
 
 #checking inputs

@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 use Getopt::Long;
-use URI::Escape;
 
 #-----------------------------------------------------------------------------
 #----------------------------------- MAIN ------------------------------------
@@ -59,7 +58,7 @@ while (my $line = <$IN>) {
 		$note .= 'function unknown';
 	}
 
-	$note = uri_escape($note, ';=%&,');
+	$note =~ s/;|=|%|&/./g;
 
 	$note = "Note=" . $note;
 
