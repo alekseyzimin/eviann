@@ -22,7 +22,7 @@ GetOptions ("prefix=s"   => \$output_prefix,      # string
     "keep_contains" => \$keep_contains,
     "include_stop"  => \$include_stop,
     "output_partial=i" => \$output_partial,
-    "lncrnamintpm=i" => \$lncRNA_TPM,
+    "lncrnamintpm=f" => \$lncRNA_TPM,
     "final_pass" => \$final_pass)   # flag
 or die("Error in command line arguments\n");
 my $add_stop_coord = $include_stop==1 ? 3 : 0; 
@@ -127,7 +127,7 @@ while(my $line=<FILE>){
       $transcript_gff{$geneID}=[@exons];
       $transcript_ori{$geneID}=$tori;
     }elsif(defined($transcript_u{$geneID})){
-      if($#exons > 0){#not interested in single exon
+      if(scalar(@exons) > 1){
         $transcript_gff_u{$geneID}=[@exons];
       }
     }
@@ -177,7 +177,7 @@ if(defined($transcript{$geneID})){
   $transcript_gff{$geneID}=[@exons];
   $transcript_ori{$geneID}=$tori;
 }elsif(defined($transcript_u{$geneID})){
-  unless($#exons==-1){#not interested in single exon
+  if(scalar(@exons)>1){#not interested in single exon
     $transcript_gff_u{$geneID}=[@exons];
   }
 }
@@ -865,7 +865,6 @@ for my $locus(keys %transcripts_only_loci){
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
     print "DEBUG u $final_pass transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && $transcriptID =~ /^MSTRG/ && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
-    next if(scalar(@{$transcript_gff_u{$t}})<2 && $final_pass); #must be multi-exon if final output
     print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;
     push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
