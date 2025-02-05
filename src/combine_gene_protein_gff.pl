@@ -11,6 +11,7 @@ my $ext_length=33;
 my $keep_contains=0;
 my $final_pass=0;
 my $output_partial=0;
+my $lncRNA_TPM=3;
 GetOptions ("prefix=s"   => \$output_prefix,      # string
     "annotated=s" => \$annotated_gff,
     "genome=s" => \$genome,
@@ -21,6 +22,7 @@ GetOptions ("prefix=s"   => \$output_prefix,      # string
     "keep_contains" => \$keep_contains,
     "include_stop"  => \$include_stop,
     "output_partial=i" => \$output_partial,
+    "lncrnamintpm=i" => \$lncRNA_TPM,
     "final_pass" => \$final_pass)   # flag
 or die("Error in command line arguments\n");
 my $add_stop_coord = $include_stop==1 ? 3 : 0; 
@@ -862,7 +864,7 @@ for my $locus(keys %transcripts_only_loci){
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
     print "DEBUG u $final_pass transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
-    next if(($tpm < 3 || $num_samples < 2 ) && $transcriptID =~ /^MSTRG/ && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
+    next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && $transcriptID =~ /^MSTRG/ && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
     next if(scalar(@{$transcript_gff_u{$t}})<2 && $final_pass); #must be multi-exon if final output
     print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;

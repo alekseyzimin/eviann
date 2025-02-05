@@ -9,6 +9,7 @@ export MAX_INTRON=250000
 export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
+export LNCRNATPM=3
 UNIPROT="uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
@@ -72,6 +73,7 @@ function usage {
  echo "                      https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
  echo " -m INT           max intron size, default: 250000"
  echo " --partial        include transcripts with partial (mising start or stop codon) CDS in the output"
+ echo " --lncrnamintpm   minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 3"
  echo " --liftover       liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " -f|--functional  perform functional annotation, default: not set"
  echo " --debug          keep intermediate output files, default: not set"
@@ -140,6 +142,10 @@ do
         --partial)
             PARTIAL=1
             log "Will include transcripts with partial (mising start or stop codon) CDS in the output"
+            ;;
+        --lncrnamintpm)
+            LNCRNATPM="$2"
+            shift
             ;;
         -m|--max-intron)
             MAX_INTRON="$2"
@@ -630,6 +636,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --include_stop \
       --final_pass \
       --output_partial $PARTIAL \
+      --lncrnamintpm $LNCRNATPM \
       1>combine.out 2>&1 && \
   gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     perl -F'\t' -ane '{if($F[8] =~ /_lncRNA/ && $F[2] eq "mRNA"){$F[2]="ncRNA"}print join("\t",@F);}' | \
@@ -724,7 +731,7 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
     log "Output annotation GFF is in $GENOME.pseudo_label.gff, proteins are in  $GENOME.proteins.fasta, transcripts are in $GENOME.transcripts.fasta"
   fi
   echo -n "Number of genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff |wc -l
-  echo -n "Number of protein coding genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep protein_coding |wc -l
+  echo -n "Number of protein coding genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep protein_coding | grep -v  'pseudo=true' | wc -l
   echo -n "Number of processed pseudo gene transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
