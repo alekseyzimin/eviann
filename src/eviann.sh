@@ -713,6 +713,8 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
     if [ -s $EXTRA_GFF ];then
       log "Adding extra features from $EXTRA_GFF"
       add_features.pl $GENOME.gff $EXTRA_GFF > $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
+    else
+      cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
     fi && \
     touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   fi
