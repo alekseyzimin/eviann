@@ -52,7 +52,7 @@ if(not($trna_file eq "")){
         $gene_record{$gene_key}.=$line."\n";
       }
     }elsif(!$contain){
-      $gene_record{$gene_key}.=$line."\n";
+      $gene_record{$gene_key}.=$line."\n" if($gff_fields[0] eq $gene_chr && $gff_fields[3]>= $gene_beg && $gff_fields[4] <= $gene_end && $gff_fields[6] eq $gene_ori);
     }
   }
 }
