@@ -10,6 +10,7 @@ export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=3.0
+EXTRA_GFF="na"
 UNIPROT="uniprot_sprot.nonred.85.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
@@ -76,6 +77,7 @@ function usage {
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 3.0"
  echo " --liftover            liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " -f|--functional       perform functional annotation, default: not set"
+ echo " --extra FILE          extra features to add from an external GFF file.  Feautures MUST have gene records.  Any features that overlap with existing annotations will be ignored"
  echo " --debug               keep intermediate output files, default: not set"
  echo " --verbose             verbose run, default: not set"
  echo " --version             report version and exit."
@@ -149,6 +151,10 @@ do
             ;;
         -m|--max-intron)
             MAX_INTRON="$2"
+            shift
+            ;;
+        --extra)
+            EXTRA_GFF="$2"
             shift
             ;;
         --verbose)
@@ -697,11 +703,17 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
         } 
       }
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
-    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff &&
+    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
+    if [ -s $EXTRA_GFF ];then
+      log "Adding extra features from $EXTRA_GFF"
+      add_features.pl $GENOME.pseudo_label.gff $EXTRA_GFF > $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
+    fi && \
     touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   else
-    cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && \
-    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
+    if [ -s $EXTRA_GFF ];then
+      log "Adding extra features from $EXTRA_GFF"
+      add_features.pl $GENOME.gff $EXTRA_GFF > $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
+    fi && \
     touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   fi
   if [ $DEBUG -lt 1 ];then

@@ -7,6 +7,7 @@ if(not($gff_file eq "")){
   open(FILE,$gff_file);
   while(my $line=<FILE>){#we just read in the whole file
     chomp($line);
+    if($line =~ /^\#/){ print $line,"\n";next;}
     my @gff_fields=split(/\t/,$line);
     if($gff_fields[2] eq "gene"){
       $gene_beg=$gff_fields[3];
