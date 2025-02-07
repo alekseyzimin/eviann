@@ -26,6 +26,17 @@ if(not($gff_file eq "")){
   }
 }
 
+my %chrom_index=();
+my $i=0;
+my $chrom="";
+foreach $c(@gchr){
+  unless($c eq $chrom){
+    $chrom_index{$c}=$i;
+    $c=$chrom;
+  }
+  $i++;
+}
+
 #read in trnas from external
 if(not($trna_file eq "")){
   open(FILE,$trna_file);
@@ -39,7 +50,8 @@ if(not($trna_file eq "")){
       $gene_end=$gff_fields[4];
       $gene_ori=$gff_fields[6];
       $gene_chr=$gff_fields[0];
-      for(my $i=0;$i<=$#gchr;$i++){
+      for(my $i=$chrom_index{$gff_fields[0]};$gchr[$i] eq $gff_fields[0] && $i<=$#gchr;$i++){
+      #for(my $i=0;$i<=$#gchr;$i++){
         if($gene_chr eq $gchr[$i] && $gene_ori eq $gori[$i] && (($gene_beg<=$gend[$i] && $gene_beg>=$gbeg[$i])|| ($gene_end<=$gend[$i] && $gene_end>=$gbeg[$i]) || ($gene_beg<=$gbeg[$i] && $gene_end>=$gend[$i]))){
           $contain=1;
           $i=$#gchr+1;
@@ -59,8 +71,12 @@ if(not($trna_file eq "")){
 
 #now we added non-intersecting gene records, lets sort and output
 my @gene_keys_sorted=sort mysort @gene_keys;
+my %output=();
 foreach my $g(@gene_keys_sorted){
-  print $gene_record{$g};
+  unless($output{$g}){
+    print $gene_record{$g};
+    $output{$g}=1;
+  }
 }
 
 sub mysort{
