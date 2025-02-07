@@ -704,18 +704,7 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
       }
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
-    if [ -s $EXTRA_GFF ];then
-      log "Adding extra features from $EXTRA_GFF"
-      add_features.pl $GENOME.pseudo_label.gff $EXTRA_GFF > $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
-    fi && \
-    touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
-  else
-    if [ -s $EXTRA_GFF ];then
-      log "Adding extra features from $EXTRA_GFF"
-      add_features.pl $GENOME.gff $EXTRA_GFF > $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
-    else
-      cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff
-    fi && \
+    rm -f $GENOME.functional_note.pseudo_label.gff add_external.success && \
     touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
   fi
   if [ $DEBUG -lt 1 ];then
@@ -736,7 +725,7 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
       my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
       my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.proteins.fasta > $GENOME.functional_note.proteins.fasta.tmp  && mv $GENOME.functional_note.proteins.fasta.tmp $GENOME.functional_note.proteins.fasta && \
       my_maker_functional_fasta $UNIPROT $GENOME.maker2uni.blastp $GENOME.transcripts.fasta > $GENOME.functional_note.transcripts.fasta.tmp  && mv $GENOME.functional_note.transcripts.fasta.tmp $GENOME.functional_note.transcripts.fasta && \
-      rm -rf blastp4.out && \
+      rm -rf blastp4.out add_external.success && \
       touch functional.success  || error_exit "Functional annotation failed"
     fi
     log "Output functionally annotated GFF is in $GENOME.functional_note.pseudo_label.gff, proteins are in  $GENOME.functional_note.proteins.fasta, transcripts are in $GENOME.functional_note.transcripts.fasta"
@@ -753,3 +742,22 @@ if [ -e merge.success ] && [ -e pseudo_detect.success ];then
   echo -n "Number of distinct proteins: "; ufasta one $GENOME.proteins.fasta | grep -v '^>' |sort -S 10% |uniq |wc -l
 fi
 
+if [ -s $EXTRA_GFF ] && [ -e merge.success ];then
+  if [ ! -e add_external.success ];then
+    log "Adding extra features from $EXTRA_GFF"
+    if [ -e functional.success ];then
+      add_features.pl $GENOME.functional_note.pseudo_label.gff $EXTRA_GFF > $GENOME.functional_note.pseudo_label.extra.gff.tmp && mv $GENOME.functional_note.pseudo_label.extra.gff.tmp $GENOME.functional_note.pseudo_label.extra.gff && \
+      touch add_external.success
+    else
+      add_features.pl $GENOME.pseudo_label.gff $EXTRA_GFF > $GENOME.pseudo_label.extra.gff.tmp && mv $GENOME.pseudo_label.extra.gff.tmp $GENOME.pseudo_label.extra.gff && \
+      touch add_external.success
+    fi
+  fi
+  if [ -e functional.success ];then
+    log "Annotation GFF with external features added is in $GENOME.functional_note.pseudo_label.extra.gff" && \
+    echo -n "Number of genes with external: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.functional_note.pseudo_label.extra.gff |wc -l
+  else
+    log "Annotation GFF with external features added is in $GENOME.pseudo_label.extra.gff" && \
+    echo -n "Number of genes with external: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.extra.gff |wc -l
+  fi
+fi
