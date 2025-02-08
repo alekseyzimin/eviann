@@ -3,7 +3,7 @@ my $n=0;
 while($l=<STDIN>){
   chomp($l);
   @F=split(/\s+/,$l);
-  if($F[0]>=1 && not($F[1]=~/archaea|bacteria|microsporidia/)){
+  if($F[0]>=1 && not($F[1]=~/archaea|bacteria|microsporidia/) && $F[12] eq "no"){
     $type="";
     $line=join(" ",@F);
     if($line =~ /spliceosomal RNA/){
@@ -18,7 +18,7 @@ while($l=<STDIN>){
       $type="tRNA";
     }else{}
     print;
-    if(not($type eq "") && $F[16]>56){
+    if(not($type eq "") && $F[16]>60){
       if($F[9]<$F[10]){
         $start=$F[9];
         $end=$F[10];

@@ -639,6 +639,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --transdecoder $GENOME.fixed_cds.txt \
       --pwms $GENOME.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
+      --proteins $PROTEINFILE \
       --include_stop \
       --final_pass \
       --output_partial $PARTIAL \

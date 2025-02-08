@@ -12,10 +12,12 @@ my $keep_contains=0;
 my $final_pass=0;
 my $output_partial=0;
 my $lncRNA_TPM=3;
+my $proteins="";
 GetOptions ("prefix=s"   => \$output_prefix,      # string
     "annotated=s" => \$annotated_gff,
     "genome=s" => \$genome,
     "transdecoder=s" => \$transdecoder_start_stop, 
+    "proteins=s" => \$proteins,
     "pwms=s" => \$pwms,
     "names=s" => \$names, 
     "ext=i" => \$ext_length,
@@ -200,6 +202,18 @@ while(my $line=<FILE>){
   } 
 }   
 $genome_seqs{$scf}=$seq if(not($scf eq ""));
+
+#we load protein functions if available
+unless($proteins eq ""){
+  open(FILE,$proteins);
+  while($line=<FILE>){
+    if($line=~/^>/){
+      chomp($line);
+      my @F=split(/\s+/,substr($line,1));
+      $protein_func{$F[0]}=join("_",@F[1..$#F]) if($#F>0);
+    }
+  }
+}
 
 #we load the adjusted cds start and stop coordinates
 open(FILE,$transdecoder_start_stop);
@@ -727,6 +741,7 @@ for my $locus(keys %transcripts_cds_loci){
         $evidence_type="protein_only" if($source eq "EviAnnP");
         $evidence_type="transcript_only" if($protID =~ /^XLOC_/);
         ($evidenceProtID,$junk)=split(/:/,$protID);
+        $evidenceProtID.=":".$protein_func{$evidenceProtID} if(defined($protein_func{$evidenceProtID}));
         push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceProteinID=$evidenceProtID;EvidenceTranscriptID=$transcriptID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Class=$class;Evidence=$evidence_type;");
 #output exons
         my $i=1;
