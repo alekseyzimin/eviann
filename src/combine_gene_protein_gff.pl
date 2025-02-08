@@ -210,7 +210,11 @@ unless($proteins eq ""){
     if($line=~/^>/){
       chomp($line);
       my @F=split(/\s+/,substr($line,1));
-      $protein_func{$F[0]}=join("_",@F[1..$#F]) if($#F>0);
+      if($#F>0){
+        my $note=join("_",@F[1..$#F]);
+        $note =~ s/;|=|%|&/_/g;
+        $protein_func{$F[0]}=$note;
+      }
     }
   }
 }
