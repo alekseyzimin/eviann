@@ -691,6 +691,7 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
         ($loc_id,$junk)=split(/-/,$id);
         if($f[2] eq "mRNA" || $f[2] eq "gene"){
           if(defined($pseudo{substr($loc_id,3)})){
+            $line=~s/gene_biotype=protein_coding/gene_biotype=processed_pseudogene/;
             print "$line;pseudo=true\n";
             $printcds=0;
           }else{
