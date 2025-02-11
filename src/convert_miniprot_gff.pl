@@ -19,14 +19,14 @@ while($line=<STDIN>){
       $identity=$4*100;
       $similarity=$3*100;
       $chrom=~s/;/_/g;
-      $parent="$target:$chrom:$F[3]";
+      $parent="$target:$chrom:$F[3]:$identity:$similarity";
       if(not(defined($already_output{$parent}))){
         $flag=1;
         $already_output{$parent}=1;
       }else{
         $flag=0;
       }
-      push(@output,join("\t",@F[0..7])."\tID=$target:$chrom:$F[3];geneID=$target:$chrom:$F[3];identity=$identity;similarity=$similarity\n") if($flag);
+      push(@output,join("\t",@F[0..7])."\tID=$parent;geneID=$parent;identity=$identity;similarity=$similarity\n") if($flag);
     }
   }elsif(uc($F[2]) eq "CDS"){
     if($count>1){
