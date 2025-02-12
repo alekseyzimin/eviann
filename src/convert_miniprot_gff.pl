@@ -19,7 +19,8 @@ while($line=<STDIN>){
       $identity=$4*100;
       $similarity=$3*100;
       $chrom=~s/;/_/g;
-      $parent="$target:$chrom:$F[3]:$identity:$similarity";
+      $position=($F[3]+$F[4])/2;
+      $parent="$target:$chrom:$position";
       if(not(defined($already_output{$parent}))){
         $flag=1;
         $already_output{$parent}=1;

@@ -70,7 +70,12 @@ while($line=<STDIN>){
       $seq=~tr/acgtACGT/tgcaTGCA/;
       $stopcodon=uc(reverse($seq));
     }
-    if($startcodon eq "ATG" && ($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA")){
+    my $codon_score=0;
+    $codon_score++ if($startcodon eq "ATG");
+    $codon_score++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA");
+    if($codon_score>0){
+      $similarity{$transcript_id}-=20 if($codon_score==1);
+      $similarity{$transcript_id}=1 if($similarity{$transcript_id}<1);
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id");
       #print "DEBUG $score $gene_id $transcript_id $ori\n";

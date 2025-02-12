@@ -423,7 +423,7 @@ if [ ! -e protein2genome.align.success ];then
   log "Aligning proteins to the genome with miniprot"
   #we may need a bigger k for big genomes
   KMERVALUE=`ls -lL $GENOMEFILE | perl -ane '{if($F[4]>1000000000){print "6";}else{print "5"}}'` && \
-  miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON -F 40 --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
+  miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
     $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
   mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
   rm -f merge.success && \
@@ -567,7 +567,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $GENOME.unused_proteins.spliceFiltered.gff \
         <(gffread -V -x /dev/stdout -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff | \
           ufasta one | \
-          awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(toupper($1)~/^ATG/ && length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
+          awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
         ) \
       > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff 
