@@ -74,10 +74,10 @@ while($line=<STDIN>){
     $codon_score++ if($startcodon eq "ATG");
     $codon_score++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA");
     if($codon_score>0){
-      $similarity{$transcript_id}-=20 if($codon_score==1);
-      $similarity{$transcript_id}=1 if($similarity{$transcript_id}<1);
+      #$similarity{$transcript_id}-=20 if($codon_score==1);
+      #$similarity{$transcript_id}=1 if($similarity{$transcript_id}<1);
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
-      push(@scores,"$score $gene_id $transcript_id");
+      push(@scores,"$score $gene_id $transcript_id $codon_score");
       #print "DEBUG $score $gene_id $transcript_id $ori\n";
     }
   }
@@ -87,11 +87,22 @@ my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scor
 my %h=();
 my %hs=();
 my %hn=();
+#first we only consider complete proteins
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
+  next if($F[3]<2);
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+    $h{$F[2]}=1;#we mark the proteins to keep
+  }
+}
+#now we use incomplete proteins only for loci that do not ave any completes
+for(my $i=0;$i<=$#scores_sorted;$i++){
+  my @F=split(/\s+/,$scores_sorted[$i]);
+  next if($F[3]==2);
+  if($hn{$F[1]} < 1){
+    $hn{$F[1]}+=1;#this is the number of proteins per locus
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
