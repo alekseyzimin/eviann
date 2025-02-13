@@ -87,6 +87,7 @@ my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scor
 my %h=();
 my %hs=();
 my %hn=();
+my $min_complete_sens=90;
 #first we only consider complete proteins
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
@@ -101,7 +102,7 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   next if($F[3]==2);
-  if($hn{$F[1]} < 1){
+  if($hn{$F[1]} < 1 && $F[0]>$min_complete_sens ){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $h{$F[2]}=1;#we mark the proteins to keep
   }
