@@ -536,6 +536,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
+  mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+  ./detect_readthroughs.pl < $GENOME.k.gff > $GENOME.readthroughs.tmp && \
+  mv $GENOME.readthroughs.tmp $GENOME.readthroughs.txt && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
