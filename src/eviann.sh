@@ -536,9 +536,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
-  mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-  ./detect_readthroughs.pl < $GENOME.k.gff > $GENOME.readthroughs.tmp && \
-  mv $GENOME.readthroughs.tmp $GENOME.readthroughs.txt && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
@@ -602,6 +599,62 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread $GENOME.palign.fixed.gff $GENOME.u.cds.gff >  $GENOME.palign.all.gff
   else
     gffread $GENOME.palign.fixed.gff >  $GENOME.palign.all.gff 
+  fi
+# the file $GENOME.palign.all.gff contains all CDSs we need to use
+  gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
+  log "Checking for and repairing broken ORFs" && \
+  cat $GENOME.palign.all.gff | \
+    filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \
+    gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
+  mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
+  cat $GENOME.palign.all.gff | \
+    check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
+  mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
+  mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
+  mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
+  if [ -s $GENOME.u.cds.gff ];then
+    cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.u.cds.gff) | \
+      ufasta extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp && \
+      mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
+  else
+    ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
+    mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
+  fi
+  rm -rf $GENOME.broken_cds.fa.transdecoder* && \
+  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa -m 75 1>transdecoder.LongOrfs.out 2>&1 && \
+  makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
+  blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.broken_cds.blastp.tmp && \
+  mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
+  TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
+  if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
+    perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.broken_cds.blastp");while($line=<FILE>){@f=split(/\./,$line);$h{$f[0]}=1}}{print "$F[0] $F[6] $F[7]\n" if(defined($h{$F[0]}) && $#F>7 && not($F[3] =~ /ORF_type:internal/));}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+    mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
+  fi
+  rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
+  cat $GENOME.palign.all.gff | \
+    combine_gene_protein_gff.pl \
+      --prefix $GENOME \
+      --annotated $GENOME.protref.all.annotated.class.gff \
+      --genome $GENOMEFILE \
+      --transdecoder $GENOME.fixed_cds.txt \
+      --pwms $GENOME.pwm \
+      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
+      --proteins $PROTEINFILE \
+      --include_stop \
+      --final_pass \
+      --output_partial $PARTIAL \
+      --lncrnamintpm $LNCRNATPM \
+      1>combine.out 2>&1 && \
+  log "Final pass"
+  #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
+  gffread --ids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp |\
+  perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
+  mv $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.final.gtf && \
+#here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
+  if [ -s $GENOME.best_unused_proteins.gff ];then
+    gffcompare -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
+  else
+    gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
   fi
 # the file $GENOME.palign.all.gff contains all CDSs we need to use
   gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
