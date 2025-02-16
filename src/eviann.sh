@@ -470,6 +470,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+  log "Detecting readthrough transcripts" && \
+  extract_utr_transcripts.pl < $GENOME.k.gff > $GENOME.utrs.gff && \
+  gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough && \
+  perl -F'\t' -ane '{if($F[8]=~/class_code "k"/ || $F[8]=~/class_code "="/){if($F[8]=~/^transcript_id "(\S+)"; gene_id/){@tr=split(/\./,$1);print join(".",@tr[0..($#tr-1)]),"\n";}}}'  $GENOME.readthrough.annotated.gtf > $GENOME.readthrough.txt.tmp && \
+  mv $GENOME.readthrough.txt.tmp  $GENOME.readthrough.txt && \
+  echo -n "Found readthrough transcripts: " && \
+  wc -l $GENOME.readthrough.txt && \
   log "Computing PWM matrices at splice junctions" && \
   gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
     tee >(perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print $F[2],"\n" if($flag)}' | uniq -c | awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt) | \
@@ -499,6 +506,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       @f=split(/\s+/,$line);
       $reliable{$f[0]}=1;
     }
+    open(FILE,"'$GENOME'.readthrough.txt");
+    while($line=<FILE>){
+      chomp($line);
+      $readthrough{$line}=1;
+    }
   }{
     if($F[2] eq "transcript"){
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
@@ -507,7 +519,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
       $score{$id}+=4 if($reliable{$id});
       $flag=($score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
-      #$flag=($score{$id}>0.0001) ? 1 : 0;
+      $flag=0 if(defined($readthrough{$id}));
     }
     print if($flag);
   }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
@@ -716,7 +728,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
     rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
     rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
-    rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt 
+    rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
+    rm -f $GENOME.utrs.gff  $GENOME.readthrough.*
   fi
 fi
 
