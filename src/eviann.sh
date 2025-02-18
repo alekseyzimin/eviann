@@ -470,13 +470,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-  log "Detecting readthrough transcripts" && \
-  extract_utr_transcripts.pl < $GENOME.k.gff > $GENOME.utrs.gff && \
-  gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough && \
-  perl -F'\t' -ane '{if($F[8]=~/class_code "(k|=)"/){if($F[8]=~/^transcript_id "(\S+)"; gene_id/){@tr=split(/\./,$1);print join(".",@tr[0..($#tr-1)]),"\n";}}}'  $GENOME.readthrough.annotated.gtf > $GENOME.readthrough.txt.tmp && \
-  mv $GENOME.readthrough.txt.tmp  $GENOME.readthrough.txt && \
-  echo -n "Found readthrough transcripts: " && \
-  wc -l $GENOME.readthrough.txt && \
+  extract_utr_transcripts.pl < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
+  mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
+  perl -F'\t' -ane '{if($F[2] eq "mRNA"){print}elsif($F[2] eq "CDS"){$F[2]="exon";print join("\t",@F);}}'  $GENOME.k.gff > $GENOME.cdsasexon.gff.tmp && \
+  mv $GENOME.cdsasexon.gff.tmp $GENOME.cdsasexon.gff && \
   log "Computing PWM matrices at splice junctions" && \
   gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
     tee >(perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print $F[2],"\n" if($flag)}' | uniq -c | awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt) | \
@@ -487,6 +484,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
+  cat <(gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough1 && perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=0;if($F[8]=~/class_code "(k|=)"/){if($F[8]=~/^transcript_id "(\S+)"; gene_id/){@tr=split(/\./,$1);$transcript=join(".",@tr[0..($#tr-1)]),"\n";$flag=1;}}}elsif($F[2] eq "exon" && $flag){print "$transcript $F[3] $F[4] $F[6]\n"}}' $GENOME.readthrough1.annotated.gtf) \
+      <(gffcompare -T -r $GENOME.cdsasexon.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=0;if($F[8]=~/class_code "(k|=)"/){if($F[8]=~/^transcript_id "(\S+)"; gene_id/){@tr=split(/\./,$1);$transcript=join(".",@tr[0..($#tr-1)]),"\n";$flag=1;}}}elsif($F[2] eq "exon" && $flag){print "$transcript $F[3] $F[4] $F[6]\n"}}' $GENOME.readthrough2.annotated.gtf) | \
+  perl -ane '{$h{join(" ",@F)}=1;}END{open(FILE,"'$GENOME'.gtf");while($line=<FILE>){@F=split(/\t/,$line);$tid=$1 if($F[8]=~/^transcript_id "(\S+)"; gene_id/);print $line unless(defined($h{"$tid $F[3] $F[4] $F[6]"}));}}' | \
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
     $num_introns=int(<FILE>);
@@ -507,11 +507,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       @f=split(/\s+/,$line);
       $reliable{$f[0]}=1;
     }
-    open(FILE,"'$GENOME'.readthrough.txt");
-    while($line=<FILE>){
-      chomp($line);
-      $readthrough{$line}=1;
-    }
   }{
     if($F[2] eq "transcript"){
       $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
@@ -520,10 +515,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
       $score{$id}+=4 if($reliable{$id});
       $flag=($score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
-      $flag=0 if(defined($readthrough{$id}));
     }
     print if($flag);
-  }' $GENOME.gtf > $GENOME.spliceFiltered.gtf.tmp && \
+  }' > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
 #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
@@ -731,7 +725,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
     rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
     rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
-    rm -f $GENOME.utrs.gff  $GENOME.readthrough.*
+    rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.*
   fi
 fi
 
