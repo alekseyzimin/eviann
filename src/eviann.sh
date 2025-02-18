@@ -661,7 +661,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Final pass"
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
   gffread --ids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp |\
-  perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
+  perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') $GENOME.abundanceFiltered.spliceFiltered.gtf | \
+  gffread --nids <(detect_readthroughs.pl < $GENOME.k.gff.tmp) > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
   mv $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.final.gtf && \
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then

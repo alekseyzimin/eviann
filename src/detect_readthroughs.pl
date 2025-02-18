@@ -12,8 +12,8 @@ while($line=<STDIN>){
   chomp($line);
   @gff_fields=split(/\t/,$line);
   if($gff_fields[2] eq "mRNA"){
-    if($gff_fields[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=/){
-      $tid=$1;
+    if($gff_fields[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(.+);EvidenceTranscriptID=(\S+);StartCodon=/){
+      $tid=$4;
       $gid=$2;
     }
     $endCDS{$tid}=0;
@@ -25,11 +25,9 @@ while($line=<STDIN>){
     }
     push(@transcripts,$tid);
   }elsif($gff_fields[2] eq "CDS"){
-    $tid=$1 if($gff_fields[8] =~ /^Parent=(\S+)/);
     $startCDS{$tid}=$gff_fields[3] unless(defined($startCDS{$tid}));
     $endCDS{$tid}=$gff_fields[4] if($endCDS{$tid}<$gff_fields[4]);
   }elsif($gff_fields[2] eq "exon"){
-    $tid=$1 if($gff_fields[8] =~ /^Parent=(\S+)/);
     $startexon{$tid}=$gff_fields[3] unless(defined($startexon{$tid}));
     $endexon{$tid}=$gff_fields[4] if($endexon{$tid}<$gff_fields[4]);
   }
