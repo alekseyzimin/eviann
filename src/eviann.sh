@@ -70,7 +70,7 @@ function usage {
  echo " -e FILE               fasta file with assembled transcripts from related species, default: none"
  echo " -p FILE               fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
  echo " -s FILE               fasta file with UniProt-SwissProt proteins to use in functional annotation or if proteins from close relatives are not available.  EviAnn uses "
- echo "                         a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch. THe database is available at:"
+ echo "                         a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch. The database is available at:"
  echo "                         https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
  echo " -m INT                max intron size, default: 250000"
  echo " --partial             include transcripts with partial (mising start or stop codon) CDS in the output"
@@ -473,7 +473,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Detecting readthrough transcripts" && \
   extract_utr_transcripts.pl < $GENOME.k.gff > $GENOME.utrs.gff && \
   gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough && \
-  perl -F'\t' -ane '{if($F[8]=~/class_code "k"/ || $F[8]=~/class_code "="/){if($F[8]=~/^transcript_id "(\S+)"; gene_id/){@tr=split(/\./,$1);print join(".",@tr[0..($#tr-1)]),"\n";}}}'  $GENOME.readthrough.annotated.gtf > $GENOME.readthrough.txt.tmp && \
+  perl -F'\t' -ane '{if($F[8]=~/class_code "(k|=)"/){if($F[8]=~/^transcript_id "(\S+)"; gene_id/){@tr=split(/\./,$1);print join(".",@tr[0..($#tr-1)]),"\n";}}}'  $GENOME.readthrough.annotated.gtf > $GENOME.readthrough.txt.tmp && \
   mv $GENOME.readthrough.txt.tmp  $GENOME.readthrough.txt && \
   echo -n "Found readthrough transcripts: " && \
   wc -l $GENOME.readthrough.txt && \
@@ -483,7 +483,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
     compute_junction_scores.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
-  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm > $GENOME.transcript_splice_scores.txt && \
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm > $GENOME.transcript_splice_scores.txt.tmp && \
+  mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   perl -F'\t' -ane 'BEGIN{
@@ -602,7 +603,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Working on final merge"
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffcompare -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
+    gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
   else
     gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
   fi
@@ -664,7 +665,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.final.gtf && \
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffcompare -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
+    gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
   else
     gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
   fi
