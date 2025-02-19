@@ -29,6 +29,7 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/filter_unused_proteins.pl \
 	src/extract_utr_transcripts.pl \
 	src/detect_readthroughs.pl \
+	src/detect_readthrough_exons.pl \
 	src/tblToGFF.pl \
 	src/convert_trna.sh \
 	src/add_features.pl \
