@@ -486,7 +486,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   cat <(gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough1 && detect_readthrough_exons.pl $GENOME.palign.fixed.gff < $GENOME.readthrough1.annotated.gtf) \
       <(gffcompare -T -r $GENOME.cdsasexon.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && detect_readthrough_exons.pl $GENOME.cdsasexon.gff < $GENOME.readthrough2.annotated.gtf) | tee $GENOME.readthroughs.txt | \
-  perl -ane '{$h{join(" ",@F)}=1;}END{open(FILE,"'$GENOME'.gtf");while($line=<FILE>){@F=split(/\t/,$line);$tid=$1 if($F[8]=~/^transcript_id "(\S+)"; gene_id/);print $line unless(defined($h{"$tid $F[3] $F[4] $F[6]"}));}}' | \
+  remove_readthrough_exons.pl $GENOME.gtf | \
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
     $num_introns=int(<FILE>);

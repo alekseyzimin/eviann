@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 $protein_gff=$ARGV[0];
 
-open(FILE,"$protein_gff");
+open(FILE,$protein_gff);
 while($line=<FILE>){
   chomp($line);
   @F=split(/\t/,$line);
@@ -21,7 +21,7 @@ while($line=<STDIN>){
       $protid=$3;
       $tid=$1;
       @tr=split(/\./,$1);
-      $transcript=join(".",@tr[0..($#tr-1)]),"\n";
+      $transcript=join(".",@tr[0..($#tr-1)])." ".$tr[-1];
       if($F[6] eq "+"){
         $flag=1 if($tid =~ /5p$/ && $pend{$protid}<$F[4]);
         $flag=1 if($tid =~ /3p$/ && $pbeg{$protid}>$F[3]);
