@@ -519,7 +519,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     print if($flag);
   }' > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
-  echo -n "Found readthrough transcripts: " && awk '{print $1}' $GENOME.readthroughs.txt |uniq |wc -l && \
+  echo -n "Found readthrough transcripts: " && awk '{print $1}' $GENOME.readthroughs.txt | sort -S 5% | uniq |wc -l && \
 #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
   cat $GENOME.palign.fixed.gff | \
@@ -653,10 +653,17 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --output_partial $PARTIAL \
       --lncrnamintpm $LNCRNATPM \
       1>combine.out 2>&1 && \
-  log "Final pass"
+  log "Final pass" && \
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
+  extract_utr_transcripts.pl < $GENOME.k.gff.tmp > $GENOME.utrs.gff.tmp && \
+  mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
+  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$F[2]="gene";print join("\t",@F);}elsif($F[2] eq "CDS"){$F[2]="exon";print join("\t",@F);}}'  $GENOME.k.gff.tmp > $GENOME.cdsasexon.gff.tmp && \
+  mv $GENOME.cdsasexon.gff.tmp $GENOME.cdsasexon.gff && \
+  gffcompare -T -r $GENOME.cdsasexon.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
+  detect_readthrough_exons.pl $GENOME.cdsasexon.gff < $GENOME.readthrough2.annotated.gtf | \
+  remove_readthrough_exons.pl $GENOME.abundanceFiltered.spliceFiltered.gtf | \
   gffread --ids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp |\
-  perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') $GENOME.abundanceFiltered.spliceFiltered.gtf | \
+  perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') | \
   gffread --nids <(detect_readthroughs.pl < $GENOME.k.gff.tmp) > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
   mv $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.final.gtf && \
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
