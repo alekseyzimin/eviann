@@ -17,7 +17,7 @@ while($line=<STDIN>){
   @F=split(/\t/,$line);
   if($F[2] eq "transcript"){
     $flag=0;
-    if($F[8]=~/^transcript_id "(\S+)"; gene_id (.+); cmp_ref "(\S+)"; class_code "(k|=|j|c)"/){
+    if($F[8]=~/^transcript_id "(\S+)"; gene_id (.+); cmp_ref "(\S+)"; class_code "(k|=|j|c|m|n|o)"/){
       $protid=$3;
       $tid=$1;
       @tr=split(/\./,$1);
