@@ -664,8 +664,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   remove_readthrough_exons.pl $GENOME.abundanceFiltered.spliceFiltered.gtf | \
   gffread --ids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp |\
   perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') | \
-  gffread --nids <(detect_readthroughs.pl < $GENOME.k.gff.tmp) > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
+  gffread --nids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp | detect_readthroughs.pl |grep '^MSTRG' ) > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
   mv $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.final.gtf && \
+#from here on all transcripts are good to go and they are in $GENOME.abundanceFiltered.spliceFiltered.final.gtf
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
     gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
@@ -675,9 +676,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 # the file $GENOME.palign.all.gff contains all CDSs we need to use
   gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
   log "Checking for and repairing broken ORFs" && \
-  cat $GENOME.palign.all.gff | \
-    filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \
-    gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
+  gffread -F $GENOME.protref.all.annotated.gtf > $GENOME.protref.all.annotated.class.gff.tmp && \
   mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
   cat $GENOME.palign.all.gff | \
     check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
