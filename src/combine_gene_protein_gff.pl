@@ -687,7 +687,7 @@ for my $g(keys %transcript_cds){
 print OUTFILE1 "##gff-version 3\n# EviAnn automated annotation\n";
 for my $locus(keys %transcripts_cds_loci){
   my @output=();
-  my $output_hc_count=0;
+  my $output_count=0;
   my $gene_feature="";
   my @transcripts_at_loci=split(/\s+/,$transcripts_cds_loci{$locus});
   my @gff_fields=split(/\t/,$transcript{$transcripts_at_loci[0]});
@@ -703,9 +703,9 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
-        next if(($class eq "m" || $class eq "n") && ($output_hc_count>0 || $source eq "EviAnnP"));#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
-        $output_hc_count++ if($class eq "=" || $class eq "k" || $class eq "j");
-        print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
+        next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
+        $output_count++;
+        print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus soure $source $output_count\n";
         my $protID=$transcript_cds{$t};
         $used_proteins{$protID}=1;
         my $note="";
