@@ -703,6 +703,7 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
+        #next if($class eq "j" && $output_count > 1);
         next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
         $output_count++;
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus soure $source $output_count\n";

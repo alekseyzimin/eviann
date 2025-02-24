@@ -3,6 +3,8 @@
 #NC_015889.1     EviAnn  exon    51      3703    .       +       .       Parent=XLOC_000001-mRNA-1
 #NC_015889.1     EviAnn  CDS     2743    3000    .       +       0       Parent=XLOC_000001-mRNA-1
 
+my $min_exons=0;
+$min_exons=$ARGV[0] if($ARGV[0]>0);
 my $gene="";
 my $tid="";
 my $gid="";
@@ -18,13 +20,13 @@ while($line=<STDIN>){
   @gff_fields=split(/\t/,$line);
   if($gff_fields[2] eq "mRNA"){
     @gff_fields_t=split(/\t/,$tline);
-    if(scalar(@fiveUTR)>1){
+    if(scalar(@fiveUTR)>$min_exons){
       $gff_fields_t[3]=$beg5UTR{$tid};
       $gff_fields_t[4]=$end5UTR{$tid};
       print join("\t",@gff_fields_t[0..7]),"\tID=$tid.5p\n";
       print join("\n",@fiveUTR),"\n";
     }
-    if(scalar(@threeUTR)>1){
+    if(scalar(@threeUTR)>$min_exons){
       $gff_fields_t[3]=$beg3UTR{$tid};
       $gff_fields_t[4]=$end3UTR{$tid};
       print join("\t",@gff_fields_t[0..7]),"\tID=$tid.3p\n";

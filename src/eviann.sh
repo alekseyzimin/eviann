@@ -470,7 +470,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-  extract_utr_transcripts.pl < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
+  extract_utr_transcripts.pl 1 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
   perl -F'\t' -ane '{if($F[2] eq "mRNA"){$F[2]="gene";print join("\t",@F);}elsif($F[2] eq "CDS"){$F[2]="exon";print join("\t",@F);}}'  $GENOME.k.gff > $GENOME.cdsasexon.gff.tmp && \
   mv $GENOME.cdsasexon.gff.tmp $GENOME.cdsasexon.gff && \
@@ -655,7 +655,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       1>combine.out 2>&1 && \
   log "Final pass" && \
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
-  extract_utr_transcripts.pl < $GENOME.k.gff.tmp > $GENOME.utrs.gff.tmp && \
+  extract_utr_transcripts.pl 0 < $GENOME.k.gff.tmp > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
   perl -F'\t' -ane '{if($F[2] eq "mRNA"){$F[2]="gene";print join("\t",@F);}elsif($F[2] eq "CDS"){$F[2]="exon";print join("\t",@F);}}'  $GENOME.k.gff.tmp > $GENOME.cdsasexon.gff.tmp && \
   mv $GENOME.cdsasexon.gff.tmp $GENOME.cdsasexon.gff && \
