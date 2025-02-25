@@ -16,6 +16,7 @@ while($line=<FILE>){
   if($line=~/^>/){
     unless($transcript eq ""){
       $best_match=(sort { (split(/\s/,$b))[0]<=>(split(/\s/,$a))[0] } @matches)[0];
+      print "DEBUG $transcript best match $best_match\n";
       @f=split(/\s/,$best_match);
       $transcript_cds{$transcript}=$f[2];
       $transcript_cds_start{$transcript}=$protein_start{$f[2]};
@@ -24,14 +25,39 @@ while($line=<FILE>){
       $transcript_ori{$transcript}=$f[3];
       #print "DEBUG trmap $transcript $f[1] $f[2] $protein_start{$f[2]} $protein_end{$f[2]}\n";
     }
-    $transcript=substr((split(/\s+/,$line))[0],1);
+    @F=split(/\s+/,$line);
+    $transcript=substr($F[0],1);
+    @junctions=();
+    @f=split(/\-/,$F[3]);
+    $tbeg{$transcript}=$f[0];
+    $tend{$transcript}=$f[1];
+    for(my $i=1;$i<$#f;$i++){
+      push(@junctions,$f[$i]);
+    }
     @matches=();
   }else{
     @f=split(/\t/,$line);
+    @F=split(/\-/,$f[6]);
+    my $pbeg=$F[0];
+    my $pend=$F[-1];
+    my $overhang_penalty=0;
+    $overhang_penalty+=$pbeg-$tbeg{$transcript} if($pbeg<$tbeg{$transcript});
+    $overhang_penalty+=$tend{$transcript}-$pend if($pend>$tend{$transcript});
+    my $mismatch_penalty=0;
+    $mismatch_penalty-=$pbeg-$tbeg{$transcript} if($pbeg>$tbeg{$transcript});
+    $mismatch_penalty-=$tend{$transcript}-$pend if($pend<$tend{$transcript});
+
+    my $common_junctions=0;
+    for(my $i=1;$i<$#F;$i++){
+      for(my $j=0;$j<=$#junctions;$j++){
+        $common_junctions++ if($F[$i] eq $junctions[$j]);
+      }
+    }
+    print "DEBUG trmap $transcript $f[5] $f[3] $f[4] $common_junctions $overhang_penalty $mismatch_penalty\n";
     if(defined($code_priority{$f[0]})){
-      push(@matches,($code_priority{$f[0]}+$f[4]-$F[3])." $f[0] $f[5] $f[2]");
+      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_penalty+$mismatch_penalty)." $f[0] $f[5] $f[2]");
     }else{
-      push(@matches,($f[4]-$F[3])." N $f[5] $f[2]");
+      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_penalty+$mismatch_penalty)." N $f[5] $f[2]");
     }
   }
 }
