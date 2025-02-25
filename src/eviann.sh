@@ -713,9 +713,7 @@ if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
     blastp -db $GENOME.proteins.mex -query $GENOME.proteins.sex.fasta -out  $GENOME.sex2mex.blastp.tmp -evalue 0.000001 -outfmt "6 qseqid qlen length pident bitscore sseqid" -num_alignments 5 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp5.out 2>&1 && \
     mv $GENOME.sex2mex.blastp.tmp $GENOME.sex2mex.blastp && \
     perl -ane '{
-      @f1=split(/-/,$F[0]);
-      @f2=split(/-/,$F[5]);
-      if($F[3]>90 && $F[2]/($F[1]+1)>0.9 && not($f1[0] eq $f2[0])){
+      if($F[3]>90 && $F[2]/($F[1]+1)>0.9 && not((split(/-/,$F[0]))[0] eq (split(/-/,$F[5]))[0])){
         $pseudo{$f1[0]}=1;
       }
     }END{
