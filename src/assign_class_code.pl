@@ -55,9 +55,9 @@ while($line=<FILE>){
     }
     print "DEBUG trmap $transcript $f[5] $f[3] $f[4] $common_junctions $overhang_penalty $mismatch_penalty\n";
     if(defined($code_priority{$f[0]})){
-      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_penalty+$mismatch_penalty)." $f[0] $f[5] $f[2]");
+      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_penalty*2+$mismatch_penalty)." $f[0] $f[5] $f[2]");
     }else{
-      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_penalty+$mismatch_penalty)." N $f[5] $f[2]");
+      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_penalty*2+$mismatch_penalty)." N $f[5] $f[2]");
     }
   }
 }
