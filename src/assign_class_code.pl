@@ -2,8 +2,9 @@
 #read trmap file
 my $trmap=$ARGV[0];
 my %code_priority;
-$code_priority{"="}=5000000000;
-$code_priority{"k"}=4000000000;
+$code_priority{"="}=6000000000;
+$code_priority{"k"}=5000000000;
+$code_priority{"c"}=5000000000;
 $code_priority{"j"}=3000000000;
 $code_priority{"n"}=2000000000;
 $code_priority{"m"}=1000000000;
@@ -16,7 +17,7 @@ while($line=<FILE>){
   if($line=~/^>/){
     unless($transcript eq ""){
       $best_match=(sort { (split(/\s/,$b))[0]<=>(split(/\s/,$a))[0] } @matches)[0];
-      print "DEBUG $transcript best match $best_match\n";
+      #print "DEBUG $transcript best match $best_match\n";
       @f=split(/\s/,$best_match);
       $transcript_cds{$transcript}=$f[2];
       $transcript_cds_start{$transcript}=$protein_start{$f[2]};
@@ -30,7 +31,7 @@ while($line=<FILE>){
     @junctions=();
     @f=split(/\-/,$F[3]);
     $tbeg{$transcript}=$f[0];
-    $tend{$transcript}=$f[1];
+    $tend{$transcript}=$f[-1];
     for(my $i=1;$i<$#f;$i++){
       push(@junctions,$f[$i]);
     }
@@ -41,23 +42,26 @@ while($line=<FILE>){
     my $pbeg=$F[0];
     my $pend=$F[-1];
     my $overhang_penalty=0;
-    $overhang_penalty+=$pbeg-$tbeg{$transcript} if($pbeg<$tbeg{$transcript});
-    $overhang_penalty+=$tend{$transcript}-$pend if($pend>$tend{$transcript});
-    my $mismatch_penalty=0;
-    $mismatch_penalty-=$pbeg-$tbeg{$transcript} if($pbeg>$tbeg{$transcript});
-    $mismatch_penalty-=$tend{$transcript}-$pend if($pend<$tend{$transcript});
-
+    if($pbeg<$tbeg{$transcript}){
+      $overhang_penalty+=$pbeg-$tbeg{$transcript};
+      $pbeg=$tbeg{$transcript};
+    }
+    if($pend>$tend{$transcript}){
+      $overhang_penalty+=$tend{$transcript}-$pend;
+      $pend=$tend{$transcript};
+    }
+    my $match_length=$pend-$pbeg;
     my $common_junctions=0;
     for(my $i=1;$i<$#F;$i++){
       for(my $j=0;$j<=$#junctions;$j++){
         $common_junctions++ if($F[$i] eq $junctions[$j]);
       }
     }
-    print "DEBUG trmap $transcript $f[5] $f[3] $f[4] $common_junctions $overhang_penalty $mismatch_penalty\n";
+    #print "DEBUG trmap $transcript $f[5] $f[3] $f[4] $common_junctions $overhang_penalty $match_length\n";
     if(defined($code_priority{$f[0]})){
-      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_penalty*2+$mismatch_penalty)." $f[0] $f[5] $f[2]");
+      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_penalty*2+$match_length)." $f[0] $f[5] $f[2]");
     }else{
-      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_penalty*2+$mismatch_penalty)." N $f[5] $f[2]");
+      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_penalty*2+$match_length)." N $f[5] $f[2]");
     }
   }
 }
