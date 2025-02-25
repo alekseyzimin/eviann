@@ -213,8 +213,7 @@ while(my $line=<FILE>){
       $genome_seqs{$scf}=$seq;
       $seq="";
     }
-    my @f=split(/\s+/,$line);
-    $scf=substr($f[0],1);
+    $scf=substr((split(/\s+/,$line))[0],1);
   }else{
     $seq.=$line;
   } 
