@@ -472,8 +472,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   extract_utr_transcripts.pl 1 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
-  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cdsasexon.gff.tmp && \
-  mv $GENOME.cdsasexon.gff.tmp $GENOME.cdsasexon.gff && \
+  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
+  mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   log "Computing PWM matrices at splice junctions" && \
   gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
     tee >(perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print $F[2],"\n" if($flag)}' | uniq -c | awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt) | \
@@ -485,7 +485,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   cat <(gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough1 && detect_readthrough_exons.pl $GENOME.palign.fixed.gff < $GENOME.readthrough1.annotated.gtf) \
-    <(gffcompare -T -r $GENOME.cdsasexon.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && detect_readthrough_exons.pl $GENOME.cdsasexon.gff < $GENOME.readthrough2.annotated.gtf) | tee $GENOME.readthroughs.txt | \
+    <(gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | tee $GENOME.readthroughs.txt | \
   remove_readthrough_exons.pl $GENOME.gtf | \
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
@@ -659,10 +659,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
-  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cdsasexon.gff.tmp && \
-  mv $GENOME.cdsasexon.gff.tmp $GENOME.cdsasexon.gff && \
-  gffcompare -T -r $GENOME.cdsasexon.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
-  detect_readthrough_exons.pl $GENOME.cdsasexon.gff < $GENOME.readthrough2.annotated.gtf | \
+  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
+  mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
+  gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
+  detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf | \
   remove_readthrough_exons.pl $GENOME.abundanceFiltered.spliceFiltered.gtf | \
   gffread --ids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff $GENOME.u.gff |\
     perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') | \
