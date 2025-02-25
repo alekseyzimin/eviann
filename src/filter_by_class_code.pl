@@ -53,9 +53,9 @@ while(my $line=<FILE>){
   if($gtf_fields[2] eq "transcript"){
     my $tstart=$gtf_fields[3];
     my $tend=$gtf_fields[4];
-    my $geneID=$1 if($gtf_fields[8] =~ /transcript_id \"(\S+)\"; /);
-    my $protID=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\"; /);
-    my $class_code=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\"; /);
+    my $geneID=$1 if($gtf_fields[8] =~ /transcript_id \"(\S+)\";/);
+    my $protID=$1 if($gtf_fields[8] =~ /cmp_ref \"(\S+)\";/);
+    my $class_code=$1 if($gtf_fields[8] =~ /class_code \"(\S+)\";/);
 
     if($class_code =~ /k|=|u/ || ($class_code =~ /n|j|m/  && ($protein_start{$protID} > $tstart-$ext_length  && $protein_end{$protID} < $tend+$ext_length))){
       die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})) && not($class_code eq "u"));

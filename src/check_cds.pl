@@ -81,16 +81,17 @@ while(my $line=<FILE>){
       }
     }
     @exons=();
-    $locID=substr($attributes[1],7);#this is the gene_id
-    $geneID=substr($attributes[0],3);#this is the transcript_id
     $tstart=$gff_fields[3];
     $tend=$gff_fields[4];
     $tori=$gff_fields[6];
     my $class_code="";
     my $protID="";
+    my $locID="";
     foreach my $attr(@attributes){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
+      $locID=substr($attr,7) if($attr =~ /^geneID=/);
+      $locID=substr($attr,6) if($attr =~ /^locus=/);
     }
     if($class_code eq "u"){
       $transcript_u{$geneID}=$line;

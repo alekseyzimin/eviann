@@ -13,12 +13,14 @@ my $final_pass=0;
 my $output_partial=0;
 my $lncRNA_TPM=3;
 my $proteins="";
+my $loci_file="";
 GetOptions ("prefix=s"   => \$output_prefix,      # string
     "annotated=s" => \$annotated_gff,
     "genome=s" => \$genome,
     "transdecoder=s" => \$transdecoder_start_stop, 
     "proteins=s" => \$proteins,
     "pwms=s" => \$pwms,
+    "loci=s" => \$loci_file,
     "names=s" => \$names, 
     "ext=i" => \$ext_length,
     "keep_contains" => \$keep_contains,
@@ -103,6 +105,20 @@ if(not($protID eq "")){
 }
 @exons=();
 
+#read in the loci assignment
+unless($loci_file eq ""){
+  open(FILE,$loci_file);
+  while($line=<FILE>){
+    chomp($line);
+    my ($locus,$transcripts)=split(/\s+/,$line);
+    @t=split(/,/,$transcripts);
+    foreach $tr(@t){
+      $reassign_locus{$tr}=$locus;
+    }
+  }
+}
+      
+
 #this is output of gffcompare -r protalign.gtf ../GCF_000001735.4_TAIR10.1_genomic.clean.fna.gtf -o protref
 #here we load up all transcripts that matched proteins
 open(FILE,$annotated_gff);
@@ -111,31 +127,30 @@ while(my $line=<FILE>){
   my @gff_fields=split(/\t/,$line);
   my @attributes=split(";",$gff_fields[8]);
   if($gff_fields[2] eq "transcript"){
-    if(defined($transcript{$geneID})){
+    if(defined($transcript{$ID})){
     #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
       my @gff_fields=split(/\t/,$exons[0]);
-      $gff_fields[3]=$protein_start{$transcript_cds{$geneID}} if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
+      $gff_fields[3]=$protein_start{$transcript_cds{$ID}} if($gff_fields[3]>$protein_start{$transcript_cds{$ID}});
       $gff_fields[3]=1 if($gff_fields[3]<1);
       $tstart=$gff_fields[3];
       $exons[0]=join("\t",@gff_fields);
       @gff_fields=split(/\t/,$exons[-1]);
-      $gff_fields[4]=$protein_end{$transcript_cds{$geneID}} if($gff_fields[4]<$protein_end{$transcript_cds{$geneID}});
+      $gff_fields[4]=$protein_end{$transcript_cds{$ID}} if($gff_fields[4]<$protein_end{$transcript_cds{$ID}});
       $tend=$gff_fields[4];
       $exons[-1]=join("\t",@gff_fields);
-      @gff_fields=split(/\t/,$transcript{$geneID});
+      @gff_fields=split(/\t/,$transcript{$ID});
       $gff_fields[3]=$tstart;
       $gff_fields[4]=$tend;
-      $transcript{$geneID}=join("\t",@gff_fields);
-      $transcript_gff{$geneID}=[@exons];
-      $transcript_ori{$geneID}=$tori;
-    }elsif(defined($transcript_u{$geneID})){
+      $transcript{$ID}=join("\t",@gff_fields);
+      $transcript_gff{$ID}=[@exons];
+      $transcript_ori{$ID}=$tori;
+    }elsif(defined($transcript_u{$ID})){
       if(scalar(@exons) > 1){
-        $transcript_gff_u{$geneID}=[@exons];
+        $transcript_gff_u{$ID}=[@exons];
       }
     }
     @exons=();
-    $locID=substr($attributes[1],7);#this is the gene_id
-    $geneID=substr($attributes[0],3);#this is the transcript_id
+    $ID=substr($attributes[0],3);#this is the transcript_id
     $tstart=$gff_fields[3];
     $tend=$gff_fields[4];
     $tori=$gff_fields[6];
@@ -144,43 +159,46 @@ while(my $line=<FILE>){
     foreach my $attr(@attributes){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
+      $locID=substr($attr,7) if($attr =~ /^geneID=/);
+      $locID=substr($attr,6) if($attr =~ /^locus=/);
     }
+    $locID=$reassign_locus{$ID} if(defined($reassign_locus{$ID}));
+    print "DEBUG loaded transcript $ID protein $protID class $class_code locus $locID\n";
     if($class_code eq "u"){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
-      $transcript_u{$geneID}=$line;
-      $transcripts_only_loci{$locID}.="$geneID ";
+      $transcript_u{$ID}=$line;
+      $transcripts_only_loci{$locID}.="$ID ";
     }else{
-      $transcript{$geneID}=$line;
-      die("Protein $protID is not defined for protein coding transcript $geneID") if(not(defined($protein{$protID})));
-      $transcript_cds{$geneID}=$protID;
-      $transcript_source{$geneID}=$gff_fields[1];
-      $transcript_cds_start{$geneID}=$protein_start{$protID};
-      $transcript_cds_start_codon{$geneID}="MISSING";
-      $transcript_cds_end{$geneID}=$protein_end{$protID};
-      $transcript_cds_end_codon{$geneID}="MISSING";
-      $transcript_class{$geneID}=$class_code;
-      $transcript_origin{$geneID}=$gff_fields[1];
-      $transcripts_cds_loci{$locID}.="$geneID ";
-      $transcript_cds_modified{$geneID}=0;
+      $transcript{$ID}=$line;
+      die("Protein $protID is not defined for protein coding transcript $ID") if(not(defined($protein{$protID})));
+      $transcript_cds{$ID}=$protID;
+      $transcript_source{$ID}=$gff_fields[1];
+      $transcript_cds_start{$ID}=$protein_start{$protID};
+      $transcript_cds_start_codon{$ID}="MISSING";
+      $transcript_cds_end{$ID}=$protein_end{$protID};
+      $transcript_cds_end_codon{$ID}="MISSING";
+      $transcript_class{$ID}=$class_code;
+      $transcripts_cds_loci{$locID}.="$ID ";
+      $transcript_cds_modified{$ID}=0;
     }
-    $transcript_class{$geneID}="NA" if($gff_fields[8] =~ /contained_in=/ && $discard_contains);
+    $transcript_class{$ID}="NA" if($gff_fields[8] =~ /contained_in=/ && $discard_contains);
   }elsif($gff_fields[2] eq "exon"){
-    push(@exons,$line) if(defined($transcript{$geneID}) || defined($transcript_u{$geneID}));
+    push(@exons,$line) if(defined($transcript{$ID}) || defined($transcript_u{$ID}));
   }
 }
-if(defined($transcript{$geneID})){
+if(defined($transcript{$ID})){
 #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
   my @gff_fields=split(/\t/,$exons[0]);
-  $gff_fields[3]=$protein_start{$transcript_cds{$geneID}} if($gff_fields[3]>$protein_start{$transcript_cds{$geneID}});
+  $gff_fields[3]=$protein_start{$transcript_cds{$ID}} if($gff_fields[3]>$protein_start{$transcript_cds{$ID}});
   $gff_fields[3]=1 if($gff_fields[3]<1);
   $exons[0]=join("\t",@gff_fields);
   my @gff_fields=split(/\t/,$exons[-1]);
-  $gff_fields[4]=$protein_end{$transcript_cds{$geneID}} if($gff_fields[4]<$protein_end{$transcript_cds{$geneID}});
+  $gff_fields[4]=$protein_end{$transcript_cds{$ID}} if($gff_fields[4]<$protein_end{$transcript_cds{$ID}});
   $exons[-1]=join("\t",@gff_fields);
-  $transcript_gff{$geneID}=[@exons];
-  $transcript_ori{$geneID}=$tori;
-}elsif(defined($transcript_u{$geneID})){
+  $transcript_gff{$ID}=[@exons];
+  $transcript_ori{$ID}=$tori;
+}elsif(defined($transcript_u{$ID})){
   if(scalar(@exons)>1){#not interested in single exon
-    $transcript_gff_u{$geneID}=[@exons];
+    $transcript_gff_u{$ID}=[@exons];
   }
 }
 @exons=();
@@ -686,6 +704,7 @@ for my $g(keys %transcript_cds){
 #print the headers
 print OUTFILE1 "##gff-version 3\n# EviAnn automated annotation\n";
 for my $locus(keys %transcripts_cds_loci){
+  print "DEBUG working on locus $locus with transcripts $transcripts_cds_loci{$locus}\n";
   my @output=();
   my $output_count=0;
   my $gene_feature="";
@@ -694,11 +713,11 @@ for my $locus(keys %transcripts_cds_loci){
   my $locus_start=$gff_fields[3];
   my $locus_end=$gff_fields[4];
   my @attributes=split(";",$gff_fields[8]);
-  $geneID=substr($attributes[1],7);#this is the XLOC
+  $geneID=$locus;#this is the XLOC
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
-  for my $source("StringTie","EviAnnP"){
+  for my $source("EviAnn","StringTie","EviAnnP"){
      for my $class ("=","k","j","n","m"){  
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
@@ -706,7 +725,7 @@ for my $locus(keys %transcripts_cds_loci){
         #next if($class eq "j" && $output_count > 1);
         next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
         $output_count++;
-        print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus soure $source $output_count\n";
+        print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source $output_count\n";
         my $protID=$transcript_cds{$t};
         $used_proteins{$protID}=1;
         my $note="";
@@ -745,7 +764,7 @@ for my $locus(keys %transcripts_cds_loci){
         my $evidence_type="complete";
         $evidence_type="protein_only" if($source eq "EviAnnP");
         $evidence_type="transcript_only" if($protID =~ /^XLOC_/);
-        ($evidenceProtID,$junk)=split(/:/,$protID);
+        $evidenceProtID=(split(/:/,$protID))[-1];
         $evidenceProtID.=":".$protein_func{$evidenceProtID} if(defined($protein_func{$evidenceProtID}));
         push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceProteinID=$evidenceProtID;EvidenceTranscriptID=$transcriptID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Class=$class;Evidence=$evidence_type;");
 #output exons
@@ -838,6 +857,7 @@ for my $locus(keys %transcripts_cds_loci){
 #some of these may be completely messed up
 for my $locus(keys %transcripts_only_loci){
   #next if we have seen this locus with a protein match
+  print "DEBUG lncRNA at locus $locus $transcripts_only_loci{$locus} protein $transcripts_cds_loci{$locus}\n";
   next if(defined($transcripts_cds_loci{$locus}));
   my @output=();
   my @transcripts_at_loci=split(/\s+/,$transcripts_only_loci{$locus});
