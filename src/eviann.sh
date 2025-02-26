@@ -660,16 +660,20 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
-  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$2 if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff |\
-  gffread --cluster-only |awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}'  > $GENOME.locus_transcripts.tmp && \
-  mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
   perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$1:$2" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
   detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf | \
-    remove_readthrough_exons.pl <(cat $GENOME.k.gff $GENOME.u.gff |perl -F'\t' -ane '{if($F[2] eq "mRNA"){if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/ || $F[8]=~/EvidenceTranscriptID=(\S+)$/){$tid=$1;$F[8]="transcript_id \"$tid\""}print join("\t",@F),"\n";}elsif($F[2] eq "exon"){$F[8]="transcript_id \"$tid\"";print join("\t",@F),"\n";}}') | \
-    gffread -T  > $GENOME.final.gtf.tmp && \
-    #gffread -T --nids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff | detect_readthroughs.pl |grep '^MSTRG' ) > $GENOME.final.gtf.tmp && \
+    remove_readthrough_exons.pl <(perl -F'\t' -ane '{if($F[2] eq "mRNA"){if($F[8]=~/^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$tid=$4;$gid=$2;$F[8]="transcript_id \"$tid\"; gene_id \"$gid\""}print join("\t",@F),"\n";}elsif($F[2] eq "exon" || $F[2] eq "CDS"){$F[8]="transcript_id \"$tid\"";print join("\t",@F),"\n";}}' $GENOME.k.gff ) > $GENOME.fix_readthroughs.gtf.tmp && \
+  gffread -T --nids <(detect_readthroughs.pl < $GENOME.fix_readthroughs.gtf.tmp |grep '^MSTRG' ) $GENOME.fix_readthroughs.gtf.tmp > $GENOME.fix_remove_readthroughs.gtf.tmp && \
+  mv $GENOME.fix_remove_readthroughs.gtf.tmp $GENOME.fix_remove_readthroughs.gtf && \
+  rm $GENOME.fix_readthroughs.gtf.tmp && \
+#now we fixed all readthroughs so we can reassign loci
+  perl -F'\t' -ane '{if($F[2] eq "transcript"){$protid=$1 if($F[8]=~/^transcript_id "(\S+)";/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' $GENOME.fix_remove_readthroughs.gtf | \
+    gffread --cluster-only |\
+    awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
+  mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
+  gffread -T $GENOME.fix_remove_readthroughs.gtf $GENOME.u.gff > $GENOME.final.gtf.tmp && \
   mv $GENOME.final.gtf.tmp $GENOME.final.gtf && \
 #from here on all transcripts are good to go and they are in $GENOME.final.gtf
 #all proteins are good as well

@@ -12,8 +12,8 @@ while($line=<STDIN>){
   chomp($line);
   @gff_fields=split(/\t/,$line);
   if($gff_fields[2] eq "mRNA"){
-    if($gff_fields[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(.+);EvidenceTranscriptID=(\S+);StartCodon=/){
-      $tid=$4;
+    if($gff_fields[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"$/){
+      $tid=$1;
       $gid=$2;
     }
     $endCDS{$tid}=0;
