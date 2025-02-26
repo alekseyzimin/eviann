@@ -680,7 +680,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.num_introns.txt
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
   rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
-  rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
+  rm -f $GENOME.unused_proteins.gff
   rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
   rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
   rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
