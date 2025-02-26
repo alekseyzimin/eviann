@@ -497,7 +497,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     $index++ if($num_introns >= 1024);
     $index++ if($num_introns >= 4096);
     open(FILE,"'$GENOME'.transcript_splice_scores.txt");
-    #open(FILE,"/home/bchen103/junction_scores/junction_score_summary_cov2.txt");
     while($line=<FILE>){
       chomp($line);
       @f=split(/\s+/,$line);
@@ -651,12 +650,18 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --pwms $GENOME.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
       --final_pass \
+      --include_stop \
       --output_partial $PARTIAL \
       --lncrnamintpm $LNCRNATPM \
       1>combine.out 2>&1 && \
     mv $GENOME.k.gff.tmp $GENOME.k.gff && \
     mv $GENOME.u.gff.tmp $GENOME.u.gff && \
-  log "Final pass of readthrough detection" && \
+    rm -f $GENOME.unused_proteins.gff.tmp && \
+  touch merge.success && rm -f readthrough.success pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
+fi
+
+if [ -e merge.success ] && [ ! -e readthrough.success ];then
+  log "Cleaning up readthrough transcripts" && \
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
@@ -665,9 +670,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
   detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf | \
     remove_readthrough_exons.pl <(perl -F'\t' -ane '{if($F[2] eq "mRNA"){if($F[8]=~/^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$tid=$4;$gid=$2;$F[8]="transcript_id \"$tid\"; gene_id \"$gid\""}print join("\t",@F),"\n";}elsif($F[2] eq "exon" || $F[2] eq "CDS"){$F[8]="transcript_id \"$tid\"";print join("\t",@F),"\n";}}' $GENOME.k.gff ) > $GENOME.fix_readthroughs.gtf.tmp && \
-  gffread -T --nids <(detect_readthroughs.pl < $GENOME.fix_readthroughs.gtf.tmp |grep '^MSTRG' ) $GENOME.fix_readthroughs.gtf.tmp > $GENOME.fix_remove_readthroughs.gtf.tmp && \
-  mv $GENOME.fix_remove_readthroughs.gtf.tmp $GENOME.fix_remove_readthroughs.gtf && \
-  rm $GENOME.fix_readthroughs.gtf.tmp && \
+  #gffread -T --nids <(detect_readthroughs.pl < $GENOME.fix_readthroughs.gtf.tmp |grep '^MSTRG' ) $GENOME.fix_readthroughs.gtf.tmp > $GENOME.fix_remove_readthroughs.gtf.tmp && \
+  #mv $GENOME.fix_remove_readthroughs.gtf.tmp $GENOME.fix_remove_readthroughs.gtf && \
+  #rm $GENOME.fix_readthroughs.gtf.tmp && \
+  mv $GENOME.fix_readthroughs.gtf.tmp $GENOME.fix_remove_readthroughs.gtf && \
 #now we fixed all readthroughs so we can reassign loci
   perl -F'\t' -ane '{if($F[2] eq "transcript"){$protid=$1 if($F[8]=~/^transcript_id "(\S+)";/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' $GENOME.fix_remove_readthroughs.gtf | \
     gffread --cluster-only |\
@@ -689,27 +695,28 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --output_partial $PARTIAL \
       --lncrnamintpm 0 \
       1>combine.out 2>&1 && \
-  gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
+  gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff $GENOME.u.gff | \
     perl -F'\t' -ane '{if($F[8] =~ /_lncRNA/ && $F[2] eq "mRNA"){$F[2]="lnc_RNA"}print join("\t",@F);}' | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
-  touch merge.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
-#cleanup
-  if [ $DEBUG -lt 1 ];then
-    rm -f $GENOME.num_introns.txt
-    rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
-    rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
-    rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
-    rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
-    rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
-    rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
-    rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
-    rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
-    rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.*
-  fi
+  touch readthrough.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
 
-if [ -e merge.success ] && [ ! -e pseudo_detect.success ];then
+#cleanup
+if [ $DEBUG -lt 1 ];then
+  rm -f $GENOME.num_introns.txt
+  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
+  rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
+  rm -f $GENOME.u.gff $GENOME.unused_proteins.gff $GENOME.snap_match.txt
+  rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
+  rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
+  rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
+  rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
+  rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
+  rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.*
+fi
+
+if [ -e readthrough.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes" && \
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
   ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
