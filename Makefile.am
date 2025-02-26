@@ -31,6 +31,7 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/detect_readthroughs.pl \
 	src/detect_readthrough_exons.pl \
 	src/remove_readthrough_exons.pl \
+	src/reassign_transcripts.pl \
 	src/assign_class_code.pl \
 	src/tblToGFF.pl \
 	src/convert_trna.sh \
