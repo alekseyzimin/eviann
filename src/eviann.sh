@@ -470,7 +470,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-  extract_utr_transcripts.pl 1 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
+  extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
   perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
@@ -485,7 +485,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   cat <(gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough1 && detect_readthrough_exons.pl $GENOME.palign.fixed.gff < $GENOME.readthrough1.annotated.gtf) \
-    <(gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | tee $GENOME.readthroughs.txt | \
+      <(gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | \
+  sort -S 5% |\
+  uniq | \
+  tee $GENOME.readthroughs.txt | \
   remove_readthrough_exons.pl $GENOME.gtf | \
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
@@ -647,76 +650,40 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --transdecoder $GENOME.fixed_cds.txt \
       --pwms $GENOME.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
-      --proteins $PROTEINFILE \
-      --include_stop \
       --final_pass \
       --output_partial $PARTIAL \
       --lncrnamintpm $LNCRNATPM \
       1>combine.out 2>&1 && \
     mv $GENOME.k.gff.tmp $GENOME.k.gff && \
     mv $GENOME.u.gff.tmp $GENOME.u.gff && \
-  log "Final pass" && \
+  log "Final pass of readthrough detection" && \
   #now we have the final set of transcripts that we know we will use -- let's get rid of the rest and reassign gene loci
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
-  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
+  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$2 if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff |\
+  gffread --cluster-only |awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}'  > $GENOME.locus_transcripts.tmp && \
+  mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
+  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$1:$2" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
   detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf | \
-  remove_readthrough_exons.pl $GENOME.abundanceFiltered.spliceFiltered.gtf | \
-  gffread --ids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff $GENOME.u.gff |\
-    perl -F'\t' -ane '{if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/){print $1,"\n";}elsif($F[8]=~/EvidenceTranscriptID=(\S+)$/){print $1,"\n";}}') | \
-  gffread --nids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff | detect_readthroughs.pl |grep '^MSTRG' ) > $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp &&\
-  mv $GENOME.abundanceFiltered.spliceFiltered.final.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.final.gtf && \
-#from here on all transcripts are good to go and they are in $GENOME.abundanceFiltered.spliceFiltered.final.gtf
-#here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
-  if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
-  else
-    gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.final.gtf -o $GENOME.all
-  fi
-# the file $GENOME.palign.all.gff contains all CDSs we need to use
-  gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
-  log "Checking for and repairing broken ORFs" && \
-  gffread -F $GENOME.protref.all.annotated.gtf > $GENOME.protref.all.annotated.class.gff.tmp && \
-  mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
-  cat $GENOME.palign.all.gff | \
-    check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
-  mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
-  mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
-  mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
-  if [ -s $GENOME.u.cds.gff ];then
-    cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.u.cds.gff) | \
-      ufasta extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp && \
-      mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
-  else
-    ufasta extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
-    mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
-  fi
-  rm -rf $GENOME.broken_cds.fa.transdecoder* && \
-  TransDecoder.LongOrfs -S -t $GENOME.broken_cds.fa -m 75 1>transdecoder.LongOrfs.out 2>&1 && \
-  makeblastdb -in $GENOME.broken_ref.faa -input_type fasta -dbtype prot -out broken_ref 1>makeblastdb.out 2>&1 && \
-  blastp -query $GENOME.broken_cds.fa.transdecoder_dir/longest_orfs.pep -db broken_ref  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.broken_cds.blastp.tmp && \
-  mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
-  TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
-  if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
-    perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.broken_cds.blastp");while($line=<FILE>){@f=split(/\./,$line);$h{$f[0]}=1}}{print "$F[0] $F[6] $F[7]\n" if(defined($h{$F[0]}) && $#F>7 && not($F[3] =~ /ORF_type:internal/));}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
-    mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
-  fi
-  rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
-  cat $GENOME.palign.all.gff | \
+    remove_readthrough_exons.pl <(cat $GENOME.k.gff $GENOME.u.gff |perl -F'\t' -ane '{if($F[2] eq "mRNA"){if($F[8]=~/EvidenceTranscriptID=(\S+);StartCodon/ || $F[8]=~/EvidenceTranscriptID=(\S+)$/){$tid=$1;$F[8]="transcript_id \"$tid\""}print join("\t",@F),"\n";}elsif($F[2] eq "exon"){$F[8]="transcript_id \"$tid\"";print join("\t",@F),"\n";}}') | \
+    gffread -T  > $GENOME.final.gtf.tmp && \
+    #gffread -T --nids <(gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff | detect_readthroughs.pl |grep '^MSTRG' ) > $GENOME.final.gtf.tmp && \
+  mv $GENOME.final.gtf.tmp $GENOME.final.gtf && \
+#from here on all transcripts are good to go and they are in $GENOME.final.gtf
+#all proteins are good as well
+  cat $GENOME.cds.gff | \
     combine_gene_protein_gff.pl \
       --prefix $GENOME \
-      --annotated $GENOME.protref.all.annotated.class.gff \
+      --annotated <(assign_class_code.pl <(trmap $GENOME.cds.gff $GENOME.final.gtf -o /dev/stdout) <  $GENOME.final.gtf | gffread --cluster-only -F) \
       --genome $GENOMEFILE \
-      --transdecoder $GENOME.fixed_cds.txt \
-      --pwms $GENOME.pwm \
-      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
       --proteins $PROTEINFILE \
       --include_stop \
+      --loci $GENOME.locus_transcripts \
       --final_pass \
       --output_partial $PARTIAL \
-      --lncrnamintpm $LNCRNATPM \
+      --lncrnamintpm 0 \
       1>combine.out 2>&1 && \
   gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff.tmp $GENOME.u.gff.tmp | \
     perl -F'\t' -ane '{if($F[8] =~ /_lncRNA/ && $F[2] eq "mRNA"){$F[2]="lnc_RNA"}print join("\t",@F);}' | \
