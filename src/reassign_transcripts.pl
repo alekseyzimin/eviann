@@ -9,35 +9,42 @@ while($line=<FILE>){
     $reassign_locus{$tr}=$l;
     $locus_beg{$l}=200000000000;
     $locus_end{$l}=-1;
+    $locus_count{$l}=1;
   }
 }
 
 while($line=<STDIN>){
-  print $line if ($line =~/^#/);
   @f=split(/\t/,$line);
+  if($line =~/^#/ || $f[8]=~/_lncRNA/){
+    print $line;
+    next;
+  }
   if($f[2] eq "mRNA"){
     if($f[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID/){
       #this is protein coding transcript 
       $tr=$1;
       $lid=$2;
-      if(defined($reassign_locus{$tr}))
-        $f[8]=~s/Parent=$lid;EvidenceProteinID/Parent=$reassign_locus{$tr};EvidenceProteinID/;
+      if(defined($reassign_locus{$tr})){
+        @ff=split(/;/,$f[8]); 
+        @fff=split(/-/,$ff[0]);
         $lid=$reassign_locus{$tr};
+        $ff[1]="Parent=$lid";
+        $tr=$lid."-mRNA-".$locus_count{$lid};
+        $ff[0]="ID=$tr";
+        $f[8]=join(";",@ff);
+        $locus_count{$lid}++;
       }
-      $locus{$lid}.=join("\t",$line);
+      $locus{$lid}.=join("\t",@f);
       $locus_beg{$lid}=$f[3] if($locus_beg{$lid}>$f[3]);
       $locus_end{$lid}=$f[4] if($locus_end{$lid}<$f[4]);
-      $locis_chr{$lid}=$f[0] unless(defined($locis_chr{$lid}));
-      $locis_ori{$lid}=$f[6] unless(defined($locis_ori{$lid}));
-      $locis_src{$lid}=$f[1] unless(defined($locis_src{$lid}));
-    }else{
-      #non-coding transcript
-      print $line;
+      $locus_chr{$lid}=$f[0] unless(defined($locus_chr{$lid}));
+      $locus_ori{$lid}=$f[6] unless(defined($locus_ori{$lid}));
+      $locus_src{$lid}=$f[1] unless(defined($locus_src{$lid})); 
     }
-  }elsif($f[8]=~/_lncRNA/){
-    print $line;
+  }elsif($f[2] eq "gene"){
   }else{
-    $locus{$reassign_locus{$tr}}.=$line;
+    $f[8]="Parent=$tr\n";
+    $locus{$lid}.=join("\t",@f);
   }
 }
 

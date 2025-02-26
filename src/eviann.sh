@@ -658,21 +658,21 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.k.gff.tmp $GENOME.k.gff && \
     mv $GENOME.u.gff.tmp $GENOME.u.gff && \
     rm -f $GENOME.unused_proteins.gff.tmp && \
-  touch merge.success && rm -f readthrough.success pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
+  touch merge.success && rm -f loci.success pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
 
-if [ -e merge.success ] && [ ! -e readthrough.success ];then
+if [ -e merge.success ] && [ ! -e loci.success ];then
   log "Reassigning loci based on coding sequences" && \
   gffread -T $GENOME.k.gff | \
     perl -F'\t' -ane '{if($F[2] eq "transcript"){$protid=$1 if($F[8]=~/^transcript_id "(\S+)";/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
     gffread --cluster-only |\
     awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
-  gffread -F --keep-exon-attrs --keep-genes $GENOME.k.gff $GENOME.u.gff | \
+  gffread -F --keep-exon-attrs --keep-genes <(reassign_transcripts.pl $GENOME.locus_transcripts < $GENOME.k.gff) $GENOME.u.gff | \
     perl -F'\t' -ane '{if($F[8] =~ /_lncRNA/ && $F[2] eq "mRNA"){$F[2]="lnc_RNA"}print join("\t",@F);}' | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
-  touch readthrough.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
+  touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
 
 #cleanup
@@ -689,7 +689,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.*
 fi
 
-if [ -e readthrough.success ] && [ ! -e pseudo_detect.success ];then
+if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes" && \
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
   ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
