@@ -680,7 +680,6 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
       gffread --cluster-only | \
       detect_readthroughs.pl) $GENOME.k.gff |\
     reassign_transcripts.pl $GENOME.locus_transcripts) $GENOME.u.gff | \
-    perl -F'\t' -ane '{if($F[8] =~ /_lncRNA/ && $F[2] eq "mRNA"){$F[2]="lnc_RNA"}print join("\t",@F);}' | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
   touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."

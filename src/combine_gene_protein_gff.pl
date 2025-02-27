@@ -906,7 +906,8 @@ for my $locus(keys %transcripts_only_loci){
     next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && $transcriptID =~ /^MSTRG/ && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
     print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;
-    push(@output,"$gff_fields_t[0]\tEviAnn\tmRNA\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
+    my $type=$final_pass==1 ? "lnc_RNA" : "mRNA";
+    push(@output,"$gff_fields_t[0]\tEviAnn\t$type\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
     my $i=1;
     for my $x(@{$transcript_gff_u{$t}}){
       my @gff_fields=split(/\t/,$x);
