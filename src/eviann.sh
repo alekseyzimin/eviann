@@ -488,7 +488,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       <(gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | \
   sort -S 5% |\
   uniq | \
-  tee $GENOME.readthroughs.txt | \
   remove_readthrough_exons.pl $GENOME.gtf | \
   perl -F'\t' -ane 'BEGIN{
     open(FILE,"'$GENOME'.num_introns.txt");
@@ -521,7 +520,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     print if($flag);
   }' > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
-  echo -n "Found readthrough transcripts: " && awk '{print $1}' $GENOME.readthroughs.txt | sort -S 5% | uniq |wc -l && \
 #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
   cat $GENOME.palign.fixed.gff | \
@@ -532,8 +530,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.spliceFiltered.annotated.gtf.bak > $GENOME.protref.spliceFiltered.annotated.gtf.tmp && \
   mv $GENOME.protref.spliceFiltered.annotated.gtf.tmp $GENOME.protref.spliceFiltered.annotated.gtf && \
   rm -f $GENOME.protref.spliceFiltered.annotated.gtf.bak && \
-  perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.spliceFiltered.gtf > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
-  mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
 #this run of combine gives us the unused proteins and unused transcripts, we do not care about everything else
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl \
@@ -546,6 +542,16 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
+  mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+#here we detect and remove readthrough trancripts that were not trimmed previously
+  perl -F'\t' -ane '{unless($F[2] eq "gene" || $F[0]=~/^#/){if($F[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$F[8]="ID=$4";$tid=$4;}else{$F[8]="Parent=$tid"}print join("\t",@F),"\n"}}' $GENOME.k.gff |\
+    gffread --cluster-only |\
+    detect_readthroughs.pl > $GENOME.readthroughs.txt.tmp && \
+  mv $GENOME.readthroughs.txt.tmp $GENOME.readthroughs.txt && \
+  echo -n "Found readthrough transcripts: " && wc -l $GENOME.readthroughs.txt && \
+  gffread -T --ids $GENOME.transcripts_to_keep.txt $GENOME.spliceFiltered.gtf | \
+    gffread --nids $GENOME.readthroughs.txt > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
+  mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
@@ -668,7 +674,12 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
     gffread --cluster-only |\
     awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
-  gffread -F --keep-exon-attrs --keep-genes <(reassign_transcripts.pl $GENOME.locus_transcripts < $GENOME.k.gff) $GENOME.u.gff | \
+  gffread -F --keep-exon-attrs --keep-genes \
+    <(gffread -F --keep-genes --nids \
+      <(perl -F'\t' -ane '{unless($F[2] eq "gene" || $F[0]=~/^#/){if($F[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$F[8]="ID=$1";$tid=$1;}else{$F[8]="Parent=$tid"}print join("\t",@F),"\n"}}' $GENOME.k.gff | \
+      gffread --cluster-only | \
+      detect_readthroughs.pl) $GENOME.k.gff |\
+    reassign_transcripts.pl $GENOME.locus_transcripts) $GENOME.u.gff | \
     perl -F'\t' -ane '{if($F[8] =~ /_lncRNA/ && $F[2] eq "mRNA"){$F[2]="lnc_RNA"}print join("\t",@F);}' | \
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \

@@ -12,7 +12,7 @@ while($line=<STDIN>){
   chomp($line);
   @gff_fields=split(/\t/,$line);
   if($gff_fields[2] eq "mRNA"){
-    if($gff_fields[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"$/){
+    if($gff_fields[8] =~ /^ID=(\S+);locus=(\S+)$/){
       $tid=$1;
       $gid=$2;
     }
@@ -41,8 +41,8 @@ sub check_readthroughs{
 #  print "$i CDS $startCDS{$tr[$i]} $endCDS{$tr[$i]} $tr[$i]\n";
 #}
 for($skip=0;$skip<=$#tr;$skip++){
-  $last_CDS_end=$endCDS{$tr[0]};
-  $last_exon_end=$endCDS{$tr[0]};
+  $last_CDS_end=$skip==0?$endCDS{$tr[1]}:$endCDS{$tr[0]};
+  $last_exon_end=$skip==0?$endexon{$tr[1]}:$endexon{$tr[0]};
   #print "skipping $skip\n";
   for($i=0;$i<=$#tr;$i++){
     next if($i==$skip);
