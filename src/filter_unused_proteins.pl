@@ -92,7 +92,7 @@ my $min_complete_sens=90;
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   next if($F[3]<2);
-  if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.99){
+  if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.995){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
     $h{$F[2]}=1;#we mark the proteins to keep
