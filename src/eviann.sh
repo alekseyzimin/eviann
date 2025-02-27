@@ -739,7 +739,7 @@ if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
   fi
 fi
 
-if [ -e merge.success ] && [ -e pseudo_detect.success ];then
+if [ -e loci.success ] && [ -e pseudo_detect.success ];then
 #produce transcript and protein sequences
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta -w $GENOME.transcripts.fasta $GENOME.pseudo_label.gff && \
 #check if we need to do functional annotation
