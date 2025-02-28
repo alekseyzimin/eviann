@@ -3,8 +3,8 @@
 my $trmap=$ARGV[0];
 my %code_priority;
 $code_priority{"="}=6000000000;
-$code_priority{"k"}=5000000000;
 $code_priority{"c"}=5000000000;
+$code_priority{"k"}=4000000000;
 $code_priority{"j"}=3000000000;
 $code_priority{"n"}=2000000000;
 $code_priority{"m"}=1000000000;
@@ -41,13 +41,13 @@ while($line=<FILE>){
     @F=split(/\-/,$f[6]);
     my $pbeg=$F[0];
     my $pend=$F[-1];
-    my $overhang_penalty=0;
+    my $overhang_length=0;
     if($pbeg<$tbeg{$transcript}){
-      $overhang_penalty+=$pbeg-$tbeg{$transcript};
+      $overhang_length=$tbeg{$transcript}-$pbeg;
       $pbeg=$tbeg{$transcript};
     }
     if($pend>$tend{$transcript}){
-      $overhang_penalty+=$tend{$transcript}-$pend;
+      $overhang_length=$pend-$tend{$transcript};
       $pend=$tend{$transcript};
     }
     my $match_length=$pend-$pbeg;
@@ -57,11 +57,11 @@ while($line=<FILE>){
         $common_junctions++ if($F[$i] eq $junctions[$j]);
       }
     }
-    #print "DEBUG trmap $transcript $f[5] $f[3] $f[4] $common_junctions $overhang_penalty $match_length\n";
+    #print "DEBUG trmap $transcript $f[5] $f[3] $f[4] $common_junctions $overhang_length $match_length\n";
     if(defined($code_priority{$f[0]})){
-      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_penalty*2+$match_length)." $f[0] $f[5] $f[2]");
+      push(@matches,($code_priority{$f[0]}+$common_junctions*100000+$overhang_length+$match_length)." $f[0] $f[5] $f[2]");
     }else{
-      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_penalty*2+$match_length)." N $f[5] $f[2]");
+      push(@matches,($f[4]-$f[3]+$common_junctions*100000+$overhang_length+$match_length)." N $f[5] $f[2]");
     }
   }
 }
