@@ -522,8 +522,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   }' > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
 #we compare and combine filtered proteins and transcripts files
-  #gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
-  assign_class_code.pl <(trmap $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf -o /dev/stdout) < $GENOME.spliceFiltered.gtf > $GENOME.protref.spliceFiltered.annotated.gtf && \
+  gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
+  #assign_class_code.pl <(trmap $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf -o /dev/stdout) < $GENOME.spliceFiltered.gtf > $GENOME.protref.spliceFiltered.annotated.gtf && \
   cat $GENOME.palign.fixed.gff | \
     filter_by_class_code.pl $GENOME.protref.spliceFiltered.annotated.gtf | \
     filter_by_local_abundance.pl > $GENOME.transcripts_to_keep.txt.tmp && \
@@ -619,8 +619,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread $GENOME.palign.fixed.gff >  $GENOME.palign.all.gff 
   fi
 # the file $GENOME.palign.all.gff contains all CDSs we need to use
-  #gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
-  assign_class_code.pl <(trmap $GENOME.palign.all.gff $GENOME.all.combined.gtf -o /dev/stdout) < $GENOME.all.combined.gtf > $GENOME.protref.all.annotated.gtf.tmp && mv $GENOME.protref.all.annotated.gtf.tmp $GENOME.protref.all.annotated.gtf && \
+  gffcompare -T -o $GENOME.protref.all -r $GENOME.palign.all.gff $GENOME.all.combined.gtf && \
+  #assign_class_code.pl <(trmap $GENOME.palign.all.gff $GENOME.all.combined.gtf -o /dev/stdout) < $GENOME.all.combined.gtf > $GENOME.protref.all.annotated.gtf.tmp && mv $GENOME.protref.all.annotated.gtf.tmp $GENOME.protref.all.annotated.gtf && \
   log "Checking for and repairing broken ORFs" && \
   cat $GENOME.palign.all.gff | \
     filter_by_class_code.pl $GENOME.protref.all.annotated.gtf | \

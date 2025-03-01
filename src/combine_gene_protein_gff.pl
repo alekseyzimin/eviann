@@ -1033,7 +1033,7 @@ sub fix_start_stop_codon_ext{
           my $start_index=$index5-$acceptor_length+5;
           $start_index=0 if($start_index<0);
           my $score_seq=substr($ext_seq,$start_index,$index5-$acceptor_length+5 >=0 ? $acceptor_length : $index5+5);
-          next if(length($score_seq)<7);
+          next if(length($score_seq)<9);
           print "DEBUG found acceptor at $j in $transcript_5pext, scoring $score_seq\n";
 #score the extension
           $ext_score=0;
@@ -1046,7 +1046,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG $base ",$acceptor_freq[$i][$code{$base}],"\n";
           }
           print "DEBUG $index5 $score_seq $ext_score $start_index\n";
-          if($ext_score > 4){
+          if($ext_score > 5){
             $found_acceptor=1;
             $j=length($transcript_5pext);
           }
@@ -1089,7 +1089,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG $base ",$donor_freq[$i][$code{$base}],"\n";
           }
           print "DEBUG $index3 $score_seq $ext_score\n";
-          if($ext_score > 5){
+          if($ext_score > 4){
             $found_donor=1;
             $j=length($transcript_3pext);
           }

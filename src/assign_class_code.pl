@@ -2,12 +2,17 @@
 #read trmap file
 my $trmap=$ARGV[0];
 my %code_priority;
-$code_priority{"="}=6000000000;
-$code_priority{"c"}=5000000000;
-$code_priority{"k"}=4000000000;
-$code_priority{"j"}=3000000000;
-$code_priority{"n"}=2000000000;
-$code_priority{"m"}=1000000000;
+$code_priority{"="}=7000000000;
+$code_priority{"c"}=6000000000;
+$code_priority{"k"}=5000000000;
+$code_priority{"j"}=4000000000;
+$code_priority{"n"}=3000000000;
+$code_priority{"m"}=2000000000;
+$code_priority{"e"}=1000000000;
+$code_priority{"o"}=1000000000;
+$code_priority{"y"}=1000000000;
+$code_priority{"i"}=1000000000;
+
 my $transcript="";
 my @matches=();
 open(FILE,$trmap);
