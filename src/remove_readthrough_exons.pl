@@ -20,13 +20,8 @@ while($line=<FILE>){
   $tid=$1 if($F[8]=~/^transcript_id "(\S+)"; gene_id/);
   if($F[2] eq "exon"){
     unless(defined($h{"$tid $F[3] $F[4] $F[6]"})){
-      #if($F[6] eq "+"){
-      #  $F[3]=$cut_exon{"$tid $F[4]"} if(defined($cut_exon{"$tid $F[4]"}));
-      #  $F[4]=$cut_exon{"$tid $F[3]"} if(defined($cut_exon{"$tid $F[3]"}));
-      #}else{
-        $F[4]=$cut_exon{"$tid $F[4]"} if(defined($cut_exon{"$tid $F[4]"}));
-        $F[3]=$cut_exon{"$tid $F[3]"} if(defined($cut_exon{"$tid $F[3]"}));
-      #}
+      $F[4]=$cut_exon{"$tid $F[4]"} if(defined($cut_exon{"$tid $F[4]"}));
+      $F[3]=$cut_exon{"$tid $F[3]"} if(defined($cut_exon{"$tid $F[3]"}));
       print join("\t",@F);
     }
   }else{
