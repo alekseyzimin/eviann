@@ -38,8 +38,8 @@ for line in sys.stdin:
         tr=tid.split(".")
         transcript=".".join(tr[0:-1])+" "+tr[-1]
         #print(transcript)
-        if ((tr[-1]=="5p" and pend[protid]<gff_fields[4]) or (tr[-1]=="3p" and pbeg[protid]>gff_fields[3])) and gff_fields[6] =="+": flag=True
-        if ((tr[-1]=="5p" and pbeg[protid]>gff_fields[3]) or (tr[-1]=="3p" and pend[protid]<gff_fields[4])) and gff_fields[6] =="-": flag=True
+        if ((tr[-1]=="5p" and pend[protid]<=gff_fields[4]) or (tr[-1]=="3p" and pbeg[protid]>=gff_fields[3])) and gff_fields[6] =="+": flag=True
+        if ((tr[-1]=="5p" and pbeg[protid]>=gff_fields[3]) or (tr[-1]=="3p" and pend[protid]<=gff_fields[4])) and gff_fields[6] =="-": flag=True
     elif gff_fields[2] == "exon" and flag:
         if (((tr[-1]== "5p" and pend[protid]>gff_fields[3]) or (tr[-1] == "3p" and pbeg[protid]<gff_fields[4])) and gff_fields[6] == "+") or (((tr[-1]== "5p" and pbeg[protid]<gff_fields[4]) or (tr[-1] == "3p" and pend[protid]>gff_fields[3])) and gff_fields[6] == "-"):
             print(transcript+" "+str(gff_fields[3])+" "+str(gff_fields[4])+" "+gff_fields[6]+" "+str(pbeg[protid])+" "+str(pend[protid]))
