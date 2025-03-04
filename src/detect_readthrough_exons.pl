@@ -24,7 +24,9 @@ while($line=<STDIN>){
       $tid=$1;
       @tr=split(/\./,$1);
       $transcript=join(".",@tr[0..($#tr-1)])." ".$tr[-1];
-      $flag=1;
+      #here we ensure overlap or exact containment
+      $flag=1 if((($tid =~ /5p$/ && $pend{$protid}<=$F[4])||($tid =~ /3p$/ && $pbeg{$protid}>=$F[3])) && $F[6] eq "+");
+      $flag=1 if((($tid =~ /5p$/ && $pbeg{$protid}>=$F[3])||($tid =~ /3p$/ && $pend{$protid}<=$F[4])) && $F[6] eq "-");
       #print "DEBUG $transcript $F[3] $F[4] $pbeg{$protid} $pend{$protid} $flag\n";
     }
   }elsif($F[2] eq "exon" && $flag){
