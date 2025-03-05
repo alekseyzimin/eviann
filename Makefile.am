@@ -38,6 +38,7 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	src/add_features.pl \
 	src/convert_miniprot_gff.pl \
 	src/compute_junction_scores.pl \
+	src/compute_junction_scores_bed.pl \
 	src/score_transcripts_with_hmms.pl \
 	src/fix_palign_splice_sites.pl \
 	exonerate \
