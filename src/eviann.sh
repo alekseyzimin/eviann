@@ -487,7 +487,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough1 && \
   gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
-  cat <(gffread -T --ids <(grep 'class_code "="' $GENOME.readthrough{1,2}.annotated.gtf | perl -F'\t' -ane '{if($F[8]=~/^transcript_id "(\S+)";/){print "$1\n"}}' ) $GENOME.utrs.gff) \
+  cat <(gffread -T --ids <(grep 'class_code "="' $GENOME.readthrough1.annotated.gtf | perl -F'\t' -ane '{if($F[8]=~/^transcript_id "(\S+)";/){print "$1\n"}}' ) $GENOME.utrs.gff) \
     <(cat <(detect_readthrough_exons.pl $GENOME.palign.fixed.gff < $GENOME.readthrough1.annotated.gtf) \
           <(detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | \
         sort -S 5% |\
