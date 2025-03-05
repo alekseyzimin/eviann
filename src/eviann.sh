@@ -492,9 +492,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
   gffcompare -T -r $GENOME.palign.fixed.gff $GENOME.utrs.gff -o $GENOME.readthrough1 && \
   gffcompare -T -r $GENOME.cds.gff $GENOME.utrs.gff -o $GENOME.readthrough2 && \
-  cat <(gffread -T --ids <(grep 'class_code "="' $GENOME.readthrough1.annotated.gtf | perl -F'\t' -ane '{if($F[8]=~/^transcript_id "(\S+)";/){print "$1\n"}}' ) $GENOME.utrs.gff) \
-    <(cat <(detect_readthrough_exons.pl $GENOME.palign.fixed.gff < $GENOME.readthrough1.annotated.gtf) \
-          <(detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | \
+  cat <(perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=0;if($F[8]=~/^transcript_id "(\S+)";(.+)class_code "="/){@f=split(/:/,$1);$suffix=substr($f[-1],-2);$tid="$f[0].$suffix:$f[1]:".substr($f[2],0,-3); $F[8]="transcript_id \"$tid\"; gene_id \"$tid\"";$flag=1;print join("\t",@F),"\n"}}elsif($F[2] eq "exon" && $flag){$F[8]="transcript_id \"$tid\"; gene_id \"$tid\"";print join("\t",@F),"\n"}}' $GENOME.readthrough1.annotated.gtf ) \
+      <(cat <(detect_readthrough_exons.pl $GENOME.palign.fixed.gff < $GENOME.readthrough1.annotated.gtf) \
+            <(detect_readthrough_exons.pl $GENOME.cds.gff < $GENOME.readthrough2.annotated.gtf) | \
         sort -S 5% |\
         uniq | \
         remove_readthrough_exons.pl $GENOME.gtf) | \
