@@ -682,7 +682,7 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
     gffread --cluster-only | \
     detect_readthroughs.pl) $GENOME.k.gff |\
     tee $GENOME.k.nort.gff.tmp |\
-    perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$1 if($F[8]=~/^ID=(\S+);EvidenceProteinID/);$F[8]="ID=$protid\n";$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=-1;$end{$protid}=0;$ori{$protid}=$F[6];}elsif($F[2] eq "CDS"){if($F[4]-$F[3]>6){$F[3]+=3;$F[4]-=3;}$beg{$protid}=$F[3] if($beg{$protid}==-1); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$F[2]="exon";$cds{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
+    perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$1 if($F[8]=~/^ID=(\S+);EvidenceProteinID/);$F[8]="ID=$protid\n";$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=-1;$end{$protid}=0;$ori{$protid}=$F[6];}elsif($F[2] eq "CDS"){if($F[4]-$F[3]>16){$F[3]+=8;$F[4]-=8;}$beg{$protid}=$F[3] if($beg{$protid}==-1); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$F[2]="exon";$cds{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
     gffread --cluster-only |\
     awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
