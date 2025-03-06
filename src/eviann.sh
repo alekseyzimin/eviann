@@ -676,14 +676,15 @@ fi
 
 if [ -e merge.success ] && [ ! -e loci.success ];then
   log "Reassigning loci based on coding sequences" && \
+  #here we remove readthrough transcripts and reassign loci; we allow up to 6 nt overlap between CDSs to put them into the same locus
   gffread -F --nids \
-    <(perl -F'\t' -ane '{unless($F[2] eq "gene" || $F[0]=~/^#/){if($F[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$F[8]="ID=$1";$tid=$1;}else{$F[8]="Parent=$tid"}print join("\t",@F),"\n"}}' $GENOME.k.gff | \
-      gffread --cluster-only | \
-      detect_readthroughs.pl) $GENOME.k.gff |\
-      tee $GENOME.k.nort.gff.tmp |\
-      perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$1 if($F[8]=~/^ID=(\S+);EvidenceProteinID/);$F[8]="ID=$protid\n";$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=-1;$end{$protid}=0;$ori{$protid}=$F[6];}elsif($F[2] eq "CDS"){$beg{$protid}=$F[3] if($beg{$protid}==-1); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$F[2]="exon";$cds{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
-      gffread --cluster-only |\
-      awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
+      <(perl -F'\t' -ane '{unless($F[2] eq "gene" || $F[0]=~/^#/){if($F[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$F[8]="ID=$1";$tid=$1;}else{$F[8]="Parent=$tid"}print join("\t",@F),"\n"}}' $GENOME.k.gff | \
+    gffread --cluster-only | \
+    detect_readthroughs.pl) $GENOME.k.gff |\
+    tee $GENOME.k.nort.gff.tmp |\
+    perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$1 if($F[8]=~/^ID=(\S+);EvidenceProteinID/);$F[8]="ID=$protid\n";$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=-1;$end{$protid}=0;$ori{$protid}=$F[6];}elsif($F[2] eq "CDS"){if($F[4]-$F[3]>6){$F[3]+=3;$F[4]-=3;}$beg{$protid}=$F[3] if($beg{$protid}==-1); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$F[2]="exon";$cds{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
+    gffread --cluster-only |\
+    awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
   mv $GENOME.k.nort.gff.tmp $GENOME.k.nort.gff && \
   gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(reassign_transcripts.pl $GENOME.locus_transcripts < $GENOME.k.nort.gff) $GENOME.u.gff|\
