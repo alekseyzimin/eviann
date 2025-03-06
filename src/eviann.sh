@@ -481,11 +481,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
-  #gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' | \
-  #  tee >(perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print $F[2],"\n" if($flag)}' | uniq -c | awk 'BEGIN{n=0}{if($2=="exon"){n+=($1-1)}}END{print n}' > $GENOME.num_introns.txt) | \
-  #  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' | \
-  #  compute_junction_scores.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
-  #mv $GENOME.pwm.tmp $GENOME.pwm && \
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm > $GENOME.transcript_splice_scores.txt.tmp && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
@@ -681,17 +676,17 @@ fi
 
 if [ -e merge.success ] && [ ! -e loci.success ];then
   log "Reassigning loci based on coding sequences" && \
-  gffread -T $GENOME.k.gff | \
-    perl -F'\t' -ane '{if($F[2] eq "transcript"){$protid=$1 if($F[8]=~/^transcript_id "(\S+)";/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
-    gffread --cluster-only |\
-    awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
-  mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
-  gffread -F --keep-exon-attrs --keep-genes \
-    <(gffread -F --keep-genes --nids \
-      <(perl -F'\t' -ane '{unless($F[2] eq "gene" || $F[0]=~/^#/){if($F[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$F[8]="ID=$1";$tid=$1;}else{$F[8]="Parent=$tid"}print join("\t",@F),"\n"}}' $GENOME.k.gff | \
+  gffread -F --nids \
+    <(perl -F'\t' -ane '{unless($F[2] eq "gene" || $F[0]=~/^#/){if($F[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon/){$F[8]="ID=$1";$tid=$1;}else{$F[8]="Parent=$tid"}print join("\t",@F),"\n"}}' $GENOME.k.gff | \
       gffread --cluster-only | \
       detect_readthroughs.pl) $GENOME.k.gff |\
-    reassign_transcripts.pl $GENOME.locus_transcripts) $GENOME.u.gff | \
+      tee $GENOME.k.nort.gff.tmp |\
+      perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid=$1 if($F[8]=~/^ID=(\S+);EvidenceProteinID/);$F[8]="ID=$protid\n";$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=-1;$end{$protid}=0;$ori{$protid}=$F[6];}elsif($F[2] eq "CDS"){$beg{$protid}=$F[3] if($beg{$protid}==-1); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$F[2]="exon";$cds{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}' | \
+      gffread --cluster-only |\
+      awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
+  mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
+  mv $GENOME.k.nort.gff.tmp $GENOME.k.nort.gff && \
+  gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(reassign_transcripts.pl $GENOME.locus_transcripts < $GENOME.k.nort.gff) $GENOME.u.gff|\
     awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
   touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
@@ -708,7 +703,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
   rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
-  rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts 
+  rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.nort.gff 
 fi
 
 if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then

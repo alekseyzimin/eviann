@@ -907,7 +907,7 @@ for my $locus(keys %transcripts_only_loci){
     print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;
     my $type=$final_pass==1 ? "lnc_RNA" : "mRNA";
-    push(@output,"$gff_fields_t[0]\tEviAnn\t$type\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID");
+    push(@output,"$gff_fields_t[0]\tEviAnn\t$type\t".join("\t",@gff_fields_t[3..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceTranscriptID=$transcriptID;geneID=$geneID");
     my $i=1;
     for my $x(@{$transcript_gff_u{$t}}){
       my @gff_fields=split(/\t/,$x);
@@ -918,7 +918,7 @@ for my $locus(keys %transcripts_only_loci){
   if($transcript_index>0){
     my $dir_factor=0;
     $dir_factor=0.5 if($gff_fields[6] eq "-");
-    $gene_record_u{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=lncRNA;junction_score=$junction_score;\n".join("\n",@output)."\n";
+    $gene_record_u{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=lncRNA\n".join("\n",@output)."\n";
     push(@gene_records_u,$gff_fields[0]." ".($locus_start+$dir_factor));
   }
 }

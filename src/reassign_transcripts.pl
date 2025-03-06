@@ -20,15 +20,16 @@ while($line=<STDIN>){
     next;
   }
   if($f[2] eq "mRNA"){
-    if($f[8] =~ /^ID=(\S+);Parent=(\S+);EvidenceProteinID/){
+    if($f[8] =~ /^ID=(\S+);EvidenceProteinID/){
       #this is protein coding transcript 
       $tr=$1;
-      $lid=$2;
+      ($lid)=split(/-/,$tr,1);
       if(defined($reassign_locus{$tr})){
-        @ff=split(/;/,$f[8]); 
-        @fff=split(/-/,$ff[0]);
+        my @ff=split(/;/,$f[8]); 
+        my @fff=split(/-/,$ff[0]);
         $lid=$reassign_locus{$tr};
-        $ff[1]="Parent=$lid";
+        splice(@ff,1,0,"Parent=$lid");
+        $ff[-2]="geneID=$lid";
         $tr=$lid."-mRNA-".$locus_count{$lid};
         $ff[0]="ID=$tr";
         $f[8]=join(";",@ff);
