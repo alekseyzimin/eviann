@@ -107,19 +107,10 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
-#now we use incomplete proteins only for loci that do not ave any completes
-for(my $i=0;$i<=$#scores_sorted;$i++){
-  my @F=split(/\s+/,$scores_sorted[$i]);
-  next if($F[3]==2);
-  if($hn{$F[1]} < 1 && $F[0]>$min_complete_sens ){
-    $hn{$F[1]}+=1;#this is the number of proteins per locus
-    $h{$F[2]}=1;#we mark the proteins to keep
-  }
-}
 
 #here we adjust the threshold for secondary protein alignments based on the ratio of complete to protein_only
 $add_thresh-=scalar(keys %h)/$num_complete/150;
-#print "DEBUG $add_thresh $num_complete\n";
+print "#$add_thresh $num_complete\n";
 my %h=();
 my %hs=();
 my %hn=();
@@ -132,7 +123,7 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
-#now we use incomplete proteins only for loci that do not ave any completes
+#now we use incomplete proteins only for loci that do not ave any completes, 1 per locus
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   next if($F[3]==2);
