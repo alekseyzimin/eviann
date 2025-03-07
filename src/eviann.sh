@@ -591,6 +591,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           ufasta one | \
           awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
         ) \
+        $GENOME.k.gff \
       > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff 
   fi 

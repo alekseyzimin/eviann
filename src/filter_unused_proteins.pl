@@ -3,6 +3,7 @@
 my $genome_file=$ARGV[0];
 my $unused_proteins_file=$ARGV[1];
 my $counts_file=$ARGV[2];
+my $k_file=$ARGV[3];
 my %similarity;
 my %contigs;
 
@@ -29,7 +30,7 @@ while($line=<FILE>){
   push(@unused,$line);
   my @F=split(/\t/,$line);
   if($F[2] eq "gene"){
-    $similarity{$1}=$4+$3/100-1 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
+    $similarity{$1}=($4+$3)/2 if($F[8]=~/^ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)/ );
   }
 }
 
@@ -38,6 +39,12 @@ while($line=<FILE>){
   chomp($line);
   my ($name,$c)=split(/\s+/,$line);
   $pcount{$name}=$c;
+}
+
+my $num_complete=0;
+open(FILE,$k_file);
+while($line=<FILE>){
+  $num_complete++ if($line=~/Evidence=complete/);
 }
 
 #combined file on STDIN
@@ -88,11 +95,38 @@ my %h=();
 my %hs=();
 my %hn=();
 my $min_complete_sens=90;
+my $add_thresh=.9999;
+#here we figure out what the additional threshold should be based on the ratio of complete to protein-only
 #first we only consider complete proteins
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   next if($F[3]<2);
-  if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*.995){
+  if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
+    $hn{$F[1]}+=1;#this is the number of proteins per locus
+    $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+    $h{$F[2]}=1;#we mark the proteins to keep
+  }
+}
+#now we use incomplete proteins only for loci that do not ave any completes
+for(my $i=0;$i<=$#scores_sorted;$i++){
+  my @F=split(/\s+/,$scores_sorted[$i]);
+  next if($F[3]==2);
+  if($hn{$F[1]} < 1 && $F[0]>$min_complete_sens ){
+    $hn{$F[1]}+=1;#this is the number of proteins per locus
+    $h{$F[2]}=1;#we mark the proteins to keep
+  }
+}
+
+#here we adjust the threshold for secondary protein alignments based on the ratio of complete to protein_only
+$add_thresh-=scalar(keys %h)/$num_complete/150;
+#print "DEBUG $add_thresh $num_complete\n";
+my %h=();
+my %hs=();
+my %hn=();
+for(my $i=0;$i<=$#scores_sorted;$i++){
+  my @F=split(/\s+/,$scores_sorted[$i]);
+  next if($F[3]<2);
+  if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
     $h{$F[2]}=1;#we mark the proteins to keep
