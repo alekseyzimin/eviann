@@ -717,7 +717,7 @@ for my $locus(keys %transcripts_cds_loci){
   my $transcript_index=0;
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
   for my $source("EviAnn","StringTie","EviAnnP"){
-     for my $class ("=","k","j","n","m"){  
+     for my $class ("=","k","j","m","n"){  
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
