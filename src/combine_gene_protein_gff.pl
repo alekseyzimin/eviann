@@ -765,7 +765,7 @@ for my $locus(keys %transcripts_cds_loci){
         $evidence_type="transcript_only" if($protID =~ /^XLOC_/);
         $evidenceProtID=(split(/:/,$protID))[0];
         $evidenceProtID.=":".$protein_func{$evidenceProtID} if(defined($protein_func{$evidenceProtID}));
-        push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceProteinID=$evidenceProtID;EvidenceTranscriptID=$transcriptID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Class=$class;Evidence=$evidence_type;");
+        push(@output,$gff_fields[0]."\tEviAnn\tmRNA\t$transcript_start\t$transcript_end\t".join("\t",@gff_fields_t[5..7])."\tID=$parent$transcript_index;Parent=$geneID;EvidenceProteinID=$evidenceProtID;EvidenceTranscriptID=$transcriptID;StartCodon=$transcript_cds_start_codon{$t};StopCodon=$transcript_cds_end_codon{$t};Class=$class;Evidence=$evidence_type;Num_exons=".($#{$transcript_gff{$t}}+1));
 #output exons
         my $i=1;
         my $first_j=0;

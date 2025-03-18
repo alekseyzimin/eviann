@@ -475,7 +475,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
   perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
-  log "Computing PWM matrices at splice junctions" && \
+  log "Computing Markov chain matrices at splice junctions" && \
   gffread -F --tlf $GENOME.k.gff |\
     perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;/){$tid=$4;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC$n\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' | \
     tee >(wc -l > $GENOME.num_introns.txt) | \
