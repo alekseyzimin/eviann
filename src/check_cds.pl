@@ -95,7 +95,7 @@ while(my $line=<FILE>){
       $locID=substr($attr,6) if($attr =~ /^locus=/);
     }
     print "DEBUG read transcript $geneID class $class_code protein $protID locus $locID\n";
-    if($class_code =~ /i|y|u|o/){
+    if($class_code =~ /i|y|u|o|x/){
       $transcript_u{$geneID}=$line;
       $transcripts_only_loci{$locID}.="$geneID ";
     }else{

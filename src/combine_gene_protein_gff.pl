@@ -164,7 +164,7 @@ while(my $line=<FILE>){
     }
     $locID=$reassign_locus{$ID} if(defined($reassign_locus{$ID}));
     print "DEBUG loaded transcript $ID protein $protID class $class_code locus $locID\n";
-    if($class_code =~ /i|y|u|o/){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
+    if($class_code =~ /i|y|u|o|x/){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$ID}=$line;
       $transcripts_only_loci{$locID}.="$ID ";
     }else{
