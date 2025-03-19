@@ -21,7 +21,7 @@ if($gtf_fields[2] eq "transcript"){
   #print "DEBUG $id $xloc $protein $class $gtf_fields[8]\n";
   if(not($id =~ /^MSTRG/)){#if not a merged transript -- do not mess with it
     print "$id\n";
-  }elsif($class eq "u" && defined($id)){#no protein, keep
+  }elsif($class =~ /i|y|u|o/ && defined($id)){#no protein, keep
     $transcripts_at_xloc_same_cds{"$xloc:u"}.="$id:$class ";
   }elsif(defined($id) && defined($xloc) && defined($protein) && defined($class)){#protein defined, examine
     $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
