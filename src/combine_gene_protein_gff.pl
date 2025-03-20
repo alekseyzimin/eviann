@@ -129,19 +129,87 @@ while(my $line=<FILE>){
   if($gff_fields[2] eq "transcript"){
     if(defined($transcript{$ID})){
     #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
+      my @gff_fields_t=split(/\t/,$transcript{$ID});
       my @gff_fields=split(/\t/,$exons[0]);
-      $gff_fields[3]=$protein_start{$transcript_cds{$ID}} if($gff_fields[3]>$protein_start{$transcript_cds{$ID}});
-      $gff_fields[3]=1 if($gff_fields[3]<1);
-      $tstart=$gff_fields[3];
-      $exons[0]=join("\t",@gff_fields);
+      my @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$ID}}}[0]);
+      if($gff_fields[3]>$gff_fields_p[3]){
+        print "DEBUG longer 5' for $transcript{$ID}\n";
+        print join("\n",@{$protein_cds{$transcript_cds{$ID}}}),"\n";
+        print join("\n",@exons),"\n";
+        if($gff_fields[3]<=$gff_fields_p[4]){
+          $gff_fields[3]=$gff_fields_p[3];
+          $gff_fields_t[3]=$gff_fields[3];
+          $exons[0]=join("\t",@gff_fields);
+        }else{
+          print "DEBUG extra exons 5' for $ID\n";#add exons
+          my @pexonsb=();
+          my @pexonse=();
+          my $found_j=0;
+          push(@pexonsb,$gff_fields_p[3]);
+          push(@pexonse,$gff_fields_p[4]);
+          for($i=1;$i<=$#{$protein_cds{$transcript_cds{$ID}}};$i++){
+            @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$ID}}}[$i]);
+            push(@pexonsb,$gff_fields_p[3]);
+            push(@pexonse,$gff_fields_p[4]);
+            if($gff_fields_p[4]==$gff_fields[4]){
+              $found_j=1;
+              last;
+            }
+          }
+          if($found_j){
+            #now we remove the firs exon and replace exons
+            shift(@exons);
+            for($i=$#pexonsb;$i>=0;$i--){
+              my $exonline=join("\t",@gff_fields[0..2])."\t$pexonsb[$i]\t$pexonse[$i]\t".join("\t",@gff_fields[5..$#gff_fields]);
+              unshift(@exons,$exonline);
+            }
+            print "DEBUG fixed 5' for $ID\n";
+            print join("\n",@exons),"\n";
+            $gff_fields_t[3]=$pexonsb[0];
+          }
+        }
+      }
       @gff_fields=split(/\t/,$exons[-1]);
-      $gff_fields[4]=$protein_end{$transcript_cds{$ID}} if($gff_fields[4]<$protein_end{$transcript_cds{$ID}});
-      $tend=$gff_fields[4];
-      $exons[-1]=join("\t",@gff_fields);
-      @gff_fields=split(/\t/,$transcript{$ID});
-      $gff_fields[3]=$tstart;
-      $gff_fields[4]=$tend;
-      $transcript{$ID}=join("\t",@gff_fields);
+      @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$ID}}}[-1]);
+      if($gff_fields[4]<$gff_fields_p[4]){
+        print "DEBUG longer 3' for $transcript{$ID}\n";
+        print join("\n",@{$protein_cds{$transcript_cds{$ID}}}),"\n";
+        print join("\n",@exons),"\n";
+        if($gff_fields[4]>=$gff_fields_p[3]){
+          $gff_fields[4]=$gff_fields_p[4];
+          $gff_fields_t[4]=$gff_fields[4];
+          $exons[-1]=join("\t",@gff_fields);
+        }else{
+          print "DEBUG extra exons 3' for $ID\n";#add exons
+          my @pexonsb=();
+          my @pexonse=();
+          my $found_j=0;
+          push(@pexonsb,$gff_fields_p[3]);
+          push(@pexonse,$gff_fields_p[4]);
+          for($i=$#{$protein_cds{$transcript_cds{$ID}}}-1;$i>=0;$i--){
+            @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$ID}}}[$i]);
+            unshift(@pexonsb,$gff_fields_p[3]);
+            unshift(@pexonse,$gff_fields_p[4]);
+            if($gff_fields_p[3]==$gff_fields[3]){
+              $found_j=1;
+              last;
+            }
+          }
+          if($found_j){
+            #now we remove the firs exon and replace exons
+            pop(@exons);
+            for($i=0;$i<=$#pexonsb;$i++){
+              my $exonline=join("\t",@gff_fields[0..2])."\t$pexonsb[$i]\t$pexonse[$i]\t".join("\t",@gff_fields[5..$#gff_fields]);
+              push(@exons,$exonline);
+            }
+            print "DEBUG fixed 3' for $ID\n";
+            print join("\n",@exons),"\n";
+            $gff_fields_t[4]=$pexonse[-1];
+          }
+        }
+      }
+      $transcript{$ID}=join("\t",@gff_fields_t);
+      print "DEBUG updated transcript $transcript{$ID}\n"; 
       $transcript_gff{$ID}=[@exons];
       $transcript_ori{$ID}=$tori;
     }elsif(defined($transcript_u{$ID})){
@@ -189,7 +257,6 @@ if(defined($transcript{$ID})){
 #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
   my @gff_fields=split(/\t/,$exons[0]);
   $gff_fields[3]=$protein_start{$transcript_cds{$ID}} if($gff_fields[3]>$protein_start{$transcript_cds{$ID}});
-  $gff_fields[3]=1 if($gff_fields[3]<1);
   $exons[0]=join("\t",@gff_fields);
   my @gff_fields=split(/\t/,$exons[-1]);
   $gff_fields[4]=$protein_end{$transcript_cds{$ID}} if($gff_fields[4]<$protein_end{$transcript_cds{$ID}});
