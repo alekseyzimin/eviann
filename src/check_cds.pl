@@ -271,37 +271,13 @@ for my $g(keys %transcript_cds){
 
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
-    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up -- send to transdecoder
+    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) || ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})) || $cds_length %3 >0){#both start and end are messed up -- send to transdecoder
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
       print "DEBUG broken CDS start and stop outside $g\n";
       next;
-    }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
-      $cds_start_on_transcript=$cds_end_on_transcript%3;
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
-      $cds_end_on_transcript=length($transcript_seqs{$g})-(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
-
-    if($cds_length %3 >0){
-      print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
-      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
-        print "end\n";
-        $cds_length-=$cds_length%3;
-      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3))){
-        $cds_start_on_transcript+=$cds_length%3;
-        $cds_length-=$cds_length%3;
-        print "beginning\n"
-      }else{
-        $cds_length-=$cds_length%3;
-        print "end\n";
-      }
-    }
-    $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon extra $transcript_extra_codon{$g} start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
@@ -372,37 +348,13 @@ for my $g(keys %transcript_cds){
 
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
-    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
+    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) || ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))||$cds_length %3 >0){#both start and end are messed up
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
       print "DEBUG broken CDS start and stop outside $g\n";
       next;
-    }elsif($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})){
-      $cds_start_on_transcript=$cds_end_on_transcript%3;
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    }elsif($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})){
-      $cds_end_on_transcript=length($transcript_seqs{$g})-(length($transcript_seqs{$g})-$cds_start_on_transcript)%3;
-      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
-
-    if($cds_length %3 >0){
-      print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
-      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
-        print "end\n";
-        $cds_length-=$cds_length%3;
-      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3))){
-        $cds_start_on_transcript+=$cds_length%3;
-        $cds_length-=$cds_length%3;
-        print "beginning\n"
-      }else{
-        $cds_length-=$cds_length%3;
-        print "end\n";
-      }
-    }
-    $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon extra $transcript_extra_codon{$g} start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
