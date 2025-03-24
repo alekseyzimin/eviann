@@ -285,8 +285,16 @@ for my $g(keys %transcript_cds){
 #checking for in-frame stop codons
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
-    $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n" if(not($cds_end_on_transcript==$cds_end_on_transcript_original));
+    $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});    
+    if(not($cds_end_on_transcript==$cds_end_on_transcript_original)){
+      print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n";
+      print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
+      my @pn=split(/:/,$transcript_cds{$g});
+      print OUTFILE3 "$pn[0]\n";
+      print "DEBUG broken CDS start and stop outside $g\n";
+      next;
+    }
+
 #fixing start/stop    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
@@ -363,7 +371,15 @@ for my $g(keys %transcript_cds){
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n" if(not($cds_end_on_transcript==$cds_end_on_transcript_original));
+    if(not($cds_end_on_transcript==$cds_end_on_transcript_original)){
+      print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n";
+      print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
+      my @pn=split(/:/,$transcript_cds{$g});
+      print OUTFILE3 "$pn[0]\n";
+      print "DEBUG broken CDS start and stop outside $g\n";
+      next;
+    }
+
 #fixing start/stop    
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
