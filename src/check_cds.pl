@@ -270,28 +270,19 @@ for my $g(keys %transcript_cds){
     }
 
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
-    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) || ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g})) || $cds_length %3 >0){#both start and end are messed up -- send to transdecoder
-      print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
-      my @pn=split(/:/,$transcript_cds{$g});
-      print OUTFILE3 "$pn[0]\n";
-      print "DEBUG broken CDS start and stop outside $g\n";
-      next;
-    }
+    my $cds_start_on_transcript_original=$cds_start_on_transcript;
+    my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon extra $transcript_extra_codon{$g} start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
-#checking for in-frame stop codons
-    my $cds_start_on_transcript_original=$cds_start_on_transcript;
-    my $cds_end_on_transcript_original=$cds_end_on_transcript;
-    $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});    
-    if(not($cds_end_on_transcript==$cds_end_on_transcript_original)){
-      print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n";
+    $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
+
+    if(($cds_start_on_transcript_original < 0 || $cds_start_on_transcript_original > length($transcript_seqs{$g})) || ($cds_end_on_transcript_original < 0 || $cds_end_on_transcript_original > length($transcript_seqs{$g})) || $cds_length %3 >0 || not($cds_end_on_transcript==$cds_end_on_transcript_original)){#both start and end are messed up -- send to transdecoder
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
-      print "DEBUG broken CDS start and stop outside $g\n";
+      print "DEBUG broken CDS start and stop outside or non divisible or in-frame stop $g\n";
       next;
     }
 
@@ -355,28 +346,19 @@ for my $g(keys %transcript_cds){
     }
 
     my $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
-    if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) || ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))||$cds_length %3 >0){#both start and end are messed up
-      print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
-      my @pn=split(/:/,$transcript_cds{$g});
-      print OUTFILE3 "$pn[0]\n";
-      print "DEBUG broken CDS start and stop outside $g\n";
-      next;
-    }
+    my $cds_start_on_transcript_original=$cds_start_on_transcript;
+    my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
     print "DEBUG $first_codon $last_codon extra $transcript_extra_codon{$g} start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
-#checking for in-frame stop codons
-    my $cds_start_on_transcript_original=$cds_start_on_transcript;
-    my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
-    if(not($cds_end_on_transcript==$cds_end_on_transcript_original)){
-      print "DEBUG broken CDS in frame stop $cds_start_on_transcript $cds_end_on_transcript $g\n";
+    
+    if(($cds_start_on_transcript_original < 0 || $cds_start_on_transcript_original > length($transcript_seqs{$g})) || ($cds_end_on_transcript_original < 0 || $cds_end_on_transcript_original > length($transcript_seqs{$g})) || $cds_length %3 >0 || not($cds_end_on_transcript==$cds_end_on_transcript_original)){#both start and end are messed up
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
-      print "DEBUG broken CDS start and stop outside $g\n";
+      print "DEBUG broken CDS start and stop outside or non divisible or in-frame stop $g\n";
       next;
     }
 
