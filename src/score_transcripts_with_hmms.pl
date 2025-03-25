@@ -216,7 +216,6 @@ for my $g(keys %transcript_gff){
       my $acceptor_hmm_score=0;
       my $donor_hmm2_score=0;
       my $acceptor_hmm2_score=0;
-      my $coding_weight=0.5;
 
       for(my $i=0;$i<$donor_length;$i++){
         $donor_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}] if(defined($code{substr($donor_seq,$i,1)}));
@@ -225,36 +224,22 @@ for my $g(keys %transcript_gff){
         $acceptor_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}] if(defined($code{substr($acceptor_seq,$i,1)}));
       }
       
-      for(my $i=0;$i<3;$i++){
-        $donor_hmm_score+=$coding_weight*$donor_hmm_freq[$i][$code2{substr($donor_seq,$i,2)}] if(defined($code2{substr($donor_seq,$i,2)}));
-      }
-      for(my $i=3;$i<($donor_length-1);$i++){
+      for(my $i=0;$i<($donor_length-1);$i++){
         $donor_hmm_score+=$donor_hmm_freq[$i][$code2{substr($donor_seq,$i,2)}] if(defined($code2{substr($donor_seq,$i,2)}));
       }
-      $donor_hmm_score+=$coding_weight*$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
-
-      for(my $i=0;$i<($acceptor_length-4);$i++){
+      $donor_hmm_score+=$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
+      for(my $i=0;$i<($acceptor_length-1);$i++){
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$code2{substr($acceptor_seq,$i,2)}] if(defined($code2{substr($acceptor_seq,$i,2)}));
-      }
-      for(my $i=$acceptor_length-4;$i<($acceptor_length-1);$i++){
-         $acceptor_hmm_score+=$coding_weight*$acceptor_hmm_freq[$i][$code2{substr($acceptor_seq,$i,2)}] if(defined($code2{substr($acceptor_seq,$i,2)}));
       }
       $acceptor_hmm_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       
-      for(my $i=0;$i<3;$i++){
-        $donor_hmm2_score+=$coding_weight*$donor_hmm2_freq[$i][$code3{substr($donor_seq,$i,3)}] if(defined($code3{substr($donor_seq,$i,3)}));
-      }
-      for(my $i=3;$i<($donor_length-2);$i++){
+      for(my $i=0;$i<($donor_length-2);$i++){
         $donor_hmm2_score+=$donor_hmm2_freq[$i][$code3{substr($donor_seq,$i,3)}] if(defined($code3{substr($donor_seq,$i,3)}));
       }
-      $donor_hmm2_score+=$coding_weight*$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
-      $donor_hmm2_score+=$coding_weight*$donor_hmm_freq[0][$code2{substr($donor_seq,0,2)}] if(defined($code2{substr($donor_seq,0,2)}));
-
-      for(my $i=0;$i<($acceptor_length-5);$i++){
+      $donor_hmm2_score+=$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
+      $donor_hmm2_score+=$donor_hmm_freq[0][$code2{substr($donor_seq,0,2)}] if(defined($code2{substr($donor_seq,0,2)}));
+      for(my $i=0;$i<($acceptor_length-2);$i++){
         $acceptor_hmm2_score+=$acceptor_hmm2_freq[$i][$code3{substr($acceptor_seq,$i,3)}] if(defined($code3{substr($acceptor_seq,$i,3)}));
-      }
-      for(my $i=$acceptor_length-5;$i<($acceptor_length-2);$i++){
-        $acceptor_hmm2_score+=$coding_weight*$acceptor_hmm2_freq[$i][$code3{substr($acceptor_seq,$i,3)}] if(defined($code3{substr($acceptor_seq,$i,3)}));
       }
       $acceptor_hmm2_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       $acceptor_hmm2_score+=$acceptor_hmm_freq[0][$code2{substr($acceptor_seq,0,2)}] if(defined($code2{substr($acceptor_seq,0,2)}));
@@ -262,8 +247,8 @@ for my $g(keys %transcript_gff){
       #print "DEBUG $donor_seq  $donor_score $donor_hmm_score $donor_hmm2_score  $acceptor_seq $acceptor_score $acceptor_hmm_score $acceptor_hmm2_score\n";
       #here we calibrate the scores so that they are universal
       my $junction0_score=($donor_score+$acceptor_score);
-      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.65;
-      my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.45;
+      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.45;
+      my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.31;
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
       my $fix_score=$fix_donor_score+$fix_acceptor_score;
