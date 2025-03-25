@@ -233,11 +233,12 @@ for my $g(keys %transcript_gff){
       }
       $donor_hmm_score+=$coding_weight*$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
 
-      for(my $i=0;$i<($acceptor_length-2);$i++){
+      for(my $i=0;$i<($acceptor_length-4);$i++){
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$code2{substr($acceptor_seq,$i,2)}] if(defined($code2{substr($acceptor_seq,$i,2)}));
       }
-      $i=$acceptor_length-2;
-      $acceptor_hmm_score+=$coding_weight*$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
+      for(my $i=$acceptor_length-4;$i<($acceptor_length-1);$i++){
+         $acceptor_hmm_score+=$coding_weight*$acceptor_hmm_freq[$i][$code2{substr($acceptor_seq,$i,2)}] if(defined($code2{substr($acceptor_seq,$i,2)}));
+      }
       $acceptor_hmm_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       
       for(my $i=0;$i<3;$i++){
@@ -261,7 +262,7 @@ for my $g(keys %transcript_gff){
       #print "DEBUG $donor_seq  $donor_score $donor_hmm_score $donor_hmm2_score  $acceptor_seq $acceptor_score $acceptor_hmm_score $acceptor_hmm2_score\n";
       #here we calibrate the scores so that they are universal
       my $junction0_score=($donor_score+$acceptor_score);
-      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.6;
+      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.65;
       my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.45;
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
