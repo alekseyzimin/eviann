@@ -32,7 +32,7 @@ if($gtf_fields[2] eq "transcript"){
 for $l(keys %transcripts_at_xloc_same_cds){
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
   my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
-  my $threshold=weight_function($top_count,$top_tpm,$top_class)**0.6;
+  my $threshold=weight_function($top_count,$top_tpm,$top_class)**0.5;
   #print "DEBUG top $tr count $top_count class $top_class threshold $threshold\n";
   #foreach $tt(@transcripts){
   #  ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$tt);
