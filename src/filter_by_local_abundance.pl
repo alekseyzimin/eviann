@@ -4,7 +4,7 @@
 #transcript_id "MSTRG_00000160:8"; gene_id "XLOC_000001"; xloc "XLOC_000001"; cmp_ref "NP_051101.1.NC_000932.1.81474"; class_code "k"; tss_id "TSS1";
 my %class_factor;
 $class_factor{"="}=4;
-$class_factor{"k"}=4;
+$class_factor{"k"}=5;
 $class_factor{"j"}=2;
 
 my %transcripts_at_xloc_same_cds=();
@@ -32,7 +32,10 @@ if($gtf_fields[2] eq "transcript"){
 for $l(keys %transcripts_at_xloc_same_cds){
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
   my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
-  my $pow=0.5;
+  my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
+  my ($xloc,$protein)=split(/:/,$l);
+  my $pow=($protein eq "u") ? 0.7 : 0.6;
+  #my $pow=0.6;
   my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
   #$threshold=weight_function(1,1,1)**$pow if($threshold<weight_function(1,1,1)**$pow);
   #print "DEBUG top $tr count $top_count class $top_class threshold $threshold\n";

@@ -555,8 +555,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     detect_readthroughs.pl > $GENOME.readthroughs.txt.tmp && \
   mv $GENOME.readthroughs.txt.tmp $GENOME.readthroughs.txt && \
   echo -n "Found readthrough transcripts: " && wc -l $GENOME.readthroughs.txt && \
-  gffread -T --ids $GENOME.transcripts_to_keep.txt $GENOME.spliceFiltered.gtf | \
-    gffread --nids $GENOME.readthroughs.txt > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
+  gffread --ids $GENOME.transcripts_to_keep.txt $GENOME.spliceFiltered.gtf | \
+    gffread -T --nids $GENOME.readthroughs.txt > $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp && \
   mv $GENOME.abundanceFiltered.spliceFiltered.gtf.tmp $GENOME.abundanceFiltered.spliceFiltered.gtf && \
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
