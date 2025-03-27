@@ -34,7 +34,7 @@ for $l(keys %transcripts_at_xloc_same_cds){
   my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
   my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
   my ($xloc,$protein)=split(/:/,$l);
-  my $pow=($protein eq "u") ? 0.7 : 0.6;
+  my $pow=($protein eq "u") ? 0.75 : 0.5;
   #my $pow=0.6;
   my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
   #$threshold=weight_function(1,1,1)**$pow if($threshold<weight_function(1,1,1)**$pow);
