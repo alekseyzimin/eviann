@@ -530,7 +530,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   #assign_class_code.pl <(trmap $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf -o /dev/stdout) < $GENOME.spliceFiltered.gtf > $GENOME.protref.spliceFiltered.annotated.gtf && \
   cat $GENOME.palign.fixed.gff | \
     filter_by_class_code.pl $GENOME.protref.spliceFiltered.annotated.gtf | \
-    filter_by_local_abundance.pl > $GENOME.transcripts_to_keep.txt.tmp && \
+    filter_by_local_abundance.pl 1> $GENOME.transcripts_to_keep.txt.tmp 2>/dev/null && \
   mv $GENOME.transcripts_to_keep.txt.tmp $GENOME.transcripts_to_keep.txt && \
   mv $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf.bak && \
   perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.transcripts_to_keep.txt");while($line=<FILE>){chomp($line);$h{$line}=1}}{if($F[8]=~/transcript_id \"(\S+)\";/){print if(defined($h{$1}));}}' $GENOME.protref.spliceFiltered.annotated.gtf.bak > $GENOME.protref.spliceFiltered.annotated.gtf.tmp && \
