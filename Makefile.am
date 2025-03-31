@@ -46,4 +46,5 @@ dist_bin_SCRIPTS = src/uniprot_sprot.nonred.85.fasta.gz \
 	gffread gffcompare trmap \
 	stringtie \
 	miniprot \
-	TransDecoder-v5.7.1.tar.gz
+	TransDecoder-v5.7.1.tar.gz \
+	samtools-1.21.tgz

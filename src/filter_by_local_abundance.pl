@@ -31,25 +31,23 @@ if($gtf_fields[2] eq "transcript"){
     
 for $l(keys %transcripts_at_xloc_same_cds){
   my @transcripts=sort by_abundance split(/\s/,$transcripts_at_xloc_same_cds{$l});
+  #print "DEBUG sorted $#transcripts transcripts at $l\n",join("\n",@transcripts),"\n";
   my ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$transcripts[0]);
-  my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
+  my $threshold = weight_function($top_count,$top_tpm,$top_class)>=1 ? weight_function($top_count,$top_tpm,$top_class)**$pow : weight_function($top_count,$top_tpm,$top_class);
   my ($xloc,$protein)=split(/:/,$l);
   my $pow=($protein eq "u") ? 0.75 : 0.5;
-  #my $pow=0.6;
   my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
-  #$threshold=weight_function(1,1,1)**$pow if($threshold<weight_function(1,1,1)**$pow);
-  #print "DEBUG top $tr count $top_count class $top_class threshold $threshold\n";
-  #foreach $tt(@transcripts){
-  #  ($tr,$top_count,$top_tpm,$top_class)=split(/:/,$tt);
-  #  print "DEBUG $tr count $top_count tpm $top_tpm class $top_class\n";
-  #}
-  for(my $i=0;$i<=$#transcripts;$i++){
-    my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
-    #print "$tr:$count:$tpm $threshold ",weight_function($count,$tpm,$class),"\n" if(weight_function($count,$tpm,$class) >= $threshold);
-    if(weight_function($count,$tpm,$class) >= $threshold ){
-      print "$tr:$count:$tpm\n";
-    }else{
-      print STDERR "DISCARD $tr:$count:$tpm $count,$tpm,$class\n"
+  if($#transcripts==0){
+    print "$tr:$top_count:$top_tpm\n";
+  }else{
+    for(my $i=0;$i<=$#transcripts;$i++){
+      my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
+#print "$tr:$count:$tpm $threshold ",weight_function($count,$tpm,$class),"\n" if(weight_function($count,$tpm,$class) >= $threshold);
+      if(weight_function($count,$tpm,$class) >= $threshold ){
+        print "$tr:$count:$tpm\n";
+      }else{
+        print STDERR "DISCARD $tr:$count:$tpm $count,$tpm,$class\n"
+      }
     }
   }
 }
