@@ -204,7 +204,7 @@ if [ ! -e sort.success ];then
   if [ $NUM_TISSUES -gt 0 ];then
     for f in $(seq 1 $NUM_TISSUES);do
       if [ ! -s tissue$f.bam.sorted.bam ] && [ -s tissue$f.bam ];then
-        samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam tissue$f.bam.sorted.tmp && mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
+        samtools sort -@ $NUM_THREADS -m 1G tissue$f.bam > tissue$f.bam.sorted.tmp.bam && mv tissue$f.bam.sorted.tmp.bam tissue$f.bam.sorted.bam
       fi
     done
   fi
