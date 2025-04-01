@@ -6,8 +6,8 @@ my %class_factor;
 my $GFF_K=$ARGV[0];
 $class_factor{"="}=20;
 $class_factor{"k"}=22;
-$class_factor{"j"}=2;
-$class_factor{"p"}=1;
+$class_factor{"j"}=3;
+$class_factor{"p"}=2;
 
 #first we read the k gff file -- these are transcritps that yielded complete proteins
 open(FILE,$GFF_K);
