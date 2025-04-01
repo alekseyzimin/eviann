@@ -3,9 +3,17 @@
 #input is the GTF file, where the name of the transcript includes the abundance
 #transcript_id "MSTRG_00000160:8"; gene_id "XLOC_000001"; xloc "XLOC_000001"; cmp_ref "NP_051101.1.NC_000932.1.81474"; class_code "k"; tss_id "TSS1";
 my %class_factor;
+my $GFF_K=$ARGV[0];
 $class_factor{"="}=20;
 $class_factor{"k"}=22;
 $class_factor{"j"}=2;
+$class_factor{"p"}=1;
+
+#first we read the k gff file -- these are transcritps that yielded complete proteins
+open(FILE,$GFF_K);
+while($line=<FILE>){
+  $full_cds_transcripts{$1}=1 if($line=~/EvidenceTranscriptID=(\S+:\S+:\S+);Start/);
+}
 
 my %transcripts_at_xloc_same_cds=();
 while(my $line=<STDIN>){
@@ -24,6 +32,8 @@ if($gtf_fields[2] eq "transcript"){
   }elsif($class =~ /i|y|u|o|x/ && defined($id)){#no protein, keep
     $transcripts_at_xloc_same_cds{"$xloc:u"}.="$id:$class ";
   }elsif(defined($id) && defined($xloc) && defined($protein) && defined($class)){#protein defined, examine
+    $class="p" if($full_cds_transcripts{$id} && not($class=~/k|j|=/));
+    #print "DEBUG $id:$class\n";
     $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
   }
 }
@@ -37,17 +47,13 @@ for $l(keys %transcripts_at_xloc_same_cds){
   my ($xloc,$protein)=split(/:/,$l);
   my $pow=($protein eq "u") ? 0.75 : 0.5;
   my $threshold=weight_function($top_count,$top_tpm,$top_class)**$pow;
-  if($#transcripts==0){
-    print "$tr:$top_count:$top_tpm\n";
-  }else{
-    for(my $i=0;$i<=$#transcripts;$i++){
-      my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
+  for(my $i=0;$i<=$#transcripts;$i++){
+    my ($tr,$count,$tpm,$class)=split(/:/,$transcripts[$i]);
 #print "$tr:$count:$tpm $threshold ",weight_function($count,$tpm,$class),"\n" if(weight_function($count,$tpm,$class) >= $threshold);
-      if(weight_function($count,$tpm,$class) >= $threshold ){
-        print "$tr:$count:$tpm\n";
-      }else{
-        print STDERR "DISCARD $tr:$count:$tpm $count,$tpm,$class\n"
-      }
+    if(weight_function($count,$tpm,$class) >= $threshold){
+      print "$tr:$count:$tpm\n";
+    }else{
+      print STDERR "DISCARD $threshold $tr:$count:$tpm ",weight_function($count,$tpm,$class)," $count,$tpm,$class\n"
     }
   }
 }
