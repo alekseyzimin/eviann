@@ -4,8 +4,8 @@
 #transcript_id "MSTRG_00000160:8"; gene_id "XLOC_000001"; xloc "XLOC_000001"; cmp_ref "NP_051101.1.NC_000932.1.81474"; class_code "k"; tss_id "TSS1";
 my %class_factor;
 my $GFF_K=$ARGV[0];
-$class_factor{"="}=20;
-$class_factor{"k"}=22;
+$class_factor{"="}=10;
+$class_factor{"k"}=12;
 $class_factor{"j"}=3;
 $class_factor{"p"}=2;
 
@@ -53,7 +53,7 @@ for $l(keys %transcripts_at_xloc_same_cds){
     if(weight_function($count,$tpm,$class) >= $threshold){
       print "$tr:$count:$tpm\n";
     }else{
-      print STDERR "DISCARD $threshold $tr:$count:$tpm ",weight_function($count,$tpm,$class)," $count,$tpm,$class\n"
+      print STDERR "DISCARD $tr:$count:$tpm $threshold ",weight_function($count,$tpm,$class)," $count,$tpm,$class\n"
     }
   }
 }
@@ -66,7 +66,9 @@ sub by_abundance{
 }
  
 sub weight_function{
-  my $class_f=.5;
+  my $class_f=0.5;
   $class_f=$class_factor{$_[2]} if(defined($class_factor{$_[2]}));
+  #return($_[0]*($_[1])**0.5*$class_f);
   return($_[0]*log($_[1]+1)*$class_f);
+  #return($_[0]*$class_f);
 }
