@@ -228,7 +228,6 @@ PROTEINFILE=$P/$F
 P=`cd "$(dirname "$RNASEQ")" && pwd`
 F=`basename $RNASEQ`
 RNASEQ=$P/$F
-echo $RNASEQ
 P=`cd "$(dirname "$ALT_EST")" && pwd`
 F=`basename $ALT_EST`
 ALT_EST=$P/$F
