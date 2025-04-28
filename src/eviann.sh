@@ -196,14 +196,19 @@ fi
 if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
   error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
 fi
+
 if [ ! -s $UNIPROT ];then
   error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa>"
 fi
+
 if [ ! -s $PROTEINFILE ];then
   echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
-  export PROTEINFILE=`realpath $UNIPROT` && \
+  P=`cd "$(dirname "$UNIPROT")" && pwd`
+  F=`basename $UNIPROT`
+  export PROTEINFILE=$P/$F
   export PROTEIN=`basename $UNIPROT`
 fi
+
 if [ ! -s $GENOMEFILE ];then
   error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
 fi
@@ -214,12 +219,22 @@ if [ $NUM_PROTEINS -lt 1 ];then
 fi
 
 #get absolute paths
-GENOMEFILE=`realpath $GENOMEFILE`
-PROTEINFILE=`realpath $PROTEINFILE`
-RNASEQ=`realpath $RNASEQ`
-RNASEQ_UNPAIRED=`realpath RNASEQ_UNPAIRED`
-ALT_EST=`realpath $ALT_EST`
-UNIPROT=`realpath $UNIPROT`
+P=`cd "$(dirname "$GENOMEFILE")" && pwd`
+F=`basename $GENOMEFILE`
+GENOMEFILE=$P/$F
+P=`cd "$(dirname "$PROTEINFILE")" && pwd`
+F=`basename $PROTEINFILE`
+PROTEINFILE=$P/$F
+P=`cd "$(dirname "$RNASEQ")" && pwd`
+F=`basename $RNASEQ`
+RNASEQ=$P/$F
+echo $RNASEQ
+P=`cd "$(dirname "$ALT_EST")" && pwd`
+F=`basename $ALT_EST`
+ALT_EST=$P/$F
+P=`cd "$(dirname "$UNIPROT")" && pwd`
+F=`basename $UNIPROT`
+UNIPROT=$P/$F
 
 #get filenames to use as prefixes
 GENOME=`basename $GENOMEFILE`
