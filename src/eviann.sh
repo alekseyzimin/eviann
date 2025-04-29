@@ -245,7 +245,7 @@ for prog in $(echo "ufasta stringtie gffread gffcompare blastp tblastn makeblast
   echo -n "Checking for $prog in $MYPATH ... " && \
   which $prog || error_exit "$prog not found in $MYPATH, please make sure installation of EviAnn ran correctly!";
 done
-for prog in $(echo "minimap2 hisat2 hisat2-build");do
+for prog in $(echo "minimap2 hisat2 hisat2-build samtools");do
   echo -n "Checking for $prog on the PATH ... " && \
   which $prog || log "WARNING! $prog not found the the PATH, it may or may not be needed, but we ask that it is installed!";
 done
