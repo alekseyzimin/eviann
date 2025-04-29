@@ -247,7 +247,7 @@ for prog in $(echo "ufasta stringtie gffread gffcompare miniprot TransDecoder.Pr
 done
 for prog in $(echo "minimap2 hisat2 hisat2-build samtools makeblastdb blastp");do
   echo -n "Checking for $prog on the PATH ... " && \
-  which $prog || log "WARNING! $prog not found the the PATH, it may or may not be needed, but we ask that it is installed!";
+  which $prog || error_exit "WARNING! $prog not found the the PATH!";
 done
 echo "Checking if TransDecoder is properly installed and works"
 $MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
