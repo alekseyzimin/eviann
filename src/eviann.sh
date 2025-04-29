@@ -283,7 +283,7 @@ if [ ! -e transcripts_assemble.success ];then
     if [ $CHECK_RNASEQ -gt 0 ];then
       error_exit "Wrong format of the RNA sequencing description file $RNASEQ, please check your inputs and option switches!"
     fi
-    log "Aligning and building transcripts from RNAseq reads"
+    log "Parsing the RNA sequencing data file" && \
     awk 'BEGIN{n=1}{
       if(NF == 4){
         if($NF == "mix"){
@@ -354,6 +354,7 @@ if [ ! -e transcripts_assemble.success ];then
     touch align-build.success || error_exit "Building HISAT2 index failed, check your inputs"
   fi
   bash ./hisat_stringtie.sh && \
+  log "Aligning and building transcripts from RNAseq reads" && \
   touch transcripts_assemble.success && \
   rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
 fi
