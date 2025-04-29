@@ -539,6 +539,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     print if($flag);
   }' > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
+  if [ $(wc -l $GENOME.spliceFiltered.gtf|awk '{print $1}') -eq 0 ];then error_exit "Transcript file is empty, likely insufficient RNA-seq data, exiting...";fi && \
 #we compare and combine filtered proteins and transcripts files
   gffcompare -T -o $GENOME.protref.spliceFiltered -r $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf && \
   #assign_class_code.pl <(trmap $GENOME.palign.fixed.gff $GENOME.spliceFiltered.gtf -o /dev/stdout) < $GENOME.spliceFiltered.gtf > $GENOME.protref.spliceFiltered.annotated.gtf && \
