@@ -1,6 +1,6 @@
 #!/bin/bash
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
-PROTEINFILE="$PWD/uniprot_sprot.nonred.85.fasta"
+PROTEINFILE="$PWD/uniprot_sprot.fasta"
 GENOMEFILE="na"
 RNASEQ="na"
 ALT_EST="na"
@@ -11,7 +11,7 @@ export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=3.0
 EXTRA_GFF="na"
-UNIPROT="uniprot_sprot.nonred.85.fasta"
+UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
 PID=$$
@@ -181,32 +181,22 @@ do
     shift
 done
 
-#unpack uniprot
-if [ ! -s $UNIPROT ];then
-  log "Unpacking Uniprot database" && \
-  gunzip -c $MYPATH/uniprot_sprot.nonred.85.fasta.gz > uniprot_sprot.nonred.85.fasta.tmp && \
-  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta
-else
-  zcat -f $UNIPROT > uniprot_sprot.nonred.85.fasta.tmp && \
-  mv uniprot_sprot.nonred.85.fasta.tmp uniprot_sprot.nonred.85.fasta && \
-  UNIPROT=uniprot_sprot.nonred.85.fasta
-fi
-
 #checking inputs
 if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
   error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
 fi
 
-if [ ! -s $UNIPROT ];then
-  error_exit "File with uniprot sequences is missing or specified improperly, please supply it with -s </path_to/uniprot_file.fa>"
-fi
-
 if [ ! -s $PROTEINFILE ];then
   echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
+  if [ ! -s $UNIPROT ];then
+    log "Downloading UniProt database" && \
+    wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz && \
+    gunzip uniprot_sprot.fasta.gz
+  fi
   P=`cd "$(dirname "$UNIPROT")" && pwd`
   F=`basename $UNIPROT`
   export PROTEINFILE=$P/$F
-  export PROTEIN=`basename $UNIPROT`
+  export PROTEIN=$F
 fi
 
 if [ ! -s $GENOMEFILE ];then
@@ -782,6 +772,12 @@ if [ -e loci.success ] && [ -e pseudo_detect.success ];then
   if [ $FUNCTIONAL -gt 0 ];then
     if [ ! -e functional.success ];then
       log "Performing functional annotation" && \
+      if [ ! -s $UNIPROT ];then 
+          log "Downloading UniProt database" && \
+          wget https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz && \
+          gunzip uniprot_sprot.fasta.gz && \
+          UNIPROT=uniprot_sprot.fasta
+      fi
       makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 && \
       blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
       mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
