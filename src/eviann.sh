@@ -15,7 +15,7 @@ UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
 MYPATH="`( cd \"$MYPATH\" && pwd )`"
 PID=$$
-export PATH=$MYPATH:$MYPATH/SNAP:$PATH;
+export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
@@ -412,7 +412,7 @@ fi
 
 if [ ! -e protein2genome.deduplicate.success ];then
   log "Deduplicating input proteins"
-  $MYPATH/ufasta one $PROTEINFILE | \
+  ufasta one $PROTEINFILE | \
     awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
     sort  -S 10% -k2,2 |\
     uniq -f 1 |\
@@ -429,7 +429,7 @@ if [ ! -e protein2genome.align.success ];then
   #we may need a bigger k for big genomes
   KMERVALUE=`ls -lL $GENOMEFILE | perl -ane '{if($F[4]>1000000000){print "6";}else{print "5"}}'` && \
   miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
-    $MYPATH/convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
+    convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
   mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
   rm -f merge.success && \
   touch protein2genome.align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
