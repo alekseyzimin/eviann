@@ -190,7 +190,7 @@ if [ ! -s $PROTEINFILE ];then
   echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
   if [ ! -s $UNIPROT ];then
     log "Downloading UniProt database" && \
-    wget --no-hsts --no-check-certificate https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz && \
+    wget --no-check-certificate https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz && \
     gunzip uniprot_sprot.fasta.gz
   fi
   P=`cd "$(dirname "$UNIPROT")" && pwd`
@@ -774,7 +774,7 @@ if [ -e loci.success ] && [ -e pseudo_detect.success ];then
       log "Performing functional annotation" && \
       if [ ! -s $UNIPROT ];then 
           log "Downloading UniProt database" && \
-          wget --no-hsts --no-check-certificate https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz && \
+          wget --no-check-certificate https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/complete/uniprot_sprot.fasta.gz && \
           gunzip uniprot_sprot.fasta.gz && \
           UNIPROT=uniprot_sprot.fasta
       fi
