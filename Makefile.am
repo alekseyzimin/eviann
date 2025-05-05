@@ -45,5 +45,5 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	gffread gffcompare trmap \
 	stringtie \
 	TransDecoder-v5.7.1.tar.gz \
-	samtools-1.21.tgz \
+	samtools-1.15.1.tgz \
 	miniprot.tgz
