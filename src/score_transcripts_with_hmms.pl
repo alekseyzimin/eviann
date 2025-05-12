@@ -191,6 +191,17 @@ if(defined($ARGV[2])){
   }
 }
 
+#we load the more reliable junctions
+if(defined($ARGV[3])){
+  open(FILE,$ARGV[3]);
+  while($line=<FILE>){
+    chomp($line);
+    @f=split(/\t/,$line);
+    $f[2]++;
+    $reliable{"$f[0] $f[1] $f[2] $f[5]"}++;
+  }
+}
+
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){
   my @gff_fields=();
@@ -210,6 +221,7 @@ for my $g(keys %transcript_gff){
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
       }
+      my $rel=($reliable{"$gff_fields_prev[0] $gff_fields_prev[4] $gff_fields[3] $gff_fields[6]"}-1)*2 if(defined($reliable{"$gff_fields_prev[0] $gff_fields_prev[4] $gff_fields[3] $gff_fields[6]"}));
       my $donor_score=0;
       my $acceptor_score=0;
       my $donor_hmm_score=0;
@@ -244,11 +256,11 @@ for my $g(keys %transcript_gff){
       $acceptor_hmm2_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       $acceptor_hmm2_score+=$acceptor_hmm_freq[0][$code2{substr($acceptor_seq,0,2)}] if(defined($code2{substr($acceptor_seq,0,2)}));
 
-      #print "DEBUG $donor_seq  $donor_score $donor_hmm_score $donor_hmm2_score  $acceptor_seq $acceptor_score $acceptor_hmm_score $acceptor_hmm2_score\n";
+      #print "DEBUG D $donor_seq $donor_score $donor_hmm_score $donor_hmm2_score A $acceptor_seq $acceptor_score $acceptor_hmm_score $acceptor_hmm2_score rel $rel\n";
       #here we calibrate the scores so that they are universal
-      my $junction0_score=($donor_score+$acceptor_score);
-      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.45;
-      my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.31;
+      my $junction0_score=($donor_score+$acceptor_score)+$rel;
+      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.45+$rel;
+      my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.31+$rel;
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
       my $fix_score=$fix_donor_score+$fix_acceptor_score;

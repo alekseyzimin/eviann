@@ -485,7 +485,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
-  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm > $GENOME.transcript_splice_scores.txt.tmp && \
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm <(cat <(gffread -F --tlf $GENOME.gtf |    perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=/){$tid=$1;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' ) <(gffread -F --tlf $GENOME.palign.fixed.gff |    perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=/){$tid=$1;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}')) > $GENOME.transcript_splice_scores.txt.tmp && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
@@ -523,7 +523,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})));
       $score{$id}+=2 if($tpm > 10||$samples>1);
       $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
-      $score{$id}+=4 if($reliable{$id});
+      $score{$id}+=int('$JUNCTION_THRESHOLD') if($reliable{$id});
       $flag=($score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
     }
     print if($flag);
