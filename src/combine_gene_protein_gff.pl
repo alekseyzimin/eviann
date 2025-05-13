@@ -232,7 +232,7 @@ while(my $line=<FILE>){
     }
     $locID=$reassign_locus{$ID} if(defined($reassign_locus{$ID}));
     print "DEBUG loaded transcript $ID protein $protID class $class_code locus $locID\n";
-    if($class_code =~ /i|y|u|o|x/){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
+    if($class_code =~ /i|y|u|x/){#no match to protein or an inconsistent match; we record these and output them without CDS features only if they are the only ones at a locus
       $transcript_u{$ID}=$line;
       $transcripts_only_loci{$locID}.="$ID ";
     }else{
@@ -784,12 +784,10 @@ for my $locus(keys %transcripts_cds_loci){
   my $transcript_index=0;
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
   for my $source("EviAnn","StringTie","EviAnnP"){
-     for my $class ("=","k","j","m","n"){  
+     for my $class ("=","k","j","m","n","o"){  
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
-        #next if($class eq "j" && $output_count > 1);
-        #next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
         $output_count++;
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source $output_count\n";
         my $protID=$transcript_cds{$t};
