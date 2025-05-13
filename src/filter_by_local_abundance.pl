@@ -7,7 +7,7 @@ my $GFF_K=$ARGV[0];
 $class_factor{"="}=20;
 $class_factor{"k"}=22;
 $class_factor{"j"}=3;
-$class_factor{"q"}=2;
+$class_factor{"p"}=2;
 
 #first we read the k gff file -- these are transcritps that yielded complete proteins
 open(FILE,$GFF_K);
@@ -29,10 +29,10 @@ if($gtf_fields[2] eq "transcript"){
   #print "DEBUG $id $xloc $protein $class $gtf_fields[8]\n";
   if(not($id =~ /^MSTRG/)){#if not a merged transript -- do not mess with it
     print "$id\n";
-  }elsif($class =~ /i|y|u|x/ && defined($id)){#no protein, keep
+  }elsif($class =~ /i|y|u|o|x/ && defined($id)){#no protein, keep
     $transcripts_at_xloc_same_cds{"$xloc:u"}.="$id:$class ";
   }elsif(defined($id) && defined($xloc) && defined($protein) && defined($class)){#protein defined, examine
-    $class="q" if($full_cds_transcripts{$id} && not($class=~/k|j|=/));
+    $class="p" if($full_cds_transcripts{$id} && not($class=~/k|j|=/));
     #print "DEBUG $id:$class\n";
     $transcripts_at_xloc_same_cds{"$xloc:$protein"}.="$id:$class ";
   }
