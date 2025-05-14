@@ -17,7 +17,7 @@ while($line=<STDIN>){
 open(FILE,$gtf_file);
 while($line=<FILE>){
   @F=split(/\t/,$line);
-  $tid=$1 if($F[8]=~/^transcript_id "(\S+)"; gene_id/);
+  $tid=$1 if($F[8]=~/transcript_id "(\S+)";/);
   if($F[2] eq "exon"){
     unless(defined($h{"$tid $F[3] $F[4] $F[6]"})){
       $F[4]=$cut_exon{"$tid $F[4]"} if(defined($cut_exon{"$tid $F[4]"}));
