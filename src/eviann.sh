@@ -462,7 +462,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       chomp($line);
       @f=split(/\t/,$line);
       if($f[6] eq "."){
-        $f[8]=~/^transcript_id "(\S+)"; gene_id/;
+        $f[8]=~/transcript_id "(\S+)";/;
         $f[6]=$ori{$1} if(defined($ori{$1}));
       }
       print join("\t",@f)."\n" unless($f[6] eq ".");
