@@ -86,7 +86,7 @@ while($line=<STDIN>){
   @F=split(/\t/,$line);
   if($F[2] eq "transcript"){
     $F[8].=";" unless($F[8] =~ /;$/);
-    $tid=$1 if($F[8] =~ /^transcript_id "(\S+)"/);
+    $tid=$1 if($F[8] =~ /transcript_id "(\S+)";/);
     if(defined($transcript_class{$tid})){
       $F[8].=" class_code \"$transcript_class{$tid}\"; cmp_ref \"$transcript_cds{$tid}\";";
       $F[6]=$transcript_ori{$tid} if($F[6] eq ".");
