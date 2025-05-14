@@ -5,7 +5,7 @@ GENOMEFILE="na"
 RNASEQ="na"
 ALT_EST="na"
 export BATCH_SIZE=1000000
-export MAX_INTRON=500000
+export MAX_INTRON=1
 export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
@@ -69,10 +69,11 @@ function usage {
  "
  echo " -e FILE               fasta file with assembled transcripts from related species, default: none"
  echo " -p FILE               fasta file with protein sequences from (preferrably multiple) related species, uniprot proteins are used of this file is not provided, default: none"
- echo " -s FILE               fasta file with UniProt-SwissProt proteins to use in functional annotation or if proteins from close relatives are not available.  EviAnn uses "
- echo "                         a recent version of this protein database internally. To use the most up-to-date version, supply it with this switch. The database is available at:"
+ echo " -s FILE               fasta file with UniProt-SwissProt proteins to use in functional annotation or if proteins from close relatives are not available. "
+ echo "                         EviAnn will download the most recent version of this database automatically."
+ echo "                         To use a different version, supply it with this switch. The database is available at:"
  echo "                         https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
- echo " -m INT                max intron size, default: 250000"
+ echo " -m INT                max intron size, default: auto-determined as sqrt(genome size in kb)*1000; this setting will override automatically estimated value"
  echo " --partial             include transcripts with partial (mising start or stop codon) CDS in the output"
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 3.0"
  echo " --liftover            liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
@@ -200,6 +201,12 @@ fi
 
 if [ ! -s $GENOMEFILE ];then
   error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
+fi
+
+if [ $MAX_INTRON -le 1 ];then
+  log "Auto-determining the maximum intron size based on the genome size" && \
+  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane 'print int(sqrt($F[1]/1000)*1000)'` && \
+  echo "Maximum intron size set to $MAX_INTRON"
 fi
 
 NUM_PROTEINS=`grep '>' $PROTEINFILE |wc -l`
