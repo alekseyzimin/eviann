@@ -525,7 +525,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }
   }{
     if($F[2] eq "transcript"){
-      $id=$1 if($F[8] =~ /^transcript_id "(\S+)"; gene_id/); 
+      $id=$1 if($F[8] =~ /transcript_id "(\S+)";/); 
       ($name,$samples,$tpm)=split(/:/,$id);
       $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})));
       $score{$id}+=2 if($tpm > 10||$samples>1);
