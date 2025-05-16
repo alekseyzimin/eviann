@@ -442,7 +442,10 @@ if [ ! -e protein2genome.align.success ];then
 fi
 
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
-  log "Deriving gene models from protein and transcript alignments"
+  log "Deriving gene models from protein and transcript alignments" && \
+  if [ ! -s $GENOME.merged.gtf ];then
+    error_exit "No transcripts useful for annotation, please check your inputs!"
+  fi && \
 #we fix suspect introns in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
   #cp $GENOME.$PROTEIN.palign.gff $GENOME.palign.fixed.gff.tmp && \
