@@ -278,7 +278,7 @@ for my $g(keys %transcript_cds){
 
     $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
 
-    if(($cds_start_on_transcript_original < 0 || $cds_start_on_transcript_original > length($transcript_seqs{$g})) || ($cds_end_on_transcript_original < 0 || $cds_end_on_transcript_original > length($transcript_seqs{$g})) || $cds_length %3 >0 || not($cds_end_on_transcript==$cds_end_on_transcript_original)){#both start and end are messed up -- send to transdecoder
+    if(($cds_start_on_transcript_original < 0 || $cds_start_on_transcript_original > length($transcript_seqs{$g})) || ($cds_end_on_transcript_original < 0 || $cds_end_on_transcript_original > length($transcript_seqs{$g})) || $cds_length %3 >0 || $cds_end_on_transcript<$cds_end_on_transcript_original-3){#both start and end are messed up -- send to transdecoder
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";
@@ -354,7 +354,7 @@ for my $g(keys %transcript_cds){
 
     $cds_end_on_transcript=check_in_frame_stops($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
     
-    if(($cds_start_on_transcript_original < 0 || $cds_start_on_transcript_original > length($transcript_seqs{$g})) || ($cds_end_on_transcript_original < 0 || $cds_end_on_transcript_original > length($transcript_seqs{$g})) || $cds_length %3 >0 || not($cds_end_on_transcript==$cds_end_on_transcript_original)){#both start and end are messed up
+    if(($cds_start_on_transcript_original < 0 || $cds_start_on_transcript_original > length($transcript_seqs{$g})) || ($cds_end_on_transcript_original < 0 || $cds_end_on_transcript_original > length($transcript_seqs{$g})) || $cds_length %3 >0 || $cds_end_on_transcript<$cds_end_on_transcript_original-3){#both start and end are messed up
       print OUTFILE2 ">$g\n$transcript_seqs{$g}\n";
       my @pn=split(/:/,$transcript_cds{$g});
       print OUTFILE3 "$pn[0]\n";

@@ -2,6 +2,7 @@
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
 PROTEINFILE="$PWD/uniprot_sprot.fasta"
 GENOMEFILE="na"
+CDSFILE="na"
 RNASEQ="na"
 ALT_EST="na"
 export BATCH_SIZE=1000000
@@ -129,6 +130,10 @@ do
             PROTEINFILE="$2"
             shift
             ;;
+        -c|--cds)
+            CDSFILE="$2"
+            shift
+            ;;
         -s|--swissprot)
             UNIPROT="$2"
             shift
@@ -187,7 +192,7 @@ if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
   error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
 fi
 
-if [ ! -s $PROTEINFILE ];then
+if [ ! -s $PROTEINFILE ] && [ ! -s $CDSFILE ];then
   echo "WARNING: proteins from related species are not specified, or file $PROTEINFILE is missing. Using Uniprot proteins as fallback option" && \
   if [ ! -s $UNIPROT ];then
     log "Downloading UniProt database" && \
@@ -218,22 +223,34 @@ fi
 P=`cd "$(dirname "$GENOMEFILE")" && pwd`
 F=`basename $GENOMEFILE`
 GENOMEFILE=$P/$F
-P=`cd "$(dirname "$PROTEINFILE")" && pwd`
-F=`basename $PROTEINFILE`
-PROTEINFILE=$P/$F
-P=`cd "$(dirname "$RNASEQ")" && pwd`
-F=`basename $RNASEQ`
-RNASEQ=$P/$F
-P=`cd "$(dirname "$ALT_EST")" && pwd`
-F=`basename $ALT_EST`
-ALT_EST=$P/$F
-P=`cd "$(dirname "$UNIPROT")" && pwd`
-F=`basename $UNIPROT`
-UNIPROT=$P/$F
-
-#get filenames to use as prefixes
-GENOME=`basename $GENOMEFILE`
-PROTEIN=`basename $PROTEINFILE`
+GENOME=$F
+if [ -s $PROTEINFILE ];then
+  P=`cd "$(dirname "$PROTEINFILE")" && pwd`
+  F=`basename $PROTEINFILE`
+  PROTEINFILE=$P/$F
+  PROTEIN=$F
+fi
+if [ -s $RNASEQ ];then
+  P=`cd "$(dirname "$RNASEQ")" && pwd`
+  F=`basename $RNASEQ`
+  RNASEQ=$P/$F
+fi
+if [ -s $ALT_EST ];then
+  P=`cd "$(dirname "$ALT_EST")" && pwd`
+  F=`basename $ALT_EST`
+  ALT_EST=$P/$F
+fi
+if [ -s $UNIPROT ];then
+  P=`cd "$(dirname "$UNIPROT")" && pwd`
+  F=`basename $UNIPROT`
+  UNIPROT=$P/$F
+fi
+if [ -s $CDSFILE ];then
+  P=`cd "$(dirname "$CDSFILE")" && pwd`
+  F=`basename $CDSFILE`
+  CDSFILE=$P/$F
+  CDS=$F
+fi
 
 #checking is dependencies are installed
 log "Checking dependencies"
@@ -417,26 +434,39 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
 fi
 
 if [ ! -e protein2genome.deduplicate.success ];then
-  log "Deduplicating input proteins"
-  ufasta one $PROTEINFILE | \
-    awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
-    sort  -S 10% -k2,2 |\
-    uniq -f 1 |\
-    awk '{print $1"\n"$2}' | \
-    tr ':' '_' > $PROTEIN.uniq.tmp && \
-  mv $PROTEIN.uniq.tmp $PROTEIN.uniq && \
-  touch protein2genome.deduplicate.success && \
-  rm -f protein2genome.align.success || error_exit "Failed in deduplicating proteins"
+  if [ -s $PROTEINFILE ];then 
+    log "Deduplicating input proteins"
+    ufasta one $PROTEINFILE | \
+      awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
+      sort  -S 10% -k2,2 |\
+      uniq -f 1 |\
+      awk '{print $1"\n"$2}' | \
+      tr ':' '_' > $PROTEIN.uniq.tmp && \
+    mv $PROTEIN.uniq.tmp $PROTEIN.uniq && \
+    touch protein2genome.deduplicate.success && \
+    rm -f protein2genome.align.success || error_exit "Failed in deduplicating proteins"
+    PROTEIN=$PROTEIN.uniq
+  else
+    PROTEIN=$CDS.uniq
+  fi
 fi
-PROTEIN=$PROTEIN.uniq
-
+  
 if [ ! -e protein2genome.align.success ];then
-  log "Aligning proteins to the genome with miniprot"
-  #we may need a bigger k for big genomes
-  KMERVALUE=`ls -lL $GENOMEFILE | perl -ane '{if($F[4]>1000000000){print "6";}else{print "5"}}'` && \
-  miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
-    convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
-  mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff && \
+  if [ -s $PROTEINFILE ];then
+    log "Aligning proteins to the genome with miniprot"
+    #we may need a bigger k for big genomes
+    KMERVALUE=`ls -lL $GENOMEFILE | perl -ane '{if($F[4]>1000000000){print "6";}else{print "5"}}'` && \
+    miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
+      convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
+    mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
+    if [ -s $CDSFILE ];then
+      cat <(gffread -F $CDSFILE | perl -F'\t' -ane '{if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";}}') $GENOME.$PROTEIN.palign.gff > $GENOME.$PROTEIN.palign.gff.tmp && \
+      mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
+    fi
+  else
+    cp $CDSFILE $GENOME.$PROTEIN.palign.gff.tmp && \
+    mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
+  fi
   rm -f merge.success && \
   touch protein2genome.align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
 fi
