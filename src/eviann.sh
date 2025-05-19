@@ -445,10 +445,13 @@ if [ ! -e protein2genome.deduplicate.success ];then
     mv $PROTEIN.uniq.tmp $PROTEIN.uniq && \
     touch protein2genome.deduplicate.success && \
     rm -f protein2genome.align.success || error_exit "Failed in deduplicating proteins"
-    PROTEIN=$PROTEIN.uniq
-  else
-    PROTEIN=$CDS.uniq
   fi
+fi
+
+if [ -s $PROTEINFILE ];then
+  PROTEIN=$PROTEIN.uniq
+else
+  PROTEIN=$CDS.uniq
 fi
   
 if [ ! -e protein2genome.align.success ];then
