@@ -1,6 +1,7 @@
 #!/bin/bash
 #this pipeline generates genome annotation using hisat2, Stringtie2 and maker
 PROTEINFILE="$PWD/uniprot_sprot.fasta"
+PLOIDY=2
 GENOMEFILE="na"
 CDSFILE="na"
 RNASEQ="na"
@@ -76,6 +77,8 @@ function usage {
  echo "                         https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz"
  echo " -m INT                max intron size, default: auto-determined as sqrt(genome size in kb)*1000; this setting will override automatically estimated value"
  echo " --partial             include transcripts with partial (mising start or stop codon) CDS in the output"
+ echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
+ echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 3.0"
  echo " --liftover            liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " -f|--functional       perform functional annotation, default: not set"
@@ -132,6 +135,10 @@ do
             ;;
         -c|--cds)
             CDSFILE="$2"
+            shift
+            ;;
+        -d|--ploidy)
+            PLOIDY="$2"
             shift
             ;;
         -s|--swissprot)
@@ -210,7 +217,7 @@ fi
 
 if [ $MAX_INTRON -le 1 ];then
   log "Auto-determining the maximum intron size based on the genome size" && \
-  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane 'print int(sqrt($F[1]/1000)*1000)'` && \
+  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$m=int(sqrt($F[1]/1000/int('$PLOIDY')*2)*1000); $m=100000 if($m<100000); print $m;'` && \
   echo "Maximum intron size set to $MAX_INTRON"
 fi
 
