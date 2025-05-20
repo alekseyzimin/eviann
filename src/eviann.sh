@@ -221,11 +221,6 @@ if [ $MAX_INTRON -le 1 ];then
   echo "Maximum intron size set to $MAX_INTRON"
 fi
 
-NUM_PROTEINS=`grep '>' $PROTEINFILE |wc -l`
-if [ $NUM_PROTEINS -lt 1 ];then
-  error_exit "Invalid format for the proteins file $PROTEINFILE, must be in fasta format"
-fi
-
 #get absolute paths
 P=`cd "$(dirname "$GENOMEFILE")" && pwd`
 F=`basename $GENOMEFILE`
@@ -463,27 +458,16 @@ if [ ! -e protein2genome.deduplicate.success ];then
   fi
 fi
 
-if [ -s $PROTEINFILE ];then
-  PROTEIN=$PROTEIN.uniq
-else
-  PROTEIN=$CDS.uniq
-fi
-  
 if [ ! -e protein2genome.align.success ];then
   if [ -s $PROTEINFILE ];then
     log "Aligning proteins to the genome with miniprot"
     #we may need a bigger k for big genomes
     KMERVALUE=`ls -lL $GENOMEFILE | perl -ane '{if($F[4]>1000000000){print "6";}else{print "5"}}'` && \
-    miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN 2>miniprot.err | \
-      convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
-    mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
-    if [ -s $CDSFILE ];then
-      cat <(gffread -F $CDSFILE | perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";$F[8].=";identity=100.00;similarity=100.00"}print join("\t",@F),"\n";}') $GENOME.$PROTEIN.palign.gff > $GENOME.$PROTEIN.palign.gff.tmp && \
-      mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
-    fi
+    miniprot -p 0.95 -N 20 -k $KMERVALUE -t $NUM_THREADS -G $MAX_INTRON --gff $GENOMEFILE $PROTEIN.uniq 2>miniprot.err | \
+      convert_miniprot_gff.pl > $GENOME.$PROTEIN.uniq.palign.gff.tmp && \
+    mv $GENOME.$PROTEIN.uniq.palign.gff.tmp $GENOME.$PROTEIN.uniq.palign.gff
   else
-    cp $CDSFILE $GENOME.$PROTEIN.palign.gff.tmp && \
-    mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
+    touch $GENOME.$PROTEIN.uniq.palign.gff
   fi
   rm -f merge.success && \
   touch protein2genome.align.success || error_exit "Alignment of proteins to the genome with miniprot failed, please check miniprot.err"
@@ -495,9 +479,31 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     error_exit "No transcripts useful for annotation, please check your inputs!"
   fi && \
 #we fix suspect introns in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
-  gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
-  #cp $GENOME.$PROTEIN.palign.gff $GENOME.palign.fixed.gff.tmp && \
-  mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
+  if [ -s $CDSFILE ] && [ -s $GENOME.$PROTEIN.uniq.palign.gff ];then
+    log "Using external CDSs and protein alignments" && \
+    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |\
+      gffread -C -F | \
+      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";$F[8]="ID=$id;geneID=$id;identity=100.00;similarity=100.00";print join("\t",@F),"\n";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' > $CDS.CDS.tmp &&
+    mv $CDS.CDS.tmp $CDS.CDS && \
+    cat $CDS.CDS <(gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.uniq.palign.gff )) >  $GENOME.palign.fixed.gff.tmp && \
+    mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
+    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE | gffread -y $PROTEIN.cds -g $GENOMEFILE && \
+    cat $PROTEIN.uniq $PROTEIN.cds > $PROTEIN.all.tmp && \
+    mv $PROTEIN.all.tmp $PROTEIN.all && \
+    PROTEINFILE=$PROTEIN.all
+  elif [ -s $GENOME.$PROTEIN.uniq.palign.gff ];then
+    log "Using protein alignments" && \
+    gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.uniq.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
+    mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff 
+  elif [ -s $CDSFILE ];then
+    log "Using external CDSs only" && \
+    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |\
+      gffread -C -F | \
+      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";$F[8]="ID=$id;geneID=$id;identity=100.00;similarity=100.00";print join("\t",@F),"\n";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' > $GENOME.palign.fixed.gff.tmp && \
+    mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
+    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |gffread -y $PROTEIN.cds -g $GENOMEFILE && \
+    PROTEINFILE=$PROTEIN.cds
+  fi
 #here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.merged.gtf && \
   #assign_class_code.pl <(trmap $GENOME.palign.fixed.gff $GENOME.merged.gtf -o /dev/stdout) < $GENOME.merged.gtf > $GENOME.protref.annotated.gtf && \

@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 #This code adds gene and CDS record for every locus in GFF file
 my $geneID="";
-my @exons=();
 my %loci;
 my %protein_cds;
 my %protein;
@@ -30,7 +29,6 @@ while(my $line=<STDIN>){#we just read in the whole file
       $protein_start{$protID}=$pstart;
       $protein_end{$protID}=$pend;
     }
-    @exons=();
     $protID=substr($attributes[0],3);#this is protein name
     $pstart=$gff_fields[3];
     $pend=$gff_fields[4];
