@@ -68,18 +68,22 @@ while($line=<STDIN>){
     my $ori=$f[6];
     if($ori eq "+"){
       $startcodon=uc(substr($contigs{$f[0]},$start-1,3));
-      $stopcodon=uc(substr($contigs{$f[0]},$end,3));
+      $stopcodon1=uc(substr($contigs{$f[0]},$end,3));
+      $stopcodon2=uc(substr($contigs{$f[0]},$end-3,3));
     }else{
       my $seq=substr($contigs{$f[0]},$end-3,3);
       $seq=~tr/acgtACGT/tgcaTGCA/;
       $startcodon=uc(reverse($seq));
       $seq=substr($contigs{$f[0]},$start-4,3);
       $seq=~tr/acgtACGT/tgcaTGCA/;
-      $stopcodon=uc(reverse($seq));
+      $stopcodon1=uc(reverse($seq));
+      $seq=substr($contigs{$f[0]},$start-1,3);
+      $seq=~tr/acgtACGT/tgcaTGCA/;
+      $stopcodon2=uc(reverse($seq));
     }
     my $codon_score=0;
     $codon_score++ if($startcodon eq "ATG");
-    $codon_score++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA");
+    $codon_score++ if($stopcodon1 eq "TAA" || $stopcodon1 eq "TAG" || $stopcodon1 eq "TGA" || $stopcodon2 eq "TAA" || $stopcodon2 eq "TAG" || $stopcodon2 eq "TGA");
     if($codon_score>0){
       #$similarity{$transcript_id}-=20 if($codon_score==1);
       #$similarity{$transcript_id}=1 if($similarity{$transcript_id}<1);

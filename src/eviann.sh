@@ -463,7 +463,7 @@ if [ ! -e protein2genome.align.success ];then
       convert_miniprot_gff.pl > $GENOME.$PROTEIN.palign.gff.tmp && \
     mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
     if [ -s $CDSFILE ];then
-      cat <(gffread -F $CDSFILE | perl -F'\t' -ane '{if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";}}') $GENOME.$PROTEIN.palign.gff > $GENOME.$PROTEIN.palign.gff.tmp && \
+      cat <(gffread -F $CDSFILE | perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";$F[8].=";identity=100.00;similarity=100.00"}print join("\t",@F),"\n";}') $GENOME.$PROTEIN.palign.gff > $GENOME.$PROTEIN.palign.gff.tmp && \
       mv $GENOME.$PROTEIN.palign.gff.tmp $GENOME.$PROTEIN.palign.gff
     fi
   else
