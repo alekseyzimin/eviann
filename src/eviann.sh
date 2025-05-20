@@ -217,7 +217,7 @@ fi
 
 if [ $MAX_INTRON -le 1 ];then
   log "Auto-determining the maximum intron size based on the genome size" && \
-  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$m=int(sqrt($F[1]/1000/int('$PLOIDY')*2)*1000); $m=100000 if($m<100000); print $m;'` && \
+  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/*2/$p)*1000); $m=100000 if($m<100000); print $m;'` && \
   echo "Maximum intron size set to $MAX_INTRON"
 fi
 
