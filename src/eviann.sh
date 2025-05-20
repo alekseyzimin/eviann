@@ -483,7 +483,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     log "Using external CDSs and protein alignments" && \
     perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |\
       gffread -C -F | \
-      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";$F[8]="ID=$id;geneID=$id;identity=100.00;similarity=100.00";print join("\t",@F),"\n";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' > $CDS.CDS.tmp &&
+      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' |\
+      gffread -F | \
+      perl -F'\t' -ane '{next if($F[0] =~/^#/);chomp($F[8]);if($F[2] eq "transcript"){$F[2]="gene";$F[8].=";gene$F[8];identity=100.00;similarity=100.00";}print join("\t",@F),"\n";}' > $CDS.CDS.tmp &&
     mv $CDS.CDS.tmp $CDS.CDS && \
     cat $CDS.CDS <(gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.uniq.palign.gff )) >  $GENOME.palign.fixed.gff.tmp && \
     mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
@@ -499,7 +501,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     log "Using external CDSs only" && \
     perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |\
       gffread -C -F | \
-      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$F[2]="gene";$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";$F[8]="ID=$id;geneID=$id;identity=100.00;similarity=100.00";print join("\t",@F),"\n";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' > $GENOME.palign.fixed.gff.tmp && \
+      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' |\
+      gffread -F | \
+      perl -F'\t' -ane '{next if($F[0] =~/^#/);chomp($F[8]);if($F[2] eq "transcript"){$F[2]="gene";$F[8].=";gene$F[8];identity=100.00;similarity=100.00";}print join("\t",@F),"\n";}' > $GENOME.palign.fixed.gff.tmp && \
     mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
     perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |gffread -y $PROTEIN.cds -g $GENOMEFILE && \
     PROTEINFILE=$PROTEIN.cds
