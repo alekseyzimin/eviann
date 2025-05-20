@@ -217,7 +217,7 @@ fi
 
 if [ $MAX_INTRON -le 1 ];then
   log "Auto-determining the maximum intron size based on the genome size" && \
-  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/*2/$p)*1000); $m=100000 if($m<100000); print $m;'` && \
+  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/$p*2)*1000); $m=100000 if($m<100000); print $m;'` && \
   echo "Maximum intron size set to $MAX_INTRON"
 fi
 
@@ -270,8 +270,16 @@ for prog in $(echo "minimap2 hisat2 hisat2-build samtools makeblastdb blastp");d
   which $prog || error_exit "WARNING! $prog not found the the PATH!";
 done
 echo "Checking if TransDecoder is properly installed and works"
-$MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
-$MYPATH/TransDecoder.LongOrfs --version 1>/dev/null 2>&1  || error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.LongOrfs to see what is missing."
+$MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1 
+TCODE=$?
+if [ $TCODE -ge 1 ];then 
+  error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
+fi
+$MYPATH/TransDecoder.LongOrfs --version 1>/dev/null 2>&1
+TCODE=$?
+if [ $TCODE -ge 1 ];then
+  error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.LongOrfs to see what is missing."
+fi
 log "All dependencies checks passed"
 
 if [ ! -e transcripts_assemble.success ];then
