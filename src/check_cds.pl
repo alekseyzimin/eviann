@@ -166,7 +166,7 @@ while(my $line=<FILE>){
     if($class_code =~ /i|y|u|o|x/){
       $transcript_u{$ID}=$line;
       $transcripts_only_loci{$locID}.="$ID ";
-    }else{
+    }elsif(($protID =~ /_EXTERNAL$/ && $class_code =~ /k|=/) || not($protID =~ /_EXTERNAL$/)){
       $transcript{$ID}=$line;
       die("Protein $protID is not defined for protein coding transcript $ID") if(not(defined($protein{$protID})));
       $transcript_cds{$ID}=$protID;
