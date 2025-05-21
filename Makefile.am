@@ -44,6 +44,6 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	makeblastdb blastp tblastn \
 	gffread gffcompare trmap \
 	stringtie \
-	TransDecoder-v5.7.1.tar.gz \
+	TransDecoder-v5.7.1a.tar.gz \
 	samtools-1.15.1.tgz \
 	miniprot.tgz
