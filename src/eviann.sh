@@ -376,8 +376,8 @@ if [ ! -e transcripts_assemble.success ];then
     hisat2-build $GENOMEFILE $GENOME.hst 1>/dev/null 2>&1 && \
     touch align-build.success || error_exit "Building HISAT2 index failed, check your inputs"
   fi
-  bash ./hisat_stringtie.sh && \
   log "Aligning and building transcripts from RNAseq reads" && \
+  bash ./hisat_stringtie.sh && \
   touch transcripts_assemble.success && \
   rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
 fi
