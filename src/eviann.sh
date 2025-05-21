@@ -265,15 +265,15 @@ for prog in $(echo "minimap2 hisat2 hisat2-build samtools makeblastdb blastp");d
   which $prog || error_exit "WARNING! $prog not found the the PATH!";
 done
 echo "Checking if TransDecoder is properly installed and works"
-$MYPATH/TransDecoder.Predict --version 1>/dev/null 2>&1 
+$MYPATH/TransDecoder.Predict --version 1>/dev/null 
 TCODE=$?
 if [ $TCODE -ge 1 ];then 
-  error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.Predict to see what is missing."
+  error_exit "TransDecoder seems to be missing some Perl dependencies."
 fi
-$MYPATH/TransDecoder.LongOrfs --version 1>/dev/null 2>&1
+$MYPATH/TransDecoder.LongOrfs --version 1>/dev/null
 TCODE=$?
 if [ $TCODE -ge 1 ];then
-  error_exit "TransDecoder seems to be missing some Perl dependencies. Please run $MYPATH/TransDecoder.LongOrfs to see what is missing."
+  error_exit "TransDecoder seems to be missing some Perl dependencies."
 fi
 log "All dependencies checks passed"
 
