@@ -215,12 +215,6 @@ if [ ! -s $GENOMEFILE ];then
   error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
 fi
 
-if [ $MAX_INTRON -le 1 ];then
-  log "Auto-determining the maximum intron size based on the genome size" && \
-  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/$p*2)*1000); $m=100000 if($m<100000); print $m;'` && \
-  echo "Maximum intron size set to $MAX_INTRON"
-fi
-
 #get absolute paths
 P=`cd "$(dirname "$GENOMEFILE")" && pwd`
 F=`basename $GENOMEFILE`
@@ -254,7 +248,7 @@ if [ -s $CDSFILE ];then
   CDS=$F
 fi
 
-#checking is dependencies are installed
+#checking if dependencies are installed
 log "Checking dependencies"
 for prog in $(echo "ufasta stringtie gffread gffcompare miniprot TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog in $MYPATH ... " && \
@@ -262,7 +256,7 @@ for prog in $(echo "ufasta stringtie gffread gffcompare miniprot TransDecoder.Pr
 done
 for prog in $(echo "minimap2 hisat2 hisat2-build samtools makeblastdb blastp");do
   echo -n "Checking for $prog on the PATH ... " && \
-  which $prog || error_exit "WARNING! $prog not found the the PATH!";
+  which $prog || error_exit "ERROR! $prog not found the the PATH!";
 done
 echo "Checking if TransDecoder is properly installed and works"
 $MYPATH/TransDecoder.Predict --version 1>/dev/null 
@@ -276,6 +270,12 @@ if [ $TCODE -ge 1 ];then
   error_exit "TransDecoder seems to be missing some Perl dependencies."
 fi
 log "All dependencies checks passed"
+
+if [ $MAX_INTRON -le 1 ];then
+  log "Auto-determining the maximum intron size based on the genome size" && \
+  MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/$p*2)*1000); $m=100000 if($m<100000); print $m;'` && \
+  echo "Maximum intron size set to $MAX_INTRON"
+fi
 
 if [ ! -e transcripts_assemble.success ];then
   if [ -s $ALT_EST ];then
