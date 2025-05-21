@@ -174,7 +174,7 @@ do
             set -x
             ;;
         --version)
-            echo "version 2.0.2"
+            echo "version 2.0.3"
             exit 0
             ;;
         --debug)
@@ -259,14 +259,10 @@ for prog in $(echo "minimap2 hisat2 hisat2-build samtools makeblastdb blastp");d
   which $prog || error_exit "ERROR! $prog not found the the PATH!";
 done
 echo "Checking if TransDecoder is properly installed and works"
-$MYPATH/TransDecoder.Predict --version 1>/dev/null 
-TCODE=$?
-if [ $TCODE -ge 1 ];then 
+if ! $MYPATH/TransDecoder.Predict --version 1>/dev/null;then 
   error_exit "TransDecoder seems to be missing some Perl dependencies."
 fi
-$MYPATH/TransDecoder.LongOrfs --version 1>/dev/null
-TCODE=$?
-if [ $TCODE -ge 1 ];then
+if ! $MYPATH/TransDecoder.Predict --version 1>/dev/null;then
   error_exit "TransDecoder seems to be missing some Perl dependencies."
 fi
 log "All dependencies checks passed"
