@@ -683,6 +683,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
     gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
+    #gffread -T  $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf
   else
     gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
   fi

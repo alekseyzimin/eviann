@@ -1019,9 +1019,11 @@ foreach my $p(keys %protein){
   my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[0]);
   my $intron_chain="$gff_fields_c[0] $gff_fields_c[6] $gff_fields_c[3] $gff_fields_c[4]";
   for(my $j=1;$j<=$#{$protein_cds{$p}};$j++){
+    @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
     $intron_chain.=" $gff_fields_c[3] $gff_fields_c[4]";
   }
   next if(defined($used_protein_intron_chains{$intron_chain}));
+  $used_protein_intron_chains{$intron_chain}=1;
 
   print OUTFILE4 "$gff_fields_p[0]\tEviAnnP\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
