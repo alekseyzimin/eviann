@@ -175,7 +175,7 @@ while(my $line=<FILE>){
       $transcript_cds_end{$ID}=$protein_end{$protID};
       $transcript_cds_end_codon{$ID}="INVALID";
       $transcript_class{$ID}=$class_code;
-      $transcript_origin{$ID}=$gff_fields[1];
+      $transcript_source{$ID}=$gff_fields[1];
       $transcripts_cds_loci{$locID}.="$ID ";
     }
   }elsif($gff_fields[2] eq "exon"){
@@ -243,6 +243,8 @@ for my $g(keys %transcript_cds){
   my $tstart=$gff_fields_t[3];
   my $tend=$gff_fields_t[4];
   print "\nDEBUG protein $transcript_cds{$g} transript $g length ",length($transcript_seqs{$g}),"\n";
+  #do not mess with external CDSs
+  next if( $g =~ /_EXTERNAL$/||($transcript_source{$g} eq "EviAnnP" && $transcript_cds{$g} =~ /_EXTERNAL$/));
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
     print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length

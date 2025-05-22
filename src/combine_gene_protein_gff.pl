@@ -426,6 +426,7 @@ for my $g(keys %transcript_gff){
 #here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then check for a start codon and, if not found, extend the start/stop of the CDS up to the transcript boundary to look for the valid start/stop
 for my $g(keys %transcript_cds){
   next if($transcript_class{$g} eq "NA");
+
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
   my $tend=$gff_fields_t[4];
@@ -480,6 +481,13 @@ for my $g(keys %transcript_cds){
       $transcript_cds_modified{$g}=1;
     }
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+
+#do not mess with external CDS-only transcripts
+#    if($g =~ /_EXTERNAL$/ || ($transcript_source{$g} eq "EviAnnP" && $transcript_cds{$g} =~ /_EXTERNAL$/)){
+#      $transcript_cds_start_codon{$g}=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+#      $transcript_cds_end_codon{$g}=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+#      next;
+#    }
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
@@ -641,6 +649,13 @@ for my $g(keys %transcript_cds){
       $transcript_cds_modified{$g}=1;
     }
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+
+#do not mess with external CDS-only transcripts
+#    if($g =~ /_EXTERNAL$/ || ($transcript_source{$g} eq "EviAnnP" && $transcript_cds{$g} =~ /_EXTERNAL$/)){
+#      $transcript_cds_start_codon{$g}=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+#      $transcript_cds_end_codon{$g}=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+#      next;
+#    }
 
     if($cds_length %3 >0){
       $transcript_cds_modified{$g}=1;

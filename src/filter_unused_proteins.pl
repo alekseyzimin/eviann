@@ -62,6 +62,7 @@ while($line=<STDIN>){
     }else{
       next;
     }
+    $pcount{$transcript_id}=1 if(not(defined($pcount{$transcript_id})) && $transcript_id=~/_EXTERNAL$/);
     next if(not(defined($pcount{$transcript_id})));
     my $start=$f[3];
     my $end=$f[4];
@@ -84,7 +85,7 @@ while($line=<STDIN>){
     my $codon_score=0;
     $codon_score++ if($startcodon eq "ATG");
     $codon_score++ if($stopcodon1 eq "TAA" || $stopcodon1 eq "TAG" || $stopcodon1 eq "TGA" || $stopcodon2 eq "TAA" || $stopcodon2 eq "TAG" || $stopcodon2 eq "TGA");
-    if($codon_score>1){
+    if($codon_score>1 || $transcript_id=~/_EXTERNAL$/){
       #$similarity{$transcript_id}-=20 if($codon_score==1);
       #$similarity{$transcript_id}=1 if($similarity{$transcript_id}<1);
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
