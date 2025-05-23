@@ -160,7 +160,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
       $locID=substr($attr,7) if($attr =~ /^geneID=/);
-      $locID=substr($attr,6) if($attr =~ /^locus=/);
+      $locID=substr($attr,5) if($attr =~ /^xloc=/);
     }
     print "DEBUG read transcript $ID class $class_code protein $protID locus $locID\n";
     if($class_code =~ /i|y|u|o|x/){

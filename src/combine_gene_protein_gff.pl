@@ -238,7 +238,7 @@ while(my $line=<FILE>){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
       $locID=substr($attr,7) if($attr =~ /^geneID=/);
-      $locID=substr($attr,6) if($attr =~ /^locus=/);
+      $locID=substr($attr,5) if($attr =~ /^xloc=/);
     }
     $locID=$reassign_locus{$ID} if(defined($reassign_locus{$ID}));
     print "DEBUG loaded transcript $ID protein $protID class $class_code locus $locID\n";

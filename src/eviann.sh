@@ -682,10 +682,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Working on final merge"
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
-    #gffread -T  $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf
+    gffread -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf
   else
-    gffcompare -ST $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
+    gffread -T $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf 
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
   if [ -s $GENOME.u.cds.gff ];then
@@ -721,10 +720,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.broken_cds.blastp.tmp $GENOME.broken_cds.blastp && \
   TransDecoder.Predict -t $GENOME.broken_cds.fa --single_best_only --retain_blastp_hits $GENOME.broken_cds.blastp 1>transdecoder.Predict.out 2>&1
   if [ -s $GENOME.broken_cds.fa.transdecoder.bed ];then
-    perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.broken_cds.blastp");while($line=<FILE>){@f=split(/\./,$line);$h{$f[0]}=1}}{print "$F[0] $F[6] $F[7]\n" if(defined($h{$F[0]}) && $#F>7 && not($F[3] =~ /ORF_type:internal/));}' $GENOME.broken_cds.fa.transdecoder.bed  > $GENOME.fixed_cds.txt.tmp && \
+    perl -F'\t' -ane 'BEGIN{open(FILE,"'$GENOME'.broken_cds.blastp");while($line=<FILE>){@f=split(/\t/,$line);$h{$f[0]}=1;}}{if($F[3]=~/ID=(\S+);GENE/){$id=$1;print "$F[0] $F[6] $F[7]\n" if(defined($h{$id}) && $#F>7 && not($F[3] =~ /ORF_type:internal/));}}' $GENOME.broken_cds.fa.transdecoder.bed > $GENOME.fixed_cds.txt.tmp && \
     mv $GENOME.fixed_cds.txt.tmp $GENOME.fixed_cds.txt
   fi
-  rm -rf transdecoder.Predict.out $GENOME.broken_cds.fa pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
+  rm -rf transdecoder.Predict.out pipeliner.*.cmds $GENOME.broken_cds.fa.transdecoder_dir  $GENOME.broken_cds.transdecoder_dir.__checkpoints $GENOME.broken_cds.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.broken_cds.fa.transdecoder.{cds,pep,gff3} && \
   cat $GENOME.palign.all.gff | \
     combine_gene_protein_gff.pl \
       --prefix $GENOME \
