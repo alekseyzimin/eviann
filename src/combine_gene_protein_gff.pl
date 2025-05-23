@@ -117,7 +117,17 @@ unless($loci_file eq ""){
     }
   }
 }
-      
+
+#if available we load the original transcript names
+my %original_transcript_name=();
+if(defined($names)){
+  open(FILE,$names);
+  while(my $line=<FILE>){
+    chomp($line);
+    @f=split(/\s+/,$line);
+    $original_transcript_name{$f[0]}=$f[1];
+  }
+}
 
 #this is output of gffcompare -r protalign.gtf ../GCF_000001735.4_TAIR10.1_genomic.clean.fna.gtf -o protref
 #here we load up all transcripts that matched proteins
@@ -248,7 +258,10 @@ while(my $line=<FILE>){
       $transcripts_cds_loci{$locID}.="$ID ";
       $transcript_cds_modified{$ID}=0;
     }
-    $transcript_class{$ID}="NA" if($gff_fields[8] =~ /contained_in=/ && $discard_contains);
+    if(($gff_fields[8] =~ /contained_in=/ && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/)) && $discard_contains){
+      print "DEBUG ignoring conatined transcript $gff_fields[8]\n";
+      $transcript_class{$ID}="NA";
+    }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$ID}) || defined($transcript_u{$ID}));
   }
@@ -371,17 +384,6 @@ if(defined($pwms)){
   $ext_length=0;
 }
 
-#finally, if available we load the original transcript names
-my %original_transcript_name=();
-if(defined($names)){
-  open(FILE,$names);
-  while(my $line=<FILE>){
-    chomp($line);
-    @f=split(/\s+/,$line);
-    $original_transcript_name{$f[0]}=$f[1];
-  }
-}
-
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){
   $transcript_seqs{$g}="";
@@ -483,11 +485,11 @@ for my $g(keys %transcript_cds){
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
 
 #do not mess with external CDS-only transcripts
-#    if($g =~ /_EXTERNAL$/ || ($transcript_source{$g} eq "EviAnnP" && $transcript_cds{$g} =~ /_EXTERNAL$/)){
-#      $transcript_cds_start_codon{$g}=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-#      $transcript_cds_end_codon{$g}=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
-#      next;
-#    }
+    if($g =~ /_EXTERNAL$/ || $original_transcript_name{$g}=~ /_EXTERNAL$/){
+      $transcript_cds_start_codon{$g}=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+      $transcript_cds_end_codon{$g}=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+      next;
+    }
 
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
@@ -651,11 +653,11 @@ for my $g(keys %transcript_cds){
     print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
 
 #do not mess with external CDS-only transcripts
-#    if($g =~ /_EXTERNAL$/ || ($transcript_source{$g} eq "EviAnnP" && $transcript_cds{$g} =~ /_EXTERNAL$/)){
-#      $transcript_cds_start_codon{$g}=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-#      $transcript_cds_end_codon{$g}=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
-#      next;
-#    }
+    if($g =~ /_EXTERNAL$/ || $original_transcript_name{$g}=~ /_EXTERNAL$/){
+      $transcript_cds_start_codon{$g}=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+      $transcript_cds_end_codon{$g}=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+      next;
+    }
 
     if($cds_length %3 >0){
       $transcript_cds_modified{$g}=1;
@@ -1022,8 +1024,9 @@ foreach my $p(keys %protein){
     @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
     $intron_chain.=" $gff_fields_c[3] $gff_fields_c[4]";
   }
+  #ignore if this protein is already in a transcript
   next if(defined($used_protein_intron_chains{$intron_chain}));
-  $used_protein_intron_chains{$intron_chain}=1;
+  #$used_protein_intron_chains{$intron_chain}=1;
 
   print OUTFILE4 "$gff_fields_p[0]\tEviAnnP\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){

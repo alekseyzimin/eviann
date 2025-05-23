@@ -652,7 +652,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
-    gffread --cluster-only $GENOME.unused_proteins.spliceFiltered.gff | \
+    gffread --cluster-only --tlf $GENOME.unused_proteins.spliceFiltered.gff | \
       filter_unused_proteins.pl \
         $GENOMEFILE \
         $GENOME.unused_proteins.spliceFiltered.gff \
@@ -685,7 +685,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffcompare -ST $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
     #gffread -T  $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf
   else
-    gffcompare -T $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
+    gffcompare -ST $GENOME.abundanceFiltered.spliceFiltered.gtf -o $GENOME.all
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
   if [ -s $GENOME.u.cds.gff ];then
@@ -732,7 +732,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --genome $GENOMEFILE \
       --transdecoder $GENOME.fixed_cds.txt \
       --pwms $GENOME.pwm \
-      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(.+)"; gene_id "(.+)"; oId "(.+)"; tss_id "(.+)"; num_samples "(.+)";$/);}}'  $GENOME.all.combined.gtf) \
+      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
       --final_pass \
       --include_stop \
       --proteins $PROTEINFILE \

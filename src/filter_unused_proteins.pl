@@ -6,6 +6,7 @@ my $counts_file=$ARGV[2];
 my $k_file=$ARGV[3];
 my %similarity;
 my %contigs;
+my %used_intron_chains=();
 
 #read in genome sequence file
 open(FILE,$genome_file);
@@ -56,12 +57,15 @@ while($line=<STDIN>){
     my $gene_id;
     my $startcodon;
     my $stopcodon;
-    if($f[8]=~/ID=(\S+);locus=(\S+)$/){
+    my $intron_chain;
+    if($f[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\S+);CDSphase=(\S+);locus=(\S+)/){
       $transcript_id=$1;
-      $gene_id=$2;
+      $intron_chain="$f[0]:$f[6]:$3";
+      $gene_id=$6;
     }else{
       next;
     }
+    $intron_chains{$transcript_id}=$intron_chain;
     $pcount{$transcript_id}=1 if(not(defined($pcount{$transcript_id})) && $transcript_id=~/_EXTERNAL$/);
     next if(not(defined($pcount{$transcript_id})));
     my $start=$f[3];
@@ -146,7 +150,9 @@ foreach my $l(@unused){
   if($f[2] eq "gene"){
     $f[2]="transcript";
     $id=$1 if($f[8]=~ /ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)$/);
-    $flag=defined($h{$id}) ? 1 : 0;
+    #print "#DEBUG $id $intron_chains{$id} $h{$id} $used_intron_chains{$intron_chains{$id}}\n";
+    $flag=(defined($h{$id}) && not(defined($used_intron_chains{$intron_chains{$id}}))) ? 1 : 0;
+    $used_intron_chains{$intron_chains{$id}}=1 if($flag);
   }
   print join("\t",@f),"\n" if($flag);
 }
