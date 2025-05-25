@@ -682,9 +682,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Working on final merge"
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffread -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf
+    gffread -T $GENOME.best_unused_proteins.gff <(gffread --tlf $GENOME.abundanceFiltered.spliceFiltered.gtf  | perl -F'\t' -ane 'chomp($F[8]);if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){@f=split(/-/,$3);if($#f>1){$transcripts{join("-",@f[1..$#f-1])}.="$1 $F[0] $F[6] $f[0] $f[-1] $4 ";}elsif(not(defined($output{"$F[0] $F[6] $3"}))){$output{"$F[0] $F[6] $3"}=1;print;}}END{foreach $c(keys %transcripts){@ec=split(/,/,$c);$ec=$#ec+1;$start=10000000000;$end=0;@tr=split(/\s/,$transcripts{$c});for($i=0;$i<$#tr;$i+=6){$start=$tr[$i+3] if($tr[$i+3]<$start);$end=$tr[$i+4] if($end<$tr[$i+4]);}print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n"}}')  > $GENOME.all.combined.gtf.tmp && \
+    mv $GENOME.all.combined.gtf.tmp $GENOME.all.combined.gtf
   else
-    gffread -T $GENOME.abundanceFiltered.spliceFiltered.gtf > $GENOME.all.combined.gtf 
+    gffread --tlf $GENOME.abundanceFiltered.spliceFiltered.gtf  | perl -F'\t' -ane 'chomp($F[8]);if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){@f=split(/-/,$3);if($#f>1){$transcripts{join("-",@f[1..$#f-1])}.="$1 $F[0] $F[6] $f[0] $f[-1] $4 ";}elsif(not(defined($output{"$F[0] $F[6] $3"}))){$output{"$F[0] $F[6] $3"}=1;print;}}END{foreach $c(keys %transcripts){@ec=split(/,/,$c);$ec=$#ec+1;$start=10000000000;$end=0;@tr=split(/\s/,$transcripts{$c});for($i=0;$i<$#tr;$i+=6){$start=$tr[$i+3] if($tr[$i+3]<$start);$end=$tr[$i+4] if($end<$tr[$i+4]);}print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n"}}' |gffread -T > $GENOME.all.combined.gtf.tmp && \
+    mv $GENOME.all.combined.gtf.tmp $GENOME.all.combined.gtf
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
   if [ -s $GENOME.u.cds.gff ];then
