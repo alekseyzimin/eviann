@@ -561,37 +561,61 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         sort -S 5% |\
         uniq | \
         remove_readthrough_exons.pl $GENOME.gtf) | \
-  perl -F'\t' -ane 'BEGIN{
-    open(FILE,"'$GENOME'.num_introns.txt");
-    $num_introns=int(<FILE>);
-    $index=2;
-    $index++ if($num_introns >= 1024);
-    $index++ if($num_introns >= 4096);
-    open(FILE,"'$GENOME'.transcript_splice_scores.txt");
-    while($line=<FILE>){
-      chomp($line);
-      @f=split(/\s+/,$line);
-      $score{$f[0]}=$f[$index];
-      $ex_score{$f[0]}=$f[1];
-    }
-    open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
-    while($line=<FILE>){
-      chomp($line);
-      @f=split(/\s+/,$line);
-      $reliable{$f[0]}=1;
-    }
-  }{
-    if($F[2] eq "transcript"){
-      $id=$1 if($F[8] =~ /transcript_id "(\S+)";/); 
-      ($name,$samples,$tpm)=split(/:/,$id);
-      $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})));
-      $score{$id}+=2 if($tpm > 10||$samples>1);
-      $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
-      $score{$id}+=int('$JUNCTION_THRESHOLD') if($reliable{$id});
-      $flag=($score{$id}>'$JUNCTION_THRESHOLD') ? 1 : 0;
-    }
-    print if($flag);
-  }' > $GENOME.spliceFiltered.gtf.tmp && \
+    gffread --tlf | \
+    perl -F'\t' -ane 'BEGIN{
+      open(FILE,"'$GENOME'.num_introns.txt");
+      $num_introns=int(<FILE>);
+      $index=2;
+      $index++ if($num_introns >= 1024);
+      $index++ if($num_introns >= 4096);
+      open(FILE,"'$GENOME'.transcript_splice_scores.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $score{$f[0]}=$f[$index];
+        $ex_score{$f[0]}=$f[1];
+      }
+      open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\s+/,$line);
+        $reliable{$f[0]}=1;
+      }
+    }{
+      chomp($F[8]);
+      if($F[8] =~ /^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){
+        $id=$1;
+        $exons=$3;
+        $geneid=$4;
+        ($name,$samples,$tpm)=split(/:/,$id);
+        $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})));
+        $score{$id}+=2 if($tpm > 10||$samples>1);
+        $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
+        $score{$id}+=int('$JUNCTION_THRESHOLD') if($reliable{$id});
+        if($score{$id}>'$JUNCTION_THRESHOLD'){
+          @f=split(/-/,$exons);
+          if($#f>1){
+            $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
+          }elsif(not(defined($output{"$F[0] $F[6] $exons"}))){
+            $output{"$F[0] $F[6] $exons"}=1;
+            print;
+          }
+        }
+      }
+    }END{
+      foreach $c(keys %transcripts){
+        @ec=split(/,/,$c);
+        $ec=$#ec+1;
+        $start=10000000000;
+        $end=0;
+        @tr=split(/\s/,$transcripts{$c});
+        for($i=0;$i<$#tr;$i+=6){
+          $start=$tr[$i+3] if($tr[$i+3]<$start);
+          $end=$tr[$i+4] if($end<$tr[$i+4]);
+        }
+        print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n";
+      }
+    }' | gffread -T  > $GENOME.spliceFiltered.gtf.tmp && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
   if [ $(wc -l $GENOME.spliceFiltered.gtf|awk '{print $1}') -eq 0 ];then error_exit "Transcript file is empty, likely insufficient RNA-seq data, exiting...";fi && \
 #we compare and combine filtered proteins and transcripts files
@@ -682,10 +706,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Working on final merge"
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffread -T $GENOME.best_unused_proteins.gff <(gffread --tlf $GENOME.abundanceFiltered.spliceFiltered.gtf  | perl -F'\t' -ane 'chomp($F[8]);if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){@f=split(/-/,$3);if($#f>1){$transcripts{join("-",@f[1..$#f-1])}.="$1 $F[0] $F[6] $f[0] $f[-1] $4 ";}elsif(not(defined($output{"$F[0] $F[6] $3"}))){$output{"$F[0] $F[6] $3"}=1;print;}}END{foreach $c(keys %transcripts){@ec=split(/,/,$c);$ec=$#ec+1;$start=10000000000;$end=0;@tr=split(/\s/,$transcripts{$c});for($i=0;$i<$#tr;$i+=6){$start=$tr[$i+3] if($tr[$i+3]<$start);$end=$tr[$i+4] if($end<$tr[$i+4]);}print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n"}}')  > $GENOME.all.combined.gtf.tmp && \
+    gffread -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf  > $GENOME.all.combined.gtf.tmp && \
     mv $GENOME.all.combined.gtf.tmp $GENOME.all.combined.gtf
   else
-    gffread --tlf $GENOME.abundanceFiltered.spliceFiltered.gtf  | perl -F'\t' -ane 'chomp($F[8]);if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){@f=split(/-/,$3);if($#f>1){$transcripts{join("-",@f[1..$#f-1])}.="$1 $F[0] $F[6] $f[0] $f[-1] $4 ";}elsif(not(defined($output{"$F[0] $F[6] $3"}))){$output{"$F[0] $F[6] $3"}=1;print;}}END{foreach $c(keys %transcripts){@ec=split(/,/,$c);$ec=$#ec+1;$start=10000000000;$end=0;@tr=split(/\s/,$transcripts{$c});for($i=0;$i<$#tr;$i+=6){$start=$tr[$i+3] if($tr[$i+3]<$start);$end=$tr[$i+4] if($end<$tr[$i+4]);}print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n"}}' |gffread -T > $GENOME.all.combined.gtf.tmp && \
+    cp $GENOME.abundanceFiltered.spliceFiltered.gtf $GENOME.all.combined.gtf.tmp && \
     mv $GENOME.all.combined.gtf.tmp $GENOME.all.combined.gtf
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
