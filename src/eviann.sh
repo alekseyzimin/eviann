@@ -536,7 +536,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --genome $GENOMEFILE \
       --pwms <(echo "") \
       --transdecoder  <(echo "") \
-      --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
@@ -637,7 +636,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --genome $GENOMEFILE \
       --transdecoder <(echo "") \
       --pwms $GENOME.pwm \
-      --include_stop \
       1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \

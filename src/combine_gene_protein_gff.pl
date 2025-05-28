@@ -139,11 +139,11 @@ while(my $line=<FILE>){
   if($gff_fields[2] eq "transcript"){
     if(defined($transcript{$ID})){
       #discard single exon contained transcripts
-      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains){
-      #if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains && ($#exons==0 || not($transcript_class{$ID} eq "="))){
+      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains && ($#exons==0 || not($transcript_class{$ID} eq "="))){
         print "DEBUG ignoring contained transcript $gff_fields[8]\n";
         $transcript_class{$ID}="NA";
       }
+
     #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
       my @gff_fields_t=split(/\t/,$transcript{$ID});
       my @gff_fields=split(/\t/,$exons[0]);
@@ -255,7 +255,9 @@ while(my $line=<FILE>){
       $transcript{$ID}=$line;
       die("Protein $protID is not defined for protein coding transcript $ID") if(not(defined($protein{$protID})));
       $transcript_cds{$ID}=$protID;
+      #$transcript_source{$ID}=($gff_fields[8] =~ /contained_in=/ && not($protID =~ /_EXTERNAL$/)) ? "Contained" : $gff_fields[1];
       $transcript_source{$ID}=$gff_fields[1];
+      $transcript_contained{$ID}= ($gff_fields[8] =~ /contained_in=/) ? 1 : 0;
       $transcript_cds_start{$ID}=$protein_start{$protID};
       $transcript_cds_start_codon{$ID}="MISSING";
       $transcript_cds_end{$ID}=$protein_end{$protID};
@@ -263,7 +265,6 @@ while(my $line=<FILE>){
       $transcript_class{$ID}=$class_code;
       $transcripts_cds_loci{$locID}.="$ID ";
       $transcript_cds_modified{$ID}=0;
-      $transcript_contained{$ID}=($gff_fields[8] =~ /contained_in=/) ? 1 : 0;
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$ID}) || defined($transcript_u{$ID}));
@@ -774,18 +775,6 @@ for my $g(keys %transcript_cds){
   }
 }
 
-#here we build intron chains for all valid transcripts and proteins, we do not want to output these again in unused
-for my $g(keys %transcript_cds){
-  next if($transcript_class{$g} eq "NA");
-  @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[0]);
-  my $intron_chain="$gff_fields_p[0] $gff_fields_p[6] $gff_fields_p[3] $gff_fields_p[4]";
-  for(my $j=1;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
-    @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
-    $intron_chain.=" $gff_fields_p[3] $gff_fields_p[4]";
-  }
-  $used_protein_intron_chains{$intron_chain}=1;
-}
-
 #process the loci
 #print the headers
 print OUTFILE1 "##gff-version 3\n# EviAnn automated annotation\n";
@@ -803,12 +792,11 @@ for my $locus(keys %transcripts_cds_loci){
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
-  for my $source("EviAnn","StringTie","EviAnnP"){
+  for my $source("StringTie","EviAnnP"){
      for my $class ("=","k","j","m","n"){  
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
-        #next if($class eq "j" && $output_count > 1);
         #next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
         $output_count++;
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source $output_count\n";
@@ -829,6 +817,7 @@ for my $locus(keys %transcripts_cds_loci){
         my $transcript_cds_end_index=$#{$transcript_gff{$t}};
         $locus_start=$transcript_start if($transcript_start < $locus_start);
         $locus_end=$transcript_end if($transcript_end > $locus_end);
+
 #here we figure out which exons are UTR
         for(my $i=0;$i<=$#{$transcript_gff{$t}};$i++){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$i]);
@@ -844,6 +833,30 @@ for my $locus(keys %transcripts_cds_loci){
             last;
           }
         }
+
+#check the CDS if the transcript is contained, skip if the CDS has been output
+        if($source eq "EviAnnP"){
+          my $intron_chain;
+          if($transcript_cds_start_index<$transcript_cds_end_index){
+            my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
+            $intron_chain="$gff_fields[0] $gff_fields[6] $start_cds $gff_fields[4]";
+            for(my $j=$transcript_cds_start_index+1;$j<$transcript_cds_end_index;$j++){
+              my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
+              $intron_chain.=" $gff_fields[3] $gff_fields[4]";
+            }
+            my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]);
+            $intron_chain.=" $gff_fields[3] $end_cds";
+          }else{#single exon
+            my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
+            $intron_chain="$gff_fields[0] $gff_fields[6] $start_cds $end_cds";
+          }
+          print "DEBUG checking intron chain for transcript $t protein $protID source $source chain $intron_chain\n";
+          if(defined($used_protein_intron_chains{$intron_chain})){
+            print "DEBUG transcript $t protein $protID source $source CDS has been output, skipping\n";
+            next;
+          }
+        }
+
 #output transcript
         $transcript_index++;
         print "DEBUG output transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
@@ -893,22 +906,33 @@ for my $locus(keys %transcripts_cds_loci){
           }
           $i++;
         }
-#output cds from exons
+#output cds from exons 
         $i=1;
         if($transcript_cds_start_index<$transcript_cds_end_index){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
+          my $intron_chain="$gff_fields[0] $gff_fields[6] $start_cds $gff_fields[4]";
           push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$start_cds\t".join("\t",@gff_fields[4..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
           $i++;
           for(my $j=$transcript_cds_start_index+1;$j<$transcript_cds_end_index;$j++){
             my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$j]);
             push(@output,$gff_fields[0]."\tEviAnn\tCDS\t".join("\t",@gff_fields[3..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+            $intron_chain.=" $gff_fields[3] $gff_fields[4]";
             $i++;
           }
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]);
           push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$gff_fields[3]\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+          $intron_chain.=" $gff_fields[3] $end_cds";
+          if($source eq "StringTie"){
+            print "DEBUG in transcript $t used CDS $intron_chain\n";
+            $used_protein_intron_chains{$intron_chain}=1;
+          }
         }else{#single exon
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
           push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$start_cds\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
+          if($source eq "StringTie"){
+            print "DEBUG in transcript $t used CDS $gff_fields[0] $gff_fields[6] $start_cds $end_cds\n";
+            $used_protein_intron_chains{"$gff_fields[0] $gff_fields[6] $start_cds $end_cds"}=1;
+          }
         }
 #output second UTR
         $i=1;
@@ -923,7 +947,7 @@ for my $locus(keys %transcripts_cds_loci){
         }
         print "DEBUG finished transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
       }#end of transcripts loop
-    }#end of souce loop
+    }#end of source loop
   }#end of class loop
 #now we know the locus start ans end, and we can output the gene record
   if(scalar(@output)>0){
