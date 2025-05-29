@@ -804,9 +804,9 @@ fi
 if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes" && \
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
-  ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
+  ufasta extract -f <(awk -F'\t' '{if($3=="exon"){split($9,a,";");print substr(a[1],8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
   mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
-  ufasta extract -f <(awk -F'\t' '{if($3=="exon"){print substr($9,8);}}'  $GENOME.gff|uniq -c | \
+  ufasta extract -f <(awk -F'\t' '{if($3=="exon"){split($9,a,";");print substr(a[1],8);}}'  $GENOME.gff|uniq -c | \
     perl -ane '{($gene,$junk)=split(/-/,$F[1]);$max_count{$gene}=$F[0] if($max_count{$gene}<$F[0]);$transcripts{$gene}.="$F[1]\n";}END{foreach $k(keys %max_count){if($max_count{$k}==1){print $transcripts{$k}}}}') $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && \
   mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   if [ -s $GENOME.proteins.mex.fasta ] && [ -s $GENOME.proteins.sex.fasta ];then

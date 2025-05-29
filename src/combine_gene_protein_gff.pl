@@ -800,10 +800,12 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
-        #next if(($class eq "m" || $class eq "n") && $output_count>0);#these are low confidence, we use them as last resort, there should be no such codes for EviAnnP
-        $output_count++;
-        print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source $output_count\n";
+        print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source\n";
         my $protID=$transcript_cds{$t};
+        if($source eq "EviAnnP" && $used_proteins{$protID}){
+          print "DEBUG protein $protID was already used in a transcript\n";
+          next;
+        }
         $used_proteins{$protID}=1;
         my $note="";
         my @gff_fields_t=split(/\t/,$transcript{$t});
