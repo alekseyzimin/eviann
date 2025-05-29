@@ -435,41 +435,41 @@ for my $g(keys %transcript_cds){
   my $tend=$gff_fields_t[4];
   print "\nDEBUG protein $transcript_cds{$g} transcript $g $original_transcript_name{$g} length ",length($transcript_seqs{$g}),"\n";
   if($transcript_ori{$g} eq "+"){#forward orientation, check for the start codon
-    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
+    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
 #we need to determine the position of the CDS start on the transcript, minding the introns, and CDS length
     my $cds_start_on_transcript=0;
     my $cds_end_on_transcript=0;
     my $cds_length=0;
-    if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
-        $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
-        $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
-        $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    }else{
-      print "DEBUG computing CDS start and stop position on the transcript\n";
-      my @gff_fields=();
-      my @gff_fields_prev=();
-      for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
-        @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-        if($transcript_cds_start{$g}>=$gff_fields[3] && $transcript_cds_start{$g}<=$gff_fields[4]){
-          $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3];
-          last;
-        }elsif($transcript_cds_start{$g}<$gff_fields[3] && $transcript_cds_start{$g}>$gff_fields_prev[4]){#protein ends inside an intron
-          $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3]-1;
-          last;
-        }else{
-          $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
-        }
-        @gff_fields_prev=@gff_fields;
+    print "DEBUG computing CDS start and stop position on the transcript\n";
+    my @gff_fields=();
+    my @gff_fields_prev=();
+    for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+      if($transcript_cds_start{$g}>=$gff_fields[3] && $transcript_cds_start{$g}<=$gff_fields[4]){
+        $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3];
+        last;
+      }elsif($transcript_cds_start{$g}<$gff_fields[3] && $transcript_cds_start{$g}>$gff_fields_prev[4]){#protein ends inside an intron
+        $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3]-1;
+        last;
+      }else{
+        $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
       }
-#we need to determine the position of the CDS end on the transcript, minding the introns
-      for(my $j=0;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
-        @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
-        $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
-      }
-      $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
+      @gff_fields_prev=@gff_fields;
     }
+#we need to determine the position of the CDS end on the transcript, minding the introns
+    for(my $j=0;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
+      @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
+      $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
+    }
+    $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
 
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g} transcript length ",length($transcript_seqs{$g}),"\n";
+
+    if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
+      $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
+      $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    }
 
     if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
       $transcript_class{$g}="NA";
@@ -607,40 +607,40 @@ for my $g(keys %transcript_cds){
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g} class $transcript_class{$g}\n";
 
   }else{#reverse orientation
-    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}} from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g}\n";
+    print "DEBUG examining protein $transcript_cds{$g} $protein_start{$transcript_cds{$g}} $protein_end{$transcript_cds{$g}}\n";
 #we need to determine the position or the CDS start on the transcript, minding the introns
     my $cds_start_on_transcript=0;
     my $cds_end_on_transcript=0;
     my $cds_length=0;
-    if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){#from transdecoder
-        $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
-        $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
-        $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-    }else{
-      my @gff_fields=();
-      my @gff_fields_prev=();
-      for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
-        @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
-        if($transcript_cds_end{$g}>=$gff_fields[3] && $transcript_cds_end{$g}<=$gff_fields[4]){
-          $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g};
-          last;
-        }elsif($transcript_cds_end{$g}>$gff_fields[4] && $transcript_cds_end{$g}<$gff_fields_prev[3]){
-          $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g}-1;
-          last;
-        }else{
-          $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
-        }
-        @gff_fields_prev=@gff_fields;
+    my @gff_fields=();
+    my @gff_fields_prev=();
+    for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+      if($transcript_cds_end{$g}>=$gff_fields[3] && $transcript_cds_end{$g}<=$gff_fields[4]){
+        $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g};
+        last;
+      }elsif($transcript_cds_end{$g}>$gff_fields[4] && $transcript_cds_end{$g}<$gff_fields_prev[3]){
+        $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g}-1;
+        last;
+      }else{
+        $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
       }
-#we need to determine the position of the CDS end on the transcript, minding the introns
-      for(my $j=0;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
-        @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
-        $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
-      }
-      $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
+      @gff_fields_prev=@gff_fields;
     }
-   
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+#we need to determine the position of the CDS end on the transcript, minding the introns
+    for(my $j=0;$j<=$#{$protein_cds{$transcript_cds{$g}}};$j++){
+      @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$g}}}[$j]);
+      $cds_length+=$gff_fields_p[4]-$gff_fields_p[3]+1;
+    }
+    $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
+  
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript from transdecoder $transcript_cds_start_on_transcript{$g} $transcript_cds_stop_on_transcript{$g} transcript length ",length($transcript_seqs{$g}),"\n";
+
+    if(defined($transcript_cds_start_on_transcript{$g}) && defined($transcript_cds_stop_on_transcript{$g})){
+      $cds_start_on_transcript=$transcript_cds_start_on_transcript{$g};
+      $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
+      $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+    }
 
     if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
       $transcript_class{$g}="NA";
