@@ -781,7 +781,7 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
   mv $GENOME.k.nort.gff.tmp $GENOME.k.nort.gff && \
   gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(reassign_transcripts.pl $GENOME.locus_transcripts < $GENOME.k.nort.gff) $GENOME.u.gff|\
-    awk '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{print $0}}' > $GENOME.gff.tmp && \
+    awk -F '\t' '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{if($3!=prev){counter=1}if($9 ~ /Parent=/){print $0";ID="substr($9,8)"-"$3"-"counter;counter++;}else{print $0}prev=$3;}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
   touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
