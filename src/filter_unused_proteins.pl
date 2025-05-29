@@ -66,6 +66,7 @@ while($line=<STDIN>){
       next;
     }
     $intron_chains{$transcript_id}=$intron_chain;
+    #print "DEBUG $transcript_id $intron_chain\n";
     $pcount{$transcript_id}=1 if(not(defined($pcount{$transcript_id})) && $transcript_id=~/_EXTERNAL$/);
     next if(not(defined($pcount{$transcript_id})));
     my $start=$f[3];
@@ -85,12 +86,10 @@ while($line=<STDIN>){
     my $codon_score=0;
     $codon_score++ if($startcodon eq "ATG");
     $codon_score++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA");
-    if($codon_score>1 || $transcript_id=~/_EXTERNAL$/){
-      #$similarity{$transcript_id}-=20 if($codon_score==1);
-      #$similarity{$transcript_id}=1 if($similarity{$transcript_id}<1);
+    if($codon_score>0 || $transcript_id=~/_EXTERNAL$/){
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id $codon_score");
-      #print "DEBUG $score $gene_id $transcript_id $ori\n";
+      #print "DEBUG $score $gene_id $transcript_id $ori $codon_score\n";
     }
   }
 }
@@ -99,7 +98,7 @@ my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scor
 my %h=();
 my %hs=();
 my %hn=();
-my $min_complete_sens=90;
+my $min_complete_score=100;
 my $add_thresh=.9999;
 #here we figure out what the additional threshold should be based on the ratio of complete to protein-only
 #first we only consider complete proteins
@@ -109,13 +108,14 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+    $min_complete_score=$F[0] if($F[0]<$min_complete_score);
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
 
 #here we adjust the threshold for secondary protein alignments based on the ratio of complete to protein_only
-$add_thresh-=scalar(keys %h)/$num_complete/150;
-print "#$add_thresh $num_complete\n";
+$add_thresh-=scalar(keys %h)/$num_complete/100;
+print "#DEBUG $add_thresh $num_complete $min_complete_score\n";
 my %h=();
 my %hs=();
 my %hn=();
@@ -128,11 +128,11 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
+
 #now we use incomplete proteins only for loci that do not ave any completes, 1 per locus
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
-  next if($F[3]==2);
-  if($hn{$F[1]} < 1 && $F[0]>$min_complete_sens ){
+  if($hn{$F[1]} < 1 && $F[0]>$min_complete_score ){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $h{$F[2]}=1;#we mark the proteins to keep
   }
