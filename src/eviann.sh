@@ -757,7 +757,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --pwms $GENOME.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
       --final_pass \
-      --include_stop \
       --proteins $PROTEINFILE \
       --output_partial $PARTIAL \
       --lncrnamintpm $LNCRNATPM \

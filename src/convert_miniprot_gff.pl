@@ -47,32 +47,6 @@ while($line=<STDIN>){
     push(@output,join("\t",@F[0..7])."\tID=exon-$parent-$count;Parent=$parent\n") if($flag);
     $count++;
     $last_base=($F[6] eq "+")?$F[4]:$F[3];
-  }elsif($F[2] eq "stop_codon"){
-    @f=split(/\t/,$output[$#output]);
-    if($F[6] eq "+"){
-      if($F[4]==$f[4]){
-        $f[4]-=3;
-        $output[$#output]=join("\t",@f);
-        @f=split(/\t/,$output[$#output-1]);
-        $f[4]-=3;
-        $output[$#output-1]=join("\t",@f);
-        @f=split(/\t/,$output[0]);
-        $f[4]-=3;
-        $output[0]=join("\t",@f);
-      }
-    }else{
-      if($F[3]==$f[3]){
-        $f[3]+=3;
-        $output[$#output]=join("\t",@f);
-        @f=split(/\t/,$output[$#output-1]);
-        $f[3]+=3;
-        $output[$#output-1]=join("\t",@f);
-        @f=split(/\t/,$output[0]);
-        $f[3]+=3;
-        $output[0]=join("\t",@f);
-      }
-    }
-    push(@output,join("\t",@F[0..7])."\tID=stop_codon-$parent-$count;Parent=$parent\n") if($flag);
   }
 }
 if(scalar(@output) > 1){

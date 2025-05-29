@@ -6,7 +6,6 @@ my $annotated_gff=$output_prefix.".protref.annotated.gff";
 my $transdecoder_start_stop=$output_prefix.".fixed_cds.txt";
 my $pwms;
 my $names=$output_prefix.".original_names.txt";
-my $include_stop=0;
 my $ext_length=33;
 my $keep_contains=0;
 my $final_pass=0;
@@ -24,12 +23,10 @@ GetOptions ("prefix=s"   => \$output_prefix,      # string
     "names=s" => \$names, 
     "ext=i" => \$ext_length,
     "keep_contains" => \$keep_contains,
-    "include_stop"  => \$include_stop,
     "output_partial=i" => \$output_partial,
     "lncrnamintpm=f" => \$lncRNA_TPM,
     "final_pass" => \$final_pass)   # flag
 or die("Error in command line arguments\n");
-my $add_stop_coord = $include_stop==1 ? 3 : 0; 
 my $discard_contains = $keep_contains==1 ? 0 : 1;
 my $geneID="";
 my @exons=();
@@ -139,7 +136,8 @@ while(my $line=<FILE>){
   if($gff_fields[2] eq "transcript"){
     if(defined($transcript{$ID})){
       #discard single exon contained transcripts
-      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains && ($#exons==0 || not($transcript_class{$ID} eq "="))){
+      #unless($transcript_contained{$ID}){
+      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains){
         print "DEBUG ignoring contained transcript $gff_fields[8]\n";
         $transcript_class{$ID}="NA";
       }
@@ -327,7 +325,7 @@ while(my $line=<FILE>){
   chomp($line);
   my ($geneID, $cds_start,$cds_stop)=split(/\s+/,$line);
   $transcript_cds_start_on_transcript{$geneID}=$cds_start;
-  $transcript_cds_stop_on_transcript{$geneID}=$cds_stop-3;
+  $transcript_cds_stop_on_transcript{$geneID}=$cds_stop;
   $transcript_cds_modified{$geneID}=1;
 }
 
@@ -432,7 +430,6 @@ for my $g(keys %transcript_gff){
 #here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then check for a start codon and, if not found, extend the start/stop of the CDS up to the transcript boundary to look for the valid start/stop
 for my $g(keys %transcript_cds){
   next if($transcript_class{$g} eq "NA");
-
   my @gff_fields_t=split(/\t/,$transcript{$g});
   my $tstart=$gff_fields_t[3];
   my $tend=$gff_fields_t[4];
@@ -515,7 +512,7 @@ for my $g(keys %transcript_cds){
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
 #checking for in-frame stop codons
@@ -524,13 +521,16 @@ for my $g(keys %transcript_cds){
 #fixing start/stop, extending if needed
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-    ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}) if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon)))); #try to extend
-    #at this point we did all we could to fix the coding region; last thing that remains is to make sure the stop codon is included both into the cds and the transcript
-    #from here on we assume that the stop codon is included!!!
-    $cds_end_on_transcript+=$add_stop_coord;
-    #make sure we are not out of the transcript!!!
-    $transcript_seqs_3pext_actual{$g}=substr($transcript_seqs_3pext{$g},0,length($transcript_seqs_3pext_actual{$g})+3) if($cds_end_on_transcript > length($transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g}));
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+    print "DEBUG fix codons $first_codon $last_codon\n";
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon)))){
+      print "DEBUG attempting extension\n";
+      ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
+    }else{
+      print "DEBUG no need to extend\n";
+      $transcript_seqs_5pext_actual{$g}="";
+      $transcript_seqs_3pext_actual{$g}="";
+    }
 
     if(length($transcript_seqs_5pext_actual{$g})>0 || length($transcript_seqs_3pext_actual{$g})>0){
 #updating the transcript
@@ -594,7 +594,7 @@ for my $g(keys %transcript_cds){
     }
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-$add_stop_coord,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(valid_start($first_codon));
     $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon));
@@ -683,7 +683,7 @@ for my $g(keys %transcript_cds){
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
     my $cds_end_on_transcript_original=$cds_end_on_transcript;
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     print "DEBUG $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript protein $transcript_cds{$g} transcript $g cds_length $cds_length transcript length ",length($transcript_seqs{$g})," tstart $tstart pstart $transcript_cds_start{$g} pend $transcript_cds_end{$g} tori $transcript_ori{$g}\n";
 
 #checking for in-frame stop codons
@@ -692,13 +692,16 @@ for my $g(keys %transcript_cds){
 #fixing start/stop, extending if needed
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript,3);
-    ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}) if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon)))); #try to extend
-#at this point we did all we could to fix the coding region; last thing that remains is to make sure the stop codon is included both into the cds and the transcript
-#from here on we assume that the stop codon is included!!!
-    $cds_end_on_transcript+=$add_stop_coord;
-#make sure we are not out of the transcript!!!
-    $transcript_seqs_3pext_actual{$g}=substr($transcript_seqs_3pext{$g},0,length($transcript_seqs_3pext_actual{$g})+3) if($cds_end_on_transcript > length($transcript_seqs_5pext_actual{$g}.$transcript_seqs{$g}.$transcript_seqs_3pext_actual{$g}));
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+    print "DEBUG fix codons $first_codon $last_codon\n";
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon)))){
+      print "DEBUG attempting extension\n";
+      ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
+    }else{
+      print "DEBUG no need to extend\n";
+      $transcript_seqs_5pext_actual{$g}="";
+      $transcript_seqs_3pext_actual{$g}="";
+    }
 
 #updating the transcript if extended
     if(length($transcript_seqs_5pext_actual{$g})>0 || length($transcript_seqs_3pext_actual{$g})>0){
@@ -761,7 +764,7 @@ for my $g(keys %transcript_cds){
     }
 
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-$add_stop_coord,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(valid_start($first_codon));
     $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon));
@@ -1125,9 +1128,11 @@ sub fix_start_stop_codon_ext{
   my $ext_length=length($transcript_5pext);
   #we do not do 5' extension if the first codon is start
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
-  my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
-  print "DEBUG extending start and stop starting at $cds_start_on_transcript $cds_end_on_transcript\n";
+  my $last_codon=substr($transcript_seq,$cds_end_on_transcript-3,3);
+  print "DEBUG extending start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
+  print "DEBUG $transcript_5pext $transcript_seq $transcript_3pext\n";
   my ($cds_start_on_transcript_ext,$cds_end_on_transcript_ext)=fix_start_stop_codon($cds_start_on_transcript+$ext_length,$cds_end_on_transcript+$ext_length,$transcript_5pext.$transcript_seq.$transcript_3pext);
+  print "DEBUG $cds_start_on_transcript_ext $cds_end_on_transcript_ext $ext_length\n";
   if(valid_start($first_codon)){#ignore the extension
     $transcript_5pext="";
     print "DEBUG no 5p extension needed $cds_start_on_transcript_ext\n";
@@ -1185,7 +1190,8 @@ sub fix_start_stop_codon_ext{
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
   }else{
     print "DEBUG checking 3p extension\n";
-    $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length+3);
+    $transcript_3pext_save=$transcript_3pext;
+    $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length);
     if(defined($pwms)){
       for(my $j=0;$j<length($transcript_3pext)-3;$j++){
         if(uc(substr($transcript_3pext,$j,2)) eq "GT"){
@@ -1212,9 +1218,9 @@ sub fix_start_stop_codon_ext{
     }
     if($found_donor==0){
       $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
-      print "DEBUG extend 3p $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+      print "DEBUG extend 3p $cds_end_on_transcript_ext $transcript_3pext $transcript_3pext_save ",length($transcript_3pext),"\n";
     }else{
-      print "DEBUG reject 3p $cds_end_on_transcript_ext $transcript_3pext ",length($transcript_3pext),"\n";
+      print "DEBUG reject 3p $cds_end_on_transcript_ext $transcript_3pext $transcript_3pext_save ",length($transcript_3pext),"\n";
       $transcript_3pext="";
       $cds_end_on_transcript+=length($transcript_5pext);
     }
@@ -1227,7 +1233,7 @@ sub fix_start_stop_codon{
   my $cds_end_on_transcript=$_[1];
   my $transcript_seq=$_[2];
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
-  my $last_codon=substr($transcript_seq,$cds_end_on_transcript,3);
+  my $last_codon=substr($transcript_seq,$cds_end_on_transcript-3,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
   my $foundU=-1;
   for(my $i=$cds_start_on_transcript;$i>=0;$i-=3){
@@ -1243,7 +1249,7 @@ sub fix_start_stop_codon{
   }else{ 
     print "DEBUG failed to find new start codon, looking downstream\n";
     my $foundD=-1;
-    for(my $i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript;$i+=3){
+    for(my $i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript-3;$i+=3){
       if(valid_start(substr($transcript_seq,$i,3))){
         $foundD=$i;
         last;
@@ -1259,12 +1265,12 @@ sub fix_start_stop_codon{
   }
   if(not(valid_stop($last_codon))){
     my $i;
-    for($i=$cds_start_on_transcript+3;$i<length($transcript_seq);$i+=3){
+    for($i=$cds_start_on_transcript+3;$i<=length($transcript_seq)-3;$i+=3){
       last if(valid_stop(substr($transcript_seq,$i,3)));
     } 
-    if($i<length($transcript_seq)){
-      print "DEBUG found new stop codon downstream at $i\n";
-      $cds_end_on_transcript=$i;
+    if($i<=length($transcript_seq)-3){
+      print "DEBUG found new stop codon downstream at $i, ",substr($transcript_seq,$i,3),"\n";
+      $cds_end_on_transcript=$i+3;
     }else{
       print "DEBUG failed to find new stop codon downstream\n";
     }
@@ -1282,10 +1288,10 @@ sub fix_in_frame_stops_keep_frame{
   my $frame0_start=$cds_start_on_transcript;
   my $frame0_end=$cds_end_on_transcript;
   print "DEBUG checking for in frame stop starting $cds_start_on_transcript $cds_end_on_transcript\n";
-  for($i=$frame0_start;$i<$frame0_end;$i+=3){
+  for($i=$frame0_start;$i<$frame0_end-3;$i+=3){
     if(valid_stop(substr($transcript_seq,$i,3))){
       $in_frame_stop=$i;
-      $frame0_end=$i-3;
+      $frame0_end=$i+3;
       last;
     }
   }
