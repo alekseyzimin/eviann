@@ -925,17 +925,13 @@ for my $locus(keys %transcripts_cds_loci){
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_end_index]);
           push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$gff_fields[3]\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
           $intron_chain.=" $gff_fields[3] $end_cds";
-          if($source eq "StringTie"){
-            print "DEBUG in transcript $t used CDS $intron_chain\n";
-            $used_protein_intron_chains{$intron_chain}=1;
-          }
+          print "DEBUG in transcript $t used CDS |$intron_chain|\n";
+          $used_protein_intron_chains{$intron_chain}=1;
         }else{#single exon
           my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
           push(@output,$gff_fields[0]."\tEviAnn\tCDS\t$start_cds\t$end_cds\t".join("\t",@gff_fields[5..7])."\tID=$parent$transcript_index:cds:$i;Parent=$parent$transcript_index$note");
-          if($source eq "StringTie"){
-            print "DEBUG in transcript $t used CDS $gff_fields[0] $gff_fields[6] $start_cds $end_cds\n";
-            $used_protein_intron_chains{"$gff_fields[0] $gff_fields[6] $start_cds $end_cds"}=1;
-          }
+          print "DEBUG in transcript $t used CDS |$gff_fields[0] $gff_fields[6] $start_cds $end_cds|\n";
+          $used_protein_intron_chains{"$gff_fields[0] $gff_fields[6] $start_cds $end_cds"}=1;
         }
 #output second UTR
         $i=1;
@@ -1054,8 +1050,10 @@ foreach my $p(keys %protein){
     @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
     $intron_chain.=" $gff_fields_c[3] $gff_fields_c[4]";
   }
+  print "DEBUG unused checking intron chain $p |$intron_chain|\n";
   #ignore if this protein is already in a transcript
   next if(defined($used_protein_intron_chains{$intron_chain}));
+  print "DEBUG unused intron chain available\n";
   #$used_protein_intron_chains{$intron_chain}=1;
 
   print OUTFILE4 "$gff_fields_p[0]\tEviAnnP\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
