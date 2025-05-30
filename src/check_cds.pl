@@ -162,6 +162,10 @@ while(my $line=<FILE>){
       $locID=substr($attr,7) if($attr =~ /^geneID=/);
       $locID=substr($attr,5) if($attr =~ /^xloc=/);
     }
+    if($gff_fields[1] eq "EviAnnP"){
+      $protID=$ID;
+      $class="=";
+    }
     print "DEBUG read transcript $ID class $class_code protein $protID locus $locID\n";
     if($class_code =~ /i|y|u|o|x/){
       $transcript_u{$ID}=$line;
