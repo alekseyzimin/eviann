@@ -48,7 +48,7 @@ while($line=<FILE>){
   $num_complete++ if($line=~/Evidence=complete/);
 }
 
-#combined file on STDIN
+#clustered file on STDIN
 while($line=<STDIN>){
   chomp($line);
   my @f=split(/\t/,$line);
@@ -67,7 +67,6 @@ while($line=<STDIN>){
     }
     $intron_chains{$transcript_id}=$intron_chain;
     #print "DEBUG $transcript_id $intron_chain\n";
-    $pcount{$transcript_id}=1 if(not(defined($pcount{$transcript_id})) && $transcript_id=~/_EXTERNAL$/);
     next if(not(defined($pcount{$transcript_id})));
     my $start=$f[3];
     my $end=$f[4];

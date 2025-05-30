@@ -162,7 +162,7 @@ while(my $line=<FILE>){
       $locID=substr($attr,7) if($attr =~ /^geneID=/);
       $locID=substr($attr,5) if($attr =~ /^xloc=/);
     }
-    if($gff_fields[1] eq "EviAnnP"){
+    if($gff_fields[1] eq "EviAnnP" && $ID =~ /_EXTERNAL$/){
       $protID=$ID;
       $class="=";
     }
