@@ -684,7 +684,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         ) \
         $GENOME.k.gff \
       > $GENOME.best_unused_proteins.gff.tmp && \
-    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff 
+    mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
+    echo -n "Candidate CDS-only transcripts: " && \
+    awk -F'\t' '{if($3=="transcript") print;}' $GENOME.best_unused_proteins.gff |wc -l
   fi 
   #these are u's -- no match to a protein, use transdecoder to try to find CDS
   if [ -s $GENOME.u.gff ];then

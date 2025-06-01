@@ -136,7 +136,7 @@ while(my $line=<FILE>){
   if($gff_fields[2] eq "transcript"){
     if(defined($transcript{$ID})){
       #discard single exon contained transcripts
-      #unless($transcript_contained{$ID}){
+      #unless($transcript_contained{$ID} && ($#exons>0 && $transcript_class{$ID} eq "=")){
       if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains){
         print "DEBUG ignoring contained transcript $gff_fields[8]\n";
         $transcript_class{$ID}="NA";
