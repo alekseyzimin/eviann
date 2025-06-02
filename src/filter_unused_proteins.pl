@@ -73,22 +73,18 @@ while($line=<STDIN>){
     my $ori=$f[6];
     if($ori eq "+"){
       $startcodon=uc(substr($contigs{$f[0]},$start-1,3));
-      $stopcodon1=uc(substr($contigs{$f[0]},$end-3,3));
-      $stopcodon2=uc(substr($contigs{$f[0]},$end,3));
+      $stopcodon=uc(substr($contigs{$f[0]},$end-3,3));
     }else{
       my $seq=substr($contigs{$f[0]},$end-3,3);
       $seq=~tr/acgtACGT/tgcaTGCA/;
       $startcodon=uc(reverse($seq));
       $seq=substr($contigs{$f[0]},$start-1,3);
       $seq=~tr/acgtACGT/tgcaTGCA/;
-      $stopcodon1=uc(reverse($seq));
-      $seq=substr($contigs{$f[0]},$start-4,3);
-      $seq=~tr/acgtACGT/tgcaTGCA/;
-      $stopcodon2=uc(reverse($seq));
+      $stopcodon=uc(reverse($seq));
     }
     my $codon_score=0;
     $codon_score++ if($startcodon eq "ATG");
-    $codon_score++ if($stopcodon1 eq "TAA" || $stopcodon1 eq "TAG" || $stopcodon1 eq "TGA" || $stopcodon2 eq "TAA" || $stopcodon2 eq "TAG" || $stopcodon2 eq "TGA");
+    $codon_score++ if($stopcodon eq "TAA" || $stopcodon eq "TAG" || $stopcodon eq "TGA");
     if($codon_score>1){
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id $codon_score");
@@ -101,7 +97,7 @@ my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scor
 my %h=();
 my %hs=();
 my %hn=();
-my $min_complete_score=90;
+my $min_complete_score=100;
 my $add_thresh=.9999;
 #here we figure out what the additional threshold should be based on the ratio of complete to protein-only
 #first we only consider complete proteins
@@ -111,6 +107,7 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
+    $min_complete_score=$F[0] if($F[0]<$min_complete_score);
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
@@ -132,10 +129,8 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
 }
 
 #now we use incomplete proteins only for loci that do not ave any completes, 1 per locus
-#this has no effect for now
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
-  next if($F[3]==2);
   if($hn{$F[1]} < 1 && $F[0]>$min_complete_score ){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $h{$F[2]}=1;#we mark the proteins to keep
