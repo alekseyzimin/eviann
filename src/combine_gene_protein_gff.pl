@@ -429,7 +429,69 @@ for my $g(keys %transcript_gff){
     $transcript_seqs_3pext{$g}=~tr/ACGTNacgtn/TGCANtgcan/;
     $transcript_seqs_3pext{$g}=reverse($transcript_seqs_3pext{$g});
   }
-}  
+}
+
+#here we build PWM matrix for start codon
+my $nstarts=0;
+for(my $i=0;$i<12;$i++){
+  for(my $j=0;$j<4;$j++){
+    $start_pwm[$i][$j]=0;
+  }
+}
+
+for my $g(keys %transcript_cds){
+  next if($transcript_class{$g} eq "NA");
+  my @gff_fields_t=split(/\t/,$transcript{$g});
+  print "DEBUG computing CDS start position on the transcript for $g\n";
+  my $cds_start_on_transcript=0;
+  my @gff_fields=();
+  my @gff_fields_prev=();
+  if($transcript_ori{$g} eq "+"){
+    for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+      if($transcript_cds_start{$g}>=$gff_fields[3] && $transcript_cds_start{$g}<=$gff_fields[4]){
+        $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3];
+        last;
+      }elsif($transcript_cds_start{$g}<$gff_fields[3] && $transcript_cds_start{$g}>$gff_fields_prev[4]){#protein ends inside an intron
+        $cds_start_on_transcript+=$transcript_cds_start{$g}-$gff_fields[3]-1;
+        last;
+      }else{
+        $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
+      }
+      @gff_fields_prev=@gff_fields;
+    }
+  }else{
+    for(my $j=$#{$transcript_gff{$g}};$j>=0;$j--){
+      @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
+      if($transcript_cds_end{$g}>=$gff_fields[3] && $transcript_cds_end{$g}<=$gff_fields[4]){
+        $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g};
+        last;
+      }elsif($transcript_cds_end{$g}>$gff_fields[4] && $transcript_cds_end{$g}<$gff_fields_prev[3]){
+        $cds_start_on_transcript+=$gff_fields[4]-$transcript_cds_end{$g}-1;
+        last;
+      }else{
+        $cds_start_on_transcript+=($gff_fields[4]-$gff_fields[3]+1);
+      }
+      @gff_fields_prev=@gff_fields;
+    }
+  }
+  my $start_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
+  my $start_seq=substr($transcript_seqs{$g},$cds_start_on_transcript-6,12);
+  print "DEBUG Transcript $g CDS start $cds_start_on_transcript start codon $start_codon sequence $start_seq\n";
+  next unless(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=6 && $cds_start_on_transcript< length($transcript_seqs{$g})-6);
+  for(my $i=0;$i<12;$i++) {$start_pwm[$i][$code{substr($start_seq,$i,1)}]++;}
+  $nstarts++;
+}
+
+print "DEBUG Start PWM\n";
+for(my $i=0;$i<12;$i++){
+  for(my $j=0;$j<4;$j++){
+    $start_pwm[$i][$j]=log($start_pwm[$i][$j]/$nstarts*4+1e-10);
+    print "$start_pwm[$i][$j] ";
+  }
+  print "\n";
+}
+
 
 #here we try to fix the start codons for the aligned CDS feaures -- if the CDS is assigned to the transcript, we then check for a start codon and, if not found, extend the start/stop of the CDS up to the transcript boundary to look for the valid start/stop
 for my $g(keys %transcript_cds){
@@ -1242,18 +1304,21 @@ sub fix_start_stop_codon{
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript-3,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
   if(valid_start($first_codon) && valid_stop($last_codon)){
-    print "DEBUG both codons are OK\n";
+    my $initial_score=score_start(substr($transcript_seq,$cds_start_on_transcript-6,12));
+    print "DEBUG both codons are OK start_seq ",substr($transcript_seq,$cds_start_on_transcript-6,12)," score $initial_score\n";
     my $foundU=-1;
-    for(my $i=$cds_end_on_transcript-6;$i>=0;$i-=3){
+    for(my $i=$cds_start_on_transcript-3;$i>=0;$i-=3){
       last if(valid_stop(substr($transcript_seq,$i,3)));
       $foundU=$i if(valid_start(substr($transcript_seq,$i,3)));
     }
     if($foundU>-1){
-      $cds_start_on_transcript=$foundU;
-      print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
+      my $new_score=score_start(substr($transcript_seq,$foundU-6,12));
+      print "DEBUG found new start codon upstream at $foundU from $cds_start_on_transcript new score $new_score\n";
+      $cds_start_on_transcript=$foundU if($new_score>$initial_score/2);
     }
     return($cds_start_on_transcript,$cds_end_on_transcript);
   }elsif(valid_start($first_codon)){
+    my $initial_score=score_start(substr($transcript_seq,$cds_start_on_transcript-6,12));
     print "DEBUG stop broken\n";
     my $foundS=-1;
     for(my $i=$cds_start_on_transcript+3;$i<=length($transcript_seq)-3;$i+=3){
@@ -1266,35 +1331,44 @@ sub fix_start_stop_codon{
     }
     print "DEBUG failed to find new stop codon\n" if($foundS==-1);
     my $foundU=-1;
-    for(my $i=$cds_end_on_transcript-6;$i>=0;$i-=3){
+    for(my $i=$cds_start_on_transcript-3;$i>=0;$i-=3){
       last if(valid_stop(substr($transcript_seq,$i,3)));
       $foundU=$i if(valid_start(substr($transcript_seq,$i,3)));
     }
     if($foundU>-1){
-      $cds_start_on_transcript=$foundU;
-      print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
+      my $new_score=score_start(substr($transcript_seq,$foundU-6,12));
+      print "DEBUG found new start codon upstream at $foundU from $cds_start_on_transcript new score $new_score\n";
+      $cds_start_on_transcript=$foundU if($new_score>$initial_score/2);
     }
   }elsif(valid_stop($last_codon)){
     print "DEBUG start broken\n";
     my $foundU=-1;
+    my $score=-10000;
     for(my $i=$cds_end_on_transcript-6;$i>=0;$i-=3){
       last if(valid_stop(substr($transcript_seq,$i,3)));
-      $foundU=$i if(valid_start(substr($transcript_seq,$i,3)));
+      if(valid_start(substr($transcript_seq,$i,3))){
+        $foundU=$i;
+        $score=score_start(substr($transcript_seq,$i-6,3));
+      }
     }
     if($foundU>-1){
       $cds_start_on_transcript=$foundU;
-      print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
+      print "DEBUG found new start codon upstream at $cds_start_on_transcript new score $score\n";
     }
   }else{#both broken, trust the frame look for a start
     print "DEBUG both start and stop broken\n";
     my $foundU=-1;
+    my $score=-10000;
     for(my $i=$cds_start_on_transcript;$i>=0;$i-=3){
       last if(valid_stop(substr($transcript_seq,$i,3)));
-      $foundU=$i if(valid_start(substr($transcript_seq,$i,3)));
+      if(valid_start(substr($transcript_seq,$i,3))){
+        $foundU=$i;
+        $score=score_start(substr($transcript_seq,$i-6,3));
+      }
     }
     if($foundU>-1){
       $cds_start_on_transcript=$foundU;
-      print "DEBUG found new start codon upstream at $cds_start_on_transcript\n";
+      print "DEBUG found new start codon upstream at $cds_start_on_transcript new score $score\n";
     }else{ 
       print "DEBUG failed to find new start codon, looking downstream\n";
       my $foundD=-1;
@@ -1366,5 +1440,17 @@ sub valid_stop{
   }else{
     return(0);
   }
+}
+
+sub score_start{
+  my $seq=$_[0];
+  my $score=0;
+  if(length($seq)>12){
+    $seq=substr($seq,0,12);
+  }elsif(length($seq)<12){
+    $seq="N"x(12-length($seq)).$seq;
+  }
+  for(my $i=0;$i<12;$i++){$score+=$start_pwm[$i][$code{substr($seq,$i,1)}] if(defined($code{substr($seq,$i,1)}));}
+  return($score);
 }
 
