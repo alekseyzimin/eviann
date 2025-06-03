@@ -6,11 +6,11 @@ my $annotated_gff=$output_prefix.".protref.annotated.gff";
 my $transdecoder_start_stop=$output_prefix.".fixed_cds.txt";
 my $pwms;
 my $names=$output_prefix.".original_names.txt";
-my $ext_length=100;
+my $ext_length=48;
 my $keep_contains=0;
 my $final_pass=0;
 my $output_partial=0;
-my $lncRNA_TPM=3;
+my $lncRNA_TPM=1;
 my $proteins="";
 my $loci_file="";
 GetOptions ("prefix=s"   => \$output_prefix,      # string
@@ -1210,7 +1210,7 @@ sub fix_start_stop_codon_ext{
     $cds_start_on_transcript=$cds_start_on_transcript_ext-$ext_length;
     print "DEBUG no 5p extension $cds_start_on_transcript_ext\n";
   }else{
-    $transcript_5pext=substr($transcript_5pext,$cds_starit_on_transcript_ext);
+    $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
     print "DEBUG checking 5p extension $transcript_5pext\n";
     #check the extension for AG -- acceptor sites, if found, do not extend
     if(defined($pwms)){
@@ -1230,7 +1230,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG $base ",substr($score_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index5 $score_seq $ext_score $start_index\n";
-          if($ext_score > 5){
+          if($ext_score > 2.8){
             $found_acceptor=1;
             $j=length($transcript_5pext);
           }
@@ -1272,7 +1272,7 @@ sub fix_start_stop_codon_ext{
             print "DEBUG ",substr($score_seq,$i,1)," ",$donor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index3 $score_seq $ext_score\n";
-          if($ext_score > 5){
+          if($ext_score > 2.8){
             $found_donor=1;
             $j=length($transcript_3pext);
           }

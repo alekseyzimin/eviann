@@ -11,7 +11,7 @@ export MAX_INTRON=1
 export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
-export LNCRNATPM=3.0
+export LNCRNATPM=1.0
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
@@ -79,7 +79,7 @@ function usage {
  echo " --partial             include transcripts with partial (mising start or stop codon) CDS in the output"
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
- echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 3.0"
+ echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 1.0"
  echo " --liftover            liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " -f|--functional       perform functional annotation, default: not set"
  echo " --extra FILE          extra features to add from an external GFF file.  Feautures MUST have gene records.  Any features that overlap with existing annotations will be ignored"
