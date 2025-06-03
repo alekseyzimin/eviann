@@ -6,7 +6,7 @@ my $annotated_gff=$output_prefix.".protref.annotated.gff";
 my $transdecoder_start_stop=$output_prefix.".fixed_cds.txt";
 my $pwms;
 my $names=$output_prefix.".original_names.txt";
-my $ext_length=33;
+my $ext_length=100;
 my $keep_contains=0;
 my $final_pass=0;
 my $output_partial=0;
@@ -267,6 +267,7 @@ while(my $line=<FILE>){
       $transcript_class{$ID}=$class_code;
       $transcripts_cds_loci{$locID}.="$ID ";
       $transcript_cds_modified{$ID}=0;
+      print "DEBUG transcript $ID start $tstart end $tend CDS start $protein_start{$protID} end $protein_end{$protID}\n";
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$ID}) || defined($transcript_u{$ID}));
@@ -561,16 +562,16 @@ for my $g(keys %transcript_cds){
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
       $transcript_cds_modified{$g}=1;
-      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
+      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
         print "end\n";
         $cds_length-=$cds_length%3;
-      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3))){
+      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3)) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
         $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
-      }else{
-        $cds_length-=$cds_length%3;
-        print "end\n";
+      }else{#fail
+        $transcript_class{$g}="NA";
+        next;
       }
     }
     $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
@@ -730,18 +731,18 @@ for my $g(keys %transcript_cds){
     }
 
     if($cds_length %3 >0){
-      $transcript_cds_modified{$g}=1;
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
-      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3))){
+      $transcript_cds_modified{$g}=1;
+      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
         print "end\n";
         $cds_length-=$cds_length%3;
-      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length,3))){
+      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3)) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
         $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
-      }else{
-        $cds_length-=$cds_length%3;
-        print "end\n";
+      }else{#fail
+        $transcript_class{$g}="NA";
+        next;
       }
     }
     $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
@@ -1209,8 +1210,8 @@ sub fix_start_stop_codon_ext{
     $cds_start_on_transcript=$cds_start_on_transcript_ext-$ext_length;
     print "DEBUG no 5p extension $cds_start_on_transcript_ext\n";
   }else{
-    print "DEBUG checking 5p extension\n";
-    $transcript_5pext=substr($transcript_5pext,$cds_start_on_transcript_ext);
+    $transcript_5pext=substr($transcript_5pext,$cds_starit_on_transcript_ext);
+    print "DEBUG checking 5p extension $transcript_5pext\n";
     #check the extension for AG -- acceptor sites, if found, do not extend
     if(defined($pwms)){
       for(my $j=3;$j<length($transcript_5pext)-2;$j++){
@@ -1220,17 +1221,13 @@ sub fix_start_stop_codon_ext{
           my $start_index=$index5-$acceptor_length+5;
           $start_index=0 if($start_index<0);
           my $score_seq=substr($ext_seq,$start_index,$index5-$acceptor_length+5 >=0 ? $acceptor_length : $index5+5);
-          #next if(length($score_seq)<9);
+          $score_seq=("N"x($acceptor_length-length($score_seq))).$score_seq if(length($score_seq)<$acceptor_length);
           print "DEBUG found acceptor at $j in $transcript_5pext, scoring $score_seq\n";
 #score the extension
           $ext_score=0;
-          $start_index=0;
-          $start_index=$acceptor_length-length($score_seq) if(length($score_seq)<$acceptor_length);
-          for(my $i=$start_index;$i<$acceptor_length;$i++){
-            my $base="N";
-            $base=substr($score_seq,$i-$start_index,1) if(defined(substr($score_seq,$i-$start_index,1)));
-            $ext_score+=$acceptor_freq[$i][$code{$base}];
-            print "DEBUG $base ",$acceptor_freq[$i][$code{$base}],"\n";
+          for(my $i=0;$i<$acceptor_length;$i++){
+            $ext_score+=$acceptor_freq[$i][$code{substr($score_seq,$i,1)}] if(defined($code{substr($score_seq,$i,1)}));
+            print "DEBUG $base ",substr($score_seq,$i,1)," ",$acceptor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index5 $score_seq $ext_score $start_index\n";
           if($ext_score > 5){
@@ -1257,27 +1254,25 @@ sub fix_start_stop_codon_ext{
     print "DEBUG no 3p extension $cds_end_on_transcript_ext\n";
     $cds_end_on_transcript=$cds_end_on_transcript_ext-$ext_length+length($transcript_5pext);
   }else{
-    print "DEBUG checking 3p extension\n";
     $transcript_3pext_save=$transcript_3pext;
     $transcript_3pext=substr($transcript_3pext,0,$cds_end_on_transcript_ext-length($transcript_seq)-$ext_length);
+    print "DEBUG checking 3p extension $transcript_3pext\n";
     if(defined($pwms)){
+      my $ext_seq=uc($transcript_seq.$transcript_3pext_save);
       for(my $j=0;$j<length($transcript_3pext)-3;$j++){
         if(uc(substr($transcript_3pext,$j,2)) eq "GT"){
           my $index3=$j;
-          my $ext_seq=uc($transcript_seq.$transcript_3pext);
           my $score_seq=substr($ext_seq,length($transcript_seq)+$index3-3,$donor_length<length($ext_seq) ? $donor_length : length($ext_seq));
-          #next if(length($score_seq)<7);
+          $score_seq=$score_seq.("N"x($donor_length-length($score_seq))) if(length($score_seq)<$donor_length);
           print "DEBUG found donor at $j in $transcript_3pext, scoring $score_seq\n";
           #score the extension
           $ext_score=0;
-          for(my $i=0;($i<$donor_length && $i<length($score_seq));$i++){
-            my $base="N";
-            $base=substr($score_seq,$i,1) if(defined(substr($score_seq,$i,1)));
-            $ext_score+=$donor_freq[$i][$code{$base}];
-            print "DEBUG $base ",$donor_freq[$i][$code{$base}],"\n";
+          for(my $i=0;$i<$donor_length;$i++){
+            $ext_score+=$donor_freq[$i][$code{substr($score_seq,$i,1)}] if(defined($code{substr($score_seq,$i,1)})); 
+            print "DEBUG ",substr($score_seq,$i,1)," ",$donor_freq[$i][$code{substr($score_seq,$i,1)}],"\n";
           }
           print "DEBUG $index3 $score_seq $ext_score\n";
-          if($ext_score > 4){
+          if($ext_score > 5){
             $found_donor=1;
             $j=length($transcript_3pext);
           }
