@@ -578,7 +578,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       while($line=<FILE>){
         chomp($line);
         @f=split(/\s+/,$line);
-        $reliable{$f[0]}=1;
+        $reliable{$f[0]}=int('$JUNCTION_THRESHOLD');
       }
     }{
       chomp($F[8]);
@@ -590,8 +590,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})));
         $score{$id}+=2 if($tpm > 10||$samples>1);
         $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
-        $score{$id}+=int('$JUNCTION_THRESHOLD') if($reliable{$id});
-        if($score{$id}>'$JUNCTION_THRESHOLD'){
+        $score{$id}+=$reliable{$id};
+        if($score{$id}>int('$JUNCTION_THRESHOLD')){
           @f=split(/-/,$exons);
           if($#f>1){
             $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
