@@ -881,10 +881,8 @@ for my $locus(keys %transcripts_cds_loci){
         $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
         my $start_cds=$transcript_cds_start{$t};
         my $end_cds=$transcript_cds_end{$t};
-        my $transcript_start=$gff_fields_t[3];
-        my $transcript_end=$gff_fields_t[4];
-        $transcript_start=$start_cds if($transcript_start > $start_cds);
-        $transcript_end=$end_cds if($transcript_end < $end_cds);
+        my $transcript_start=$gff_fields_t[3] <= $start_cds ? $gff_fields_t[3] : $start_cds;
+        my $transcript_end=$gff_fields_t[4] >= $end_cds ? $gff_fields_t[4] : $end_cds;
         my $transcript_cds_start_index=0;
         my $transcript_cds_end_index=$#{$transcript_gff{$t}};
         $locus_start=$transcript_start if($transcript_start < $locus_start);
@@ -1106,42 +1104,13 @@ for my $locus(keys %transcripts_only_loci){
 
 #output unused proteins
 #we will then look at them, pick only one per locus that best matches uniprot and join them in at the second pass
-my $fake_utr=0;
 foreach my $p(keys %protein){
   next if(defined($used_proteins{$p}));
   my @gff_fields_p=split(/\t/,$protein{$p});
-  #it is better to allow proteins to detect new isoforms at existing locations
-  #next if(check_overlap($gff_fields_p[0],$gff_fields_p[6],$gff_fields_p[3],$gff_fields_p[4]));
-  my $ptstart=$gff_fields_p[3]-$fake_utr>0 ? $gff_fields_p[3]-$fake_utr:1;
-  my $ptend=$gff_fields_p[4]+$fake_utr<=length($genome_seqs{$gff_fields_p[0]}) ? $gff_fields_p[4]+$fake_utr:length($genome_seqs{$gff_fields_p[0]});
-
-  my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[0]);
-  my $intron_chain="$gff_fields_c[0] $gff_fields_c[6] $gff_fields_c[3] $gff_fields_c[4]";
-  for(my $j=1;$j<=$#{$protein_cds{$p}};$j++){
-    @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
-    $intron_chain.=" $gff_fields_c[3] $gff_fields_c[4]";
-  }
-  print "DEBUG unused checking intron chain $p |$intron_chain|\n";
-  #ignore if this protein is already in a transcript
-  next if(defined($used_protein_intron_chains{$intron_chain}));
-  print "DEBUG unused intron chain available\n";
-  #$used_protein_intron_chains{$intron_chain}=1;
-
-  print OUTFILE4 "$gff_fields_p[0]\tEviAnnP\t$gff_fields_p[2]\t",$ptstart,"\t",$ptend,"\t",join("\t",@gff_fields_p[5..$#gff_fields_p]),"\n";
+  print OUTFILE4 "$gff_fields_p[0]\tEviAnnP\t",join("\t",@gff_fields_p[2..$#gff_fields_p]),"\n";
   for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
     my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
-    if($#{$protein_cds{$p}}==0){#add "fake" 5' utr and 3' utr
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\texon\t$ptstart\t$ptend\t",join("\t",@gff_fields_c[5..$#gff_fields_c]),"\n";
-    }elsif($j==0){#add "fake" 5' utr
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\texon\t$ptstart\t",join("\t",@gff_fields_c[4..$#gff_fields_c]),"\n";
-    }elsif($j==$#{$protein_cds{$p}}){
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\texon\t$gff_fields_c[3]\t$ptend\t",join("\t",@gff_fields_c[5..$#gff_fields_c]),"\n";
-    }else{
-      print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
-    }
-  }
-  for(my $j=0;$j<=$#{$protein_cds{$p}};$j++){
-    my @gff_fields_c=split(/\t/,${$protein_cds{$p}}[$j]);
+    print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\texon\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
     print OUTFILE4 "$gff_fields_c[0]\tEviAnnP\tCDS\t",join("\t",@gff_fields_c[3..$#gff_fields_c]),"\n";
   } 
 }
