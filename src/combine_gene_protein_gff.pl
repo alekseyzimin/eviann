@@ -851,8 +851,6 @@ print OUTFILE1 "##gff-version 3\n# EviAnn automated annotation\n";
 for my $locus(keys %transcripts_cds_loci){
   print "DEBUG working on locus $locus with transcripts $transcripts_cds_loci{$locus}\n";
   my @output=();
-  my $output_count=0;
-  my $gene_feature="";
   my @transcripts_at_loci=split(/\s+/,$transcripts_cds_loci{$locus});
   my @gff_fields=split(/\t/,$transcript{$transcripts_at_loci[0]});
   my $locus_start=$gff_fields[3];
