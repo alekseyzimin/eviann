@@ -135,14 +135,7 @@ while(my $line=<FILE>){
   my @attributes=split(";",$gff_fields[8]);
   if($gff_fields[2] eq "transcript"){
     if(defined($transcript{$ID})){
-      #discard single exon contained transcripts
-      #unless($transcript_contained{$ID} && ($#exons>0 && $transcript_class{$ID} eq "=")){
-      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains){
-        print "DEBUG ignoring contained transcript $gff_fields[8]\n";
-        $transcript_class{$ID}="NA";
-      }
-
-    #here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
+#here we need to fix the first and the last exons so that the CDS does not stick out from the boundaries of the transcript
       my @gff_fields_t=split(/\t/,$transcript{$ID});
       my @gff_fields=split(/\t/,$exons[0]);
       my @gff_fields_p=split(/\t/,${$protein_cds{$transcript_cds{$ID}}}[0]);
@@ -268,6 +261,10 @@ while(my $line=<FILE>){
       $transcripts_cds_loci{$locID}.="$ID ";
       $transcript_cds_modified{$ID}=0;
       print "DEBUG transcript $ID start $tstart end $tend CDS start $protein_start{$protID} end $protein_end{$protID}\n";
+    }
+    if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains){
+      print "DEBUG ignoring contained transcript $gff_fields[8]\n";
+      $transcript_class{$ID}="NA";
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$ID}) || defined($transcript_u{$ID}));
