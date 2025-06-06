@@ -101,7 +101,6 @@ my @scores_sorted=sort { (split(/\s+/, $b))[0] <=> (split(/\s+/, $a))[0] } @scor
 my %h=();
 my %hs=();
 my %hn=();
-my $min_complete_score=90;
 my $add_thresh=.9999;
 #here we figure out what the additional threshold should be based on the ratio of complete to protein-only
 #first we only consider complete proteins
@@ -128,15 +127,6 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
-    $h{$F[2]}=1;#we mark the proteins to keep
-  }
-}
-
-#now we use incomplete proteins only for loci that do not ave any completes, 1 per locus
-for(my $i=0;$i<=$#scores_sorted;$i++){
-  my @F=split(/\s+/,$scores_sorted[$i]);
-  if( $hn{$F[1]} < 1 && $F[0] > $min_complete_score ){
-    $hn{$F[1]}+=1;#this is the number of proteins per locus
     $h{$F[2]}=1;#we mark the proteins to keep
   }
 }
