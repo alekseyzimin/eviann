@@ -117,7 +117,7 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
 }
 
 #here we adjust the threshold for secondary protein alignments based on the ratio of complete to protein_only
-$add_thresh-=scalar(keys %h)/$num_complete/50;
+$add_thresh-=scalar(keys %h)/$num_complete/150;
 print "#DEBUG $add_thresh $num_complete $min_complete_score\n";
 my %h=();
 my %hs=();
