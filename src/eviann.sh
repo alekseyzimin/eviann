@@ -866,6 +866,7 @@ if [ -e loci.success ] && [ -e pseudo_detect.success ];then
           UNIPROT=uniprot_sprot.fasta
       fi
       makeblastdb -in $UNIPROT -input_type fasta -dbtype prot -out uniprot 1>makeblastdb.out 2>&1 && \
+      log "Aligning annotated proteins to UniProt proteins" && \
       blastp -db uniprot -query $GENOME.proteins.fasta -out  $GENOME.maker2uni.blastp.tmp -evalue 0.000001 -outfmt 6 -num_alignments 1 -seg yes -soft_masking true -lcase_masking -max_hsps 1 -num_threads $NUM_THREADS 1>blastp4.out 2>&1 && \
       mv $GENOME.maker2uni.blastp.tmp $GENOME.maker2uni.blastp && \
       my_maker_functional_gff $UNIPROT $GENOME.maker2uni.blastp $GENOME.pseudo_label.gff > $GENOME.functional_note.pseudo_label.gff.tmp && mv $GENOME.functional_note.pseudo_label.gff.tmp $GENOME.functional_note.pseudo_label.gff && \
