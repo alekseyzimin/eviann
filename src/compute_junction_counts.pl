@@ -24,7 +24,7 @@ while($line=<STDIN>){
     for($i=0;$i<$#f;$i+=2){
       if($f[$i+1] eq "M" || $f[$i+1] eq "S" ||  $f[$i+1] eq "I"){
         $offset+=$f[$i]; 
-      }elsif($f[$i+1] eq "N"){
+      }elsif($f[$i+1] eq "N" && $f[$i]>10){
         $junc{"$F[2]\t$offset\t".($offset+$f[$i])}++;
       }
     }
