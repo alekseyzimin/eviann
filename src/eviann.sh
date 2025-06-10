@@ -34,6 +34,7 @@ fi
 
 trap abort 1 2 3 9 15
 function abort {
+rm -f sts.????.bam
 log "Aborted"
 kill -9 0
 exit 1
@@ -317,15 +318,15 @@ if [ ! -e transcripts_assemble.success ];then
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \"@\" ];then\n hisat2 -x '$GENOME'.hst -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fastq format files "$1" or "$2", ignoring them\"\nfi\nfi";
           n++;
         }else if($NF == "bam_mix"){
-          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\ncp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && cp "$2" tissue"n"_lr.bam.tmp && mv tissue"n"_lr.bam.tmp tissue"n"_lr.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam>tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n"_lr.bam  -T sts -O bam >tissue"n"_lr.bam.sorted.tmp.bam && mv tissue"n"_lr.bam.sorted.tmp.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n".bam tissue"n"_lr.bam && ./run_stringtie_mix.sh tissue"n".bam.sorted.bam tissue"n"_lr.bam.sorted.bam || exit 1\nfi";
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nsamtools sort -@ '$NUM_THREADS' -m 1G "$1"  -T sts -O bam>tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && samtools sort -@ '$NUM_THREADS' -m 1G "$2"  -T sts -O bam >tissue"n"_lr.bam.sorted.tmp.bam && mv tissue"n"_lr.bam.sorted.tmp.bam tissue"n"_lr.bam.sorted.bam && ./run_stringtie_mix.sh tissue"n".bam.sorted.bam tissue"n"_lr.bam.sorted.bam || exit 1\nfi";
           n++;
         }
       }else if(NF == 2){
         if($NF == "bam"){
-          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nsamtools sort -@ '$NUM_THREADS' -m 1G "$1" -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
           n++;
         }else if($NF == "bam_isoseq"){
-          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\n cp "$1" tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nsamtools sort -@ '$NUM_THREADS' -m 1G "$1"  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
           n++;
         }else if($NF == "isoseq"){
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ] || [ $FIRSTCHAR = \"@\" ];then\n cat <(ufasta sizes -H '$GENOMEFILE' | awk \047{print \"@SQ\\tSN:\"$1\"\\tLN:\"$2}\047) <(minimap2 -a -u f -x splice:hq -t '$NUM_THREADS' -G '$MAX_INTRON' '$GENOMEFILE' "$1" 2>tissue"n".err | grep -v \047^@\047) | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
@@ -378,8 +379,8 @@ if [ ! -e transcripts_assemble.success ];then
   rm -f transcripts_merge.success || error_exit "Alignment with HISAT2 or transcript assembly with StringTie failed, please check if reads files exist and formatted correctly"
 fi
 
-NUM_TISSUES=`ls tissue*.bam.sorted.bam| grep -v "_lr" |wc -l`
-if [ -e tissue0.bam.sorted.bam ];then
+NUM_TISSUES=`ls tissue*.bam.sorted.bam.gtf| grep -v "_lr" |wc -l`
+if [ -e tissue0.bam.sorted.bam.gtf ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
 fi
 
@@ -404,6 +405,10 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       touch transcripts_merge.success && \
       rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
+    #log "Computing junctions" && \
+    #ls tissue?.bam.sorted.bam | xargs -P 4 -I {} bash -c 'samtools view {} | compute_junction_counts.pl GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna'  |\
+    #perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]\t$F[6]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\t$f[4]\n"}}'  > $GENOME.junc.bed.tmp && \
+    #mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
     log "Merging transcripts" && \
     gffcompare -ST tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
