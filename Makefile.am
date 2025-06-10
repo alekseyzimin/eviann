@@ -38,6 +38,7 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	src/convert_miniprot_gff.pl \
 	src/compute_junction_scores.pl \
 	src/compute_junction_scores_bed.pl \
+	src/compute_junction_counts.pl \
 	src/score_transcripts_with_hmms.pl \
 	src/fix_palign_splice_sites.pl \
 	exonerate \
