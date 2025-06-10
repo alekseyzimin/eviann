@@ -404,8 +404,8 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       touch transcripts_merge.success && \
       rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
-    log "Merging transcripts"
-    gffcompare -STA  tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
+    log "Merging transcripts" && \
+    gffcompare -ST tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
     mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
     perl -F'\t' -ane '
@@ -433,7 +433,9 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       print join("\t",@F) if($flag);
     }' $GENOME.tmp.combined.gtf  > $GENOME.tmp2.combined.gtf && \
     mv $GENOME.tmp2.combined.gtf $GENOME.merged.gtf && \
-    rm -f $GENOME.tmp.{combined.gtf,tracking,loci,redundant.gtf} $GENOME.tmp $GENOME.max_tpm.samples.txt && touch transcripts_merge.success && rm -f merge.success || error_exit "Failed to merge transcripts"
+    rm -f $GENOME.tmp.{combined.gtf,tracking,loci,redundant.gtf} $GENOME.tmp $GENOME.max_tpm.samples.txt && \
+    touch transcripts_merge.success && \
+    rm -f merge.success || error_exit "Failed to merge transcripts"
   else
     error_exit "one or more Stringtie jobs failed to run properly"
   fi
