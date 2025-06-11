@@ -41,6 +41,7 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	src/compute_junction_counts.pl \
 	src/score_transcripts_with_hmms.pl \
 	src/fix_palign_splice_sites.pl \
+	src/filter_junctions.pl \
 	exonerate \
 	makeblastdb blastp tblastn \
 	gffread gffcompare trmap \
