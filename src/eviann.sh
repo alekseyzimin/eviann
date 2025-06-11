@@ -405,10 +405,11 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       touch transcripts_merge.success && \
       rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
-    #log "Computing junctions" && \
-    #ls tissue*.bam.sorted.bam | xargs -P 4 -I {} bash -c 'samtools view {} | compute_junction_counts.pl GCF_000001215.4_Release_6_plus_ISO1_MT_genomic.fna'  |\
-    #perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]\t$F[6]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\t$f[4]"}}'  > $GENOME.junc.bed.tmp && \
-    #mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
+    log "Computing junctions" && \
+    ls tissue*.bam.sorted.bam | xargs -P 4 -I {} bash -c "samtools view {} | compute_junction_counts.pl $GENOMEFILE > {}.junc.bed.tmp" && \
+    cat tissue*.bam.sorted.bam.junc.bed.tmp| perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]\t$F[6]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\t$f[4]"}}'  > $GENOME.junc.bed.tmp && \
+    mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
+    rm -f tissue*.bam.sorted.bam.junc.bed.tmp && \
     log "Merging transcripts" && \
     gffcompare -ST tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
