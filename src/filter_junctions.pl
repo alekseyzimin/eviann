@@ -60,7 +60,7 @@ foreach $j(keys %junc){
 
   $dir=$orif>$orir ? "+" : "-";
   
-  if(not($dir eq $junc_ori{$j})){
+  if(not($dir eq $junc_ori{$j}) && $junc{$j}<5){
     @f=split(/\s/,$junc_line{$j});
     foreach my $n(@f){
       $bad_lines{$n}=1;
