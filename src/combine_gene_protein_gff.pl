@@ -1436,7 +1436,7 @@ sub valid_stop{
       return(0);
     }
   }elsif($type==1){
-    if(length($codon)==3 && ($codon eq "AGA" || $codon eq "AGG" || $codon eq "TAG" || $codon eq "TAG" )){
+    if(length($codon)==3 && ($codon eq "AGA" || $codon eq "AGG" || $codon eq "TAA" || $codon eq "TAG" )){
       return(1);
     }else{
       return(0);
