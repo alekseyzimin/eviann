@@ -48,7 +48,18 @@ while($line=<FILE>){
   $num_complete++ if($line=~/Evidence=complete/);
 }
 
+my %mito_contigs=(); 
+if(defined($ARGV[4])){  
+  open(FILE,$ARGV[4]);  
+  while(my $line=<FILE>){
+    chomp($line);
+    $mito_contigs{$line}=1;
+  }
+}
+
+
 #clustered file on STDIN
+my $gcode=0;
 while($line=<STDIN>){
   chomp($line);
   my @f=split(/\t/,$line);
@@ -68,6 +79,7 @@ while($line=<STDIN>){
     $intron_chains{$transcript_id}=$intron_chain;
     #print "DEBUG $transcript_id $intron_chain\n";
     next if(not(defined($pcount{$transcript_id})));
+    $gcode=defined($mito_contigs{$f[0]}) ? 1 : 0;
     my $start=$f[3];
     my $end=$f[4];
     my $ori=$f[6];
@@ -88,7 +100,7 @@ while($line=<STDIN>){
     }
     my $codon_score=0;
     $codon_score++ if(valid_start($startcodon));
-    $codon_score++ if(valid_stop($stopcodon1) || valid_stop($stopcodon2));
+    $codon_score++ if(valid_stop($stopcodon1,$gcode) || valid_stop($stopcodon2,$gcode));
     if($codon_score>1){
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id $codon_score");
@@ -147,8 +159,8 @@ foreach my $l(@unused){
 }
 
 sub valid_start{
-  my $codon=$_[0];
-  if(length($codon)==3 && uc($codon) eq "ATG"){
+  my $codon=uc($_[0]);
+  if(length($codon)==3 && $codon eq "ATG"){
     return(1);
   }else{
     return(0);
@@ -156,9 +168,20 @@ sub valid_start{
 }
 
 sub valid_stop{
-  my $codon=$_[0];
-  if(length($codon)==3 && (uc($codon) eq "TAG" || uc($codon) eq "TAA" || uc($codon) eq "TGA")){
-    return(1);
+  my $codon=uc($_[0]);
+  my $type=$_[1];
+  if($type==0){
+    if(length($codon)==3 && ($codon eq "TAG" || $codon eq "TAA" || $codon eq "TGA")){
+      return(1);
+    }else{
+      return(0);
+    }
+  }elsif($type==1){
+    if(length($codon)==3 && ($codon eq "AGA" || $codon eq "AGG" || $codon eq "TAG" || $codon eq "TAG" )){
+      return(1);
+    }else{
+      return(0);
+    }  
   }else{
     return(0);
   }

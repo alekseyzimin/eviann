@@ -6,6 +6,7 @@ GENOMEFILE="na"
 CDSFILE="na"
 RNASEQ="na"
 ALT_EST="na"
+MITO_CTG_LIST_FILE="na"
 export BATCH_SIZE=1000000
 export MAX_INTRON=1
 export MIN_TPM=0.25
@@ -83,6 +84,7 @@ function usage {
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 1.0"
  echo " --liftover            liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " -f|--functional       perform functional annotation, default: not set"
+ echo " --mito_contigs FILE   file with the list of input contigs to be treated as mitochondrial with different genetic code (stop is AGA,AGG,TAA,TAG)"
  echo " --extra FILE          extra features to add from an external GFF file.  Feautures MUST have gene records.  Any features that overlap with existing annotations will be ignored"
  echo " --debug               keep intermediate output files, default: not set"
  echo " --verbose             verbose run, default: not set"
@@ -161,6 +163,10 @@ do
             ;;
         --lncrnamintpm)
             LNCRNATPM="$2"
+            shift
+            ;;
+        --mito_contigs)
+            MITO_CTG_LIST_FILE="$2"
             shift
             ;;
         -m|--max-intron)
@@ -542,6 +548,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --prefix $GENOME \
       --annotated <( cat $GENOME.palign.fixed.gff | filter_by_class_code.pl $GENOME.protref.annotated.gtf | gffread -F ) \
       --genome $GENOMEFILE \
+      --mito $MITO_CTG_LIST_FILE \
       --pwms <(echo "") \
       --transdecoder  <(echo "") \
       1>combine.out 2>&1 && \
@@ -642,6 +649,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --prefix $GENOME \
       --annotated <( gffread -F $GENOME.protref.spliceFiltered.annotated.gtf ) \
       --genome $GENOMEFILE \
+      --mito $MITO_CTG_LIST_FILE \
       --transdecoder <(echo "") \
       --pwms $GENOME.pwm \
       1>combine.out 2>&1 && \
@@ -690,7 +698,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           ufasta one | \
           awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
         ) \
-        $GENOME.k.gff \
+        $GENOME.k.gff $MITO_CTG_LIST_FILE \
       > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
     echo -n "Candidate CDS-only transcripts: " && \
@@ -735,7 +743,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread -F > $GENOME.protref.all.annotated.class.gff.tmp && \
   mv $GENOME.protref.all.annotated.class.gff.tmp $GENOME.protref.all.annotated.class.gff && \
   cat $GENOME.palign.all.gff | \
-    check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE 1>check_cds.out 2>&1 && \
+    check_cds.pl $GENOME $GENOME.protref.all.annotated.class.gff $GENOMEFILE $MITO_CTG_LIST_FILE 1>check_cds.out 2>&1 && \
   mv $GENOME.good_cds.fa.tmp $GENOME.good_cds.fa && \
   mv $GENOME.broken_cds.fa.tmp $GENOME.broken_cds.fa && \
   mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
@@ -766,6 +774,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --transdecoder $GENOME.fixed_cds.txt \
       --pwms $GENOME.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
+      --mito $MITO_CTG_LIST_FILE \
       --final_pass \
       --proteins $PROTEINFILE \
       --output_partial $PARTIAL \

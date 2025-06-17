@@ -13,6 +13,7 @@ my $output_partial=0;
 my $lncRNA_TPM=1;
 my $proteins="";
 my $loci_file="";
+my $mito_file;
 GetOptions ("prefix=s"   => \$output_prefix,      # string
     "annotated=s" => \$annotated_gff,
     "genome=s" => \$genome,
@@ -21,6 +22,7 @@ GetOptions ("prefix=s"   => \$output_prefix,      # string
     "pwms=s" => \$pwms,
     "loci=s" => \$loci_file,
     "names=s" => \$names, 
+    "mito=s" => \$mito_file,
     "ext=i" => \$ext_length,
     "keep_contains" => \$keep_contains,
     "output_partial=i" => \$output_partial,
@@ -388,6 +390,17 @@ if(defined($pwms)){
   $ext_length=0;
 }
 
+#we load the list of mito contigs
+my %mito_contigs=();
+if(defined($mito_file)){
+  open(FILE,$mito_file);
+  while(my $line=<FILE>){
+    chomp($line);
+    $mito_contigs{$line}=1;
+  }
+}
+
+
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){
   $transcript_seqs{$g}="";
@@ -437,6 +450,8 @@ for(my $i=0;$i<12;$i++){
   }
 }
 
+#careful, the $gcode variable is global!!!
+my $gcode=0;
 for my $g(keys %transcript_cds){
   next if($transcript_class{$g} eq "NA");
   my @gff_fields_t=split(/\t/,$transcript{$g});
@@ -444,6 +459,7 @@ for my $g(keys %transcript_cds){
   my $cds_start_on_transcript=0;
   my @gff_fields=();
   my @gff_fields_prev=();
+  $gcode=defined($mito_contigs{$gff_fields_t[0]}) ? 1 : 0;
   if($transcript_ori{$g} eq "+"){
     for(my $j=0;$j<=$#{$transcript_gff{$g}};$j++){
       @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
@@ -562,7 +578,7 @@ for my $g(keys %transcript_cds){
       if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
         print "end\n";
         $cds_length-=$cds_length%3;
-      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3)) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
+      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3),$gcode) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
         $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
@@ -587,7 +603,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     print "DEBUG fix codons $first_codon $last_codon\n";
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon)))){
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
       print "DEBUG attempting extension\n";
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
     }else{
@@ -661,7 +677,7 @@ for my $g(keys %transcript_cds){
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(valid_start($first_codon));
-    $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon));
+    $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon,$gcode));
     if($output_partial){
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without a start or a stop
     }else{
@@ -733,7 +749,7 @@ for my $g(keys %transcript_cds){
       if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
         print "end\n";
         $cds_length-=$cds_length%3;
-      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3)) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
+      }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3),$gcode) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
         $cds_start_on_transcript+=$cds_length%3;
         $cds_length-=$cds_length%3;
         print "beginning\n"
@@ -758,7 +774,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     print "DEBUG fix codons $first_codon $last_codon\n";
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon)))){
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
       print "DEBUG attempting extension\n";
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
     }else{
@@ -831,7 +847,7 @@ for my $g(keys %transcript_cds){
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(valid_start($first_codon));
-    $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon));
+    $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon,$gcode));
     if($output_partial){
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
     }else{
@@ -1209,7 +1225,7 @@ sub fix_start_stop_codon_ext{
       $transcript_5pext="";
     }
   }
-  if(valid_stop($last_codon)){
+  if(valid_stop($last_codon,$gcode)){
     print "DEBUG no 3p extension needed $cds_end_on_transcript_ext\n";
     $transcript_3pext="";
     $cds_end_on_transcript+=length($transcript_5pext);
@@ -1263,14 +1279,14 @@ sub fix_start_stop_codon{
   my $first_codon=substr($transcript_seq,$cds_start_on_transcript,3);
   my $last_codon=substr($transcript_seq,$cds_end_on_transcript-3,3);
   print "DEBUG fixing start and stop starting at $cds_start_on_transcript $cds_end_on_transcript $first_codon $last_codon\n";
-  if(valid_start($first_codon) && valid_stop($last_codon)){
+  if(valid_start($first_codon) && valid_stop($last_codon,$gcode)){
     #both codons are ok, try to look for new start upstream
     $start_seq=substr("NNNNNN".$transcript_seq,$cds_start_on_transcript,12);
     my $initial_score=score_start($start_seq);
     print "DEBUG both codons are OK start_seq $start_seq score $initial_score\n";
     my $foundU=-1;
     for(my $i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      last if(valid_stop(substr($transcript_seq,$i,3)));
+      last if(valid_stop(substr($transcript_seq,$i,3),$gcode));
       $foundU=$i if(valid_start(substr($transcript_seq,$i,3)));
     }
     if($foundU>-1){
@@ -1288,7 +1304,7 @@ sub fix_start_stop_codon{
     print "DEBUG stop broken\n";
     my $foundS=-1;
     for(my $i=$cds_start_on_transcript+3;$i<=length($transcript_seq)-3;$i+=3){
-      if(valid_stop(substr($transcript_seq,$i,3))){
+      if(valid_stop(substr($transcript_seq,$i,3),$gcode)){
         print "DEBUG found stop codon downstream at $i, ",substr($transcript_seq,$i,3),"\n";
         $cds_end_on_transcript=$i+3;
         $foundS=$i;
@@ -1301,7 +1317,7 @@ sub fix_start_stop_codon{
     my $initial_score=score_start($start_seq);
     print "DEBUG start_seq $start_seq score $initial_score\n";
     for(my $i=$cds_start_on_transcript-3;$i>=0;$i-=3){
-      last if(valid_stop(substr($transcript_seq,$i,3)));
+      last if(valid_stop(substr($transcript_seq,$i,3),$gcode));
       $foundU=$i if(valid_start(substr($transcript_seq,$i,3)));
     }
     if($foundU>-1){
@@ -1311,13 +1327,13 @@ sub fix_start_stop_codon{
       #$cds_start_on_transcript=$foundU if($new_score>$initial_score);
       $cds_start_on_transcript=$foundU;
     }
-  }elsif(valid_stop($last_codon)){
+  }elsif(valid_stop($last_codon,$gcode)){
     #broken start look upstream from stop
     print "DEBUG start broken\n";
     my $foundU=-1;
     my $score=-10000;
     for(my $i=$cds_end_on_transcript-6;$i>=0;$i-=3){
-      last if(valid_stop(substr($transcript_seq,$i,3)));
+      last if(valid_stop(substr($transcript_seq,$i,3),$gcode));
       if(valid_start(substr($transcript_seq,$i,3))){
         $foundU=$i;
       }
@@ -1334,7 +1350,7 @@ sub fix_start_stop_codon{
     my $foundU=-1;
     my $score=-10000;
     for(my $i=$cds_start_on_transcript;$i>=0;$i-=3){
-      last if(valid_stop(substr($transcript_seq,$i,3)));
+      last if(valid_stop(substr($transcript_seq,$i,3),$gcode));
       if(valid_start(substr($transcript_seq,$i,3))){
         $foundU=$i;
       }
@@ -1348,7 +1364,7 @@ sub fix_start_stop_codon{
       print "DEBUG failed to find start codon, looking downstream\n";
       my $foundD=-1;
       for(my $i=$cds_start_on_transcript+3;$i<$cds_end_on_transcript-3;$i+=3){
-        last if(valid_stop(substr($transcript_seq,$i,3)));
+        last if(valid_stop(substr($transcript_seq,$i,3),$gcode));
         if(valid_start(substr($transcript_seq,$i,3))){
           $foundD=$i;
           last;
@@ -1365,7 +1381,7 @@ sub fix_start_stop_codon{
     }
     my $foundS=-1;
     for(my $i=$cds_start_on_transcript+3;$i<=length($transcript_seq)-3;$i+=3){
-      if(valid_stop(substr($transcript_seq,$i,3))){
+      if(valid_stop(substr($transcript_seq,$i,3),$gcode)){
         print "DEBUG found new stop codon downstream at $i, ",substr($transcript_seq,$i,3),"\n";
         $cds_end_on_transcript=$i+3;
         $foundS=$i;
@@ -1386,7 +1402,7 @@ sub fix_in_frame_stops_keep_frame{
   my $frame0_end=$cds_end_on_transcript;
   print "DEBUG checking for in frame stop starting $cds_start_on_transcript $cds_end_on_transcript\n";
   for($i=$frame0_start;$i<$frame0_end-3;$i+=3){
-    if(valid_stop(substr($transcript_seq,$i,3))){
+    if(valid_stop(substr($transcript_seq,$i,3),$gcode)){
       $in_frame_stop=$i;
       $frame0_end=$i+3;
       last;
@@ -1402,8 +1418,8 @@ sub fix_in_frame_stops_keep_frame{
 }
 
 sub valid_start{
-  my $codon=$_[0];
-  if(length($codon)==3 && uc($codon) eq "ATG"){
+  my $codon=uc($_[0]);
+  if(length($codon)==3 && $codon eq "ATG"){
     return(1);
   }else{
     return(0);
@@ -1411,13 +1427,25 @@ sub valid_start{
 }
 
 sub valid_stop{
-  my $codon=$_[0];
-  if(length($codon)==3 && (uc($codon) eq "TAG" || uc($codon) eq "TAA" || uc($codon) eq "TGA")){
-    return(1);
+  my $codon=uc($_[0]);
+  my $type=$_[1];
+  if($type==0){
+    if(length($codon)==3 && ($codon eq "TAG" || $codon eq "TAA" || $codon eq "TGA")){
+      return(1);
+    }else{
+      return(0);
+    }
+  }elsif($type==1){
+    if(length($codon)==3 && ($codon eq "AGA" || $codon eq "AGG" || $codon eq "TAG" || $codon eq "TAG" )){
+      return(1);
+    }else{
+      return(0);
+    }  
   }else{
     return(0);
   }
 }
+
 
 sub score_start{
   my $seq=$_[0];
