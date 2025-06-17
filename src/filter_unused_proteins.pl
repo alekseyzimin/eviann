@@ -87,8 +87,8 @@ while($line=<STDIN>){
       $stopcodon2=uc(reverse($seq));
     }
     my $codon_score=0;
-    $codon_score++ if($startcodon eq "ATG");
-    $codon_score++ if($stopcodon1 eq "TAA" || $stopcodon1 eq "TAG" || $stopcodon1 eq "TGA" || $stopcodon2 eq "TAA" || $stopcodon2 eq "TAG" || $stopcodon2 eq "TGA");
+    $codon_score++ if(valid_start($startcodon));
+    $codon_score++ if(valid_stop($stopcodon1) || valid_stop($stopcodon2));
     if($codon_score>1){
       my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id $codon_score");
@@ -144,5 +144,23 @@ foreach my $l(@unused){
     $used_intron_chains{$intron_chains{$id}}=1 if($flag);
   }
   print join("\t",@f),"\n" if($flag);
+}
+
+sub valid_start{
+  my $codon=$_[0];
+  if(length($codon)==3 && uc($codon) eq "ATG"){
+    return(1);
+  }else{
+    return(0);
+  }
+}
+
+sub valid_stop{
+  my $codon=$_[0];
+  if(length($codon)==3 && (uc($codon) eq "TAG" || uc($codon) eq "TAA" || uc($codon) eq "TGA")){
+    return(1);
+  }else{
+    return(0);
+  }
 }
 
