@@ -74,7 +74,6 @@ while($line=<STDIN>){
       $transcript_id=$1;
       $intron_chain="$f[0]:$f[6]:$3";
       $gene_id=$6;
-      next if($3==1 && $gcode==0);#no single exon unless mitochondrial
     }else{
       next;
     }
