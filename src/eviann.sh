@@ -122,22 +122,27 @@ do
             ;;
         -g|--genome)
             GENOMEFILE="$2"
+            if [ ! -s $GENOMEFILE ];then error_exit "genome file $GENOMEFILE is empty or does not exist!";fi
             shift
             ;;
         -r|--rnaseq)
             RNASEQ="$2"
+            if [ ! -s $RNASEQ ];then error_exit "file listing transcriptome sequencing data files $RNASEQ is empty or does not exist!";fi
             shift
             ;;
         -e|--est)
             ALT_EST="$2"
+            if [ ! -s $ALT_EST ];then error_exit "transcript evidence file $ALT_EST is empty or does not exist!";fi
             shift
             ;;
         -p|--proteins)
             PROTEINFILE="$2"
+            if [ ! -s $PROTEINFILE ];then error_exit "protein sequence file $PROTEINFILE is empty or does not exist!";fi
             shift
             ;;
         -c|--cds)
             CDSFILE="$2"
+            if [ ! -s $CDSFILE ];then error_exit "external CDS file $CDSFILE is empty or does not exist!";fi
             shift
             ;;
         -d|--ploidy)
@@ -146,6 +151,7 @@ do
             ;;
         -s|--swissprot)
             UNIPROT="$2"
+            if [ ! -s $UNIPROT ];then error_exit "uniprot proteins file $UNIPROT is empty or does not exist!";fi
             shift
             ;;
         -l|--liftover)
@@ -167,6 +173,7 @@ do
             ;;
         --mito_contigs)
             MITO_CTG_LIST_FILE="$2"
+            if [ ! -s $MITO_CTG_LIST_FILE ];then error_exit "mitochondrial contig list file $MITO_CTG_LIST_FILE is empty or does not exist!";fi
             shift
             ;;
         -m|--max-intron)
@@ -216,10 +223,6 @@ if [ ! -s $PROTEINFILE ] && [ ! -s $CDSFILE ];then
   F=`basename $UNIPROT`
   export PROTEINFILE=$P/$F
   export PROTEIN=$F
-fi
-
-if [ ! -s $GENOMEFILE ];then
-  error_exit "File with genome sequence is missing or specified improperly, please supply it with -g </path_to/genome_file.fa>"
 fi
 
 #get absolute paths
