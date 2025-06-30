@@ -425,7 +425,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
     mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
     perl -F'\t' -ane '
     BEGIN{
-      $thresh=int('$NUM_TISSUES')/50;
+      $thresh=int('$NUM_TISSUES')/20;
       open(FILE,"'$GENOME'.max_tpm.samples.txt");
       while($line=<FILE>){
         chomp($line);
