@@ -866,7 +866,12 @@ if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
     }' $GENOME.sex2mex.blastp > $GENOME.pseudo_label.gff.tmp && \
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
     rm -f $GENOME.functional_note.pseudo_label.gff add_external.success && \
-    touch pseudo_detect.success || error_exit "Detection of pseudogenes failed, you can use annotation in $GENOME.gff without pseudo-gene labels"
+    touch pseudo_detect.success
+  fi
+  if [ ! -e  pseudo_detect.success ];then
+    cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && \
+    mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
+    touch pseudo_detect.success
   fi
   if [ $DEBUG -lt 1 ];then
     rm -rf $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp 
