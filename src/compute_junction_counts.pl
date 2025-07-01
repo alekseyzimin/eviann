@@ -21,15 +21,17 @@ while($line=<STDIN>){
   if($F[5]=~/N/){
     @f=split(/(\D)/,$F[5]);
     $offset=$F[3];
-    if($line =~/XS:A:(\S)/){
+    $ori=".";
+    $ori=$1 if($line =~/XS:A:(\S)/);
     for($i=0;$i<$#f;$i+=2){
-      if($f[$i+1] eq "M" || $f[$i+1] eq "S" ||  $f[$i+1] eq "I"){
+      if($f[$i+1] eq "M" || $f[$i+1] eq "X" ||  $f[$i+1] eq "D" || $f[$i+1] eq "="){
         $offset+=$f[$i]; 
-      }elsif($f[$i+1] eq "N" && $f[$i]>10){
+      }elsif($f[$i+1] eq "N"){
         $junc{"$F[2]\t$offset\t".($offset+$f[$i])}++;
-        $junc_ori{"$F[2]\t$offset\t".($offset+$f[$i])}=$1;
+        #print "DEBUG junction $F[2] ",$offset-1," ".($offset+$f[$i]-1)." $line";
+        $junc_ori{"$F[2]\t$offset\t".($offset+$f[$i])}.=$ori;
+        $offset+=$f[$i];
       }
-    }
     }
   }
 }
@@ -40,7 +42,7 @@ foreach $j(keys %junc){
   $orir=0;
   $f[1]--;
   $f[2]--;
-  next unless(uc(substr($genome_seqs{$f[0]},$f[1]+1,1)) eq "T" || uc(substr($genome_seqs{$f[0]},$f[2]-2,1)) eq "A");
+  #next unless(uc(substr($genome_seqs{$f[0]},$f[1]+1,1)) eq "T" || uc(substr($genome_seqs{$f[0]},$f[2]-2,1)) eq "A");
   
   if(uc(substr($genome_seqs{$f[0]},$f[1],1)) eq "C"){
     $orir++;
@@ -52,9 +54,11 @@ foreach $j(keys %junc){
   }elsif(uc(substr($genome_seqs{$f[0]},$f[2]-1,1)) eq "G"){
     $orif++;
   }
-  next if($orif==$orir);
-
-  $dir=$orif>$orir ? "+" : "-";
+  if($orif==$orir){
+    $dir=".";
+  }else{
+    $dir=$orif>$orir ? "+" : "-";
+  }
   
   print join("\t",@f),"\tJUNC$n\t$junc{$j}\t$dir\t",substr($genome_seqs{$f[0]},$f[1],2)," ",substr($genome_seqs{$f[0]},$f[2]-2,2)," $junc_ori{$j}\n";
   $n++;

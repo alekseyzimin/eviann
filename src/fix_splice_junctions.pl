@@ -35,7 +35,7 @@ while($line=<STDIN>){
   @f=split(/(\D)/,$F[5]);
   if($F[1]==0){
     for($i=0;$i<$#f;$i++){
-      if($f[$i+1] eq "M" || $f[$i+1] eq "S" ||  $f[$i+1] eq "I"){
+      if($f[$i+1] eq "M" || $f[$i+1] eq "X" ||  $f[$i+1] eq "D" || $f[$i+1] eq "="){
         $offset+=$f[$i];
       }elsif($f[$i+1] eq "N"){
         #found splice site; check if it exists
@@ -47,6 +47,7 @@ while($line=<STDIN>){
           }
         }
         $f[$i+1]="D" unless($found);
+        $offset+=$f[$i];
       }
     }
   }else{

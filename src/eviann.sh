@@ -414,9 +414,9 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       touch transcripts_merge.success && \
       rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
-    #log "Computing junctions" && \
+    #log "Computing splice junctions" && \
     #ls tissue*.bam.sorted.bam | xargs -P 4 -I {} bash -c "samtools view {} | compute_junction_counts.pl $GENOMEFILE > {}.junc.bed.tmp" && \
-    #cat tissue*.bam.sorted.bam.junc.bed.tmp| perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]\t$F[6]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\t$f[4]"}}'  > $GENOME.junc.bed.tmp && \
+    #cat tissue*.bam.sorted.bam.junc.bed.tmp| perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\n"}}'  |sort -k1,1 -k2,3n -S 10% > $GENOME.junc.bed.tmp && \
     #mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
     #rm -f tissue*.bam.sorted.bam.junc.bed.tmp && \
     log "Merging transcripts" && \
@@ -425,7 +425,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
     mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
     perl -F'\t' -ane '
     BEGIN{
-      $thresh=int('$NUM_TISSUES')/20;
+      $thresh=int('$NUM_TISSUES')/11;
       open(FILE,"'$GENOME'.max_tpm.samples.txt");
       while($line=<FILE>){
         chomp($line);
