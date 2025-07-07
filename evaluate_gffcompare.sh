@@ -48,28 +48,66 @@ QRY=$2
 GENOME=$3
 REFL=`basename $REF`
 QRYL=`basename $QRY`
+
+#compute loci in the query
 gffread -M --cluster-only -F --keep-genes $QRY > $QRYL.fix
+
+#filter the refseq annotation keeping only protein coding and lnc_RNA genes
 awk -F '\t' '{if($7 != "?") print }' $REF | \
-gffread -M -F -J --keep-genes -g $GENOME --ids <(perl -F'\t' -ane '{if($F[2] eq "lnc_RNA" || $F[2] eq "mRNA" || $F[2] eq "transcript" || $F[2] eq "primary_transcript"){unless($F[8] =~/pseudo=true/){@f=split(";",$F[8]);print substr($f[0],3),"\n"}}}' $REF |grep -v 'rna-DA397_mgp01') > $REFL.gene_transcript_lncRNA
-gffread -C $REFL.gene_transcript_lncRNA | perl -F'\t' -ane '{unless($F[2] eq "exon"){if($F[2] eq "CDS"){$F[2]="exon"}print join("\t",@F);}}' > $REFL.gene_transcript_lncRNA.CDSasEXONS.gff
-gffread -C $QRYL.fix| perl -F'\t' -ane '{unless($F[2] eq "exon"){if($F[2] eq "CDS"){$F[2]="exon"}print join("\t",@F);}}' > $QRYL.fix.CDSasEXONS.gff
-gffcompare -T -r $REFL.gene_transcript_lncRNA $QRYL.fix -o transc 2>&1
-gffcompare -T --strict-match -e 0 -r $REFL.gene_transcript_lncRNA.CDSasEXONS.gff $QRYL.fix.CDSasEXONS.gff -o cds 1>/dev/null 2>&1
-paste \
-  <(cat <(perl -F'\t' -ane '{if($F[8]=~/class_code "="/){if($F[8]=~/transcript_id "(\S+)"/){print "$1\n";}}}' transc.annotated.gtf) <(perl -F'\t' -ane '{if($F[8]=~/class_code "="/){if($F[8]=~/transcript_id "(\S+)"/){print "$1\n";}}}' cds.annotated.gtf ) |sort|uniq|wc -l) \
-  <(cat <(perl -F'\t' -ane '{if($F[8]=~/class_code "="/){if($F[8]=~/ref_gene_id "(\S+)"/){print "$1\n";}}}' transc.annotated.gtf) <(perl -F'\t' -ane '{if($F[8]=~/class_code "="/){if($F[8]=~/ref_gene_id "(\S+)"/){print "$1\n";}}}'  cds.annotated.gtf ) |sort|uniq|wc -l) \
-  <(cat transc.annotated.gtf |perl -F'\t' -ane '{if($F[8]=~/class_code/){print "$1\n";}}'  |wc -l) \
-  <(gffread -M $QRYL.fix| awk -F '\t' '{if($3=="locus") print}' |wc -l) \
-  <(awk -F'\t' '{if($3=="transcript" || $3=="mRNA" || $3=="lnc_RNA" || $3=="primary_transcript") print;}' $REFL.gene_transcript_lncRNA | wc -l) \
-  <(awk -F'\t' '{if($3=="gene") print;}' $REFL.gene_transcript_lncRNA | wc -l) | \
-  awk 'BEGIN{print "Transcript/CDS and gene evaluations:"}{print "Reference Transcripts: "$5" Reference genes: "$6;tsn=int($1/$5*1000+.5)/10;tpr=int($1/$3*1000+.5)/10;gsn=int($2/$6*1000+.5)/10;gpr=int($2/$4*1000+.5)/10;print "Correct transcripts/CDS: "$1" Total transcripts: "$3"\nCorrect genes: "$2" Total genes: "$4"\nTranscript Sensitivity: "tsn" Precision: "tpr" F1: "int(2*tsn*tpr/(tsn+tpr)*10+0.5)/10"\nGene Sensitivity: "gsn" Precision: "gpr" F1: "int(2*gsn*gpr/(gsn+gpr)*10+.5)/10}'
-PID=$$
-(gffread -y prot.faa.$PID -g $GENOME $QRYL.fix && gffread -y ref.faa.$PID -g $GENOME $REFL.gene_transcript_lncRNA && cat <(ufasta one ref.faa.$PID |grep -v '^>' |sort |uniq ) <(cat prot.faa.$PID|ufasta one| grep -v '^>' |sort -S 10% |uniq) |sort |uniq -d |wc -l;ufasta one prot.faa.$PID |grep -v '^>' |sort|uniq|wc -l ;ufasta one ref.faa.$PID |grep -v '^>' |sort|uniq|wc -l) | \
-  perl -ane '{print $F[0]," "}END{print "\n"}' |\
-  awk '{print "Protein evaluations:\nCorrect proteins: "$1" Total unique proteins: "$2;sn=int($1/$3*1000+0.5)/10;pr=int($1/$2*1000+0.5)/10;print "Protein Sensitivity: "sn" Precision: "pr" F1: "int(2*sn*pr/(sn+pr)*10+0.5)/10}'
-rm -f prot.faa.$PID ref.faa.$PID
-rm -f transc.{loci,tracking}
-rm -f cds.{loci,tracking}
-#rm $REFL.gene_transcript_lncRNA $REFL.gene_transcript_lncRNA.CDSasEXONS.gff $QRYL.fix $QRYL.fix.CDSasEXONS.gff  
-cat transc.stats
+  gffread -M -F -J -g $GENOME --ids <(perl -F'\t' -ane '{if($F[2] eq "lnc_RNA" || $F[2] eq "mRNA" || $F[2] eq "transcript" || $F[2] eq "primary_transcript"){unless($F[8] =~/pseudo=true|exception=trans-splicing|exception=RNA editing/){@f=split(";",$F[8]);print substr($f[0],3),"\n"}}}' $REF ) > $REFL.gene_transcript_lncRNA.gff
+
+#produce table of locus gene transcript
+perl -F'\t' -ane '{if($F[2] eq "lnc_RNA" || $F[2] eq "mRNA" || $F[2] eq "transcript" || $F[2] eq "primary_transcript"){@f=split(/;/,$F[8]);print "$locus ",substr($f[1],7)," ",substr($f[0],3),"\n";}elsif($F[2] eq "locus"){@f=split(/;/,$F[8]);$locus=substr($f[0],3);}}' $REFL.gene_transcript_lncRNA.gff > $REFL.locus_gene_transcript
+
+perl -F'\t' -ane '{if($F[2] eq "lnc_RNA" || $F[2] eq "mRNA" || $F[2] eq "transcript" || $F[2] eq "primary_transcript"){@f=split(/;/,$F[8]);print "$gene ",substr($f[0],3),"\n";}elsif($F[2] eq "gene"){@f=split(/;/,$F[8]);$gene=substr($f[0],3);}}' $QRYL.fix > $QRYL.gene_transcript
+
+#produce CDS-only reference
+gffread -C $REFL.gene_transcript_lncRNA.gff | \
+  perl -F'\t' -ane '{unless($F[2] eq "exon"){if($F[2] eq "CDS"){$F[2]="exon"}print join("\t",@F);}}' |\
+  gffread -M > $REFL.gene_transcript_lncRNA.CDSasEXONS.gff
+
+#produce CDS-only query
+gffread -C $QRYL.fix|\
+  perl -F'\t' -ane '{unless($F[2] eq "exon"){if($F[2] eq "CDS"){$F[2]="exon"}print join("\t",@F);}}' |\
+  gffread -M > $QRYL.fix.CDSasEXONS.gff
+
+#compute which transcript match
+cat <(trmap -c '=' $REFL.gene_transcript_lncRNA.gff $QRYL.fix) |\
+  perl -ane '{if($F[0]=~/^>/){$transc=substr($F[0],1)}else{$h{$F[5]}=$transc}}END{open(FILE,"'$REFL'.locus_gene_transcript");while($line=<FILE>){chomp($line); @f=split(/\s/,$line); print $line," $h{$f[2]}\n" if(defined $h{$f[2]});}}' > $REFL.matched_locus_gene_transcript
+
+#compute which CDSs match
+cat <(trmap -c '=' --strict-match $REFL.gene_transcript_lncRNA.CDSasEXONS.gff $QRYL.fix.CDSasEXONS.gff) |\
+  perl -ane '{if($F[0]=~/^>/){$transc=substr($F[0],1)}else{$h{$F[5]}=$transc}}END{open(FILE,"'$REFL'.locus_gene_transcript");while($line=<FILE>){chomp($line); @f=split(/\s/,$line); print $line," $h{$f[2]}\n" if(defined $h{$f[2]});}}' > $REFL.matched_locus_gene_CDS
+
+#produce matched qry loci
+cat $REFL.matched_locus_gene_transcript $REFL.matched_locus_gene_CDS |\
+  perl -ane '{$h{$F[3]}=1}END{open(FILE,"'$QRYL'.gene_transcript");while($line=<FILE>){chomp($line);@f=split(/\s/,$line);print $line,"\n" if(defined $h{$f[1]});}}' > $QRYL.matched_locus_transcriptORCDS
+
+#compute statistcs
+N_REF_TRANSCRIPTS=`awk '{print $3}' $REFL.locus_gene_transcript | wc -l`
+N_REF_GENES=`awk '{print $2}' $REFL.locus_gene_transcript | sort|uniq |wc -l`
+N_MATCHING_REF_TRANSCRIPTS=`awk '{print $3}' $REFL.matched_locus_gene_transcript |sort |uniq |wc -l`
+N_MATCHING_REF_CDS=`awk '{print $3}' $REFL.matched_locus_gene_CDS |sort |uniq |wc -l`
+N_MATCHING_REF_GENES=`cat $REFL.matched_locus_gene_transcript  $REFL.matched_locus_gene_CDS | awk '{print $2}' |sort |uniq |wc -l`
+N_REF_CDS=`awk -F '\t' '{if($3=="transcript" ||$3=="mRNA"|| $3=="lnc_RNA" || $3=="primary_transcript") print}' $REFL.gene_transcript_lncRNA.CDSasEXONS.gff |wc -l`
+
+N_QRY_TRANSCRIPTS=`awk -F '\t' '{if($3=="transcript" ||$3=="mRNA"|| $3=="lnc_RNA") print}' $QRYL.fix  |wc -l`
+N_QRY_LOCI=`awk '{print $1}' $QRYL.gene_transcript |sort|uniq|wc -l`
+N_MATCHING_QRY_LOCI=`awk '{print $1}' $QRYL.matched_locus_transcriptORCDS |sort| uniq | wc -l`
+N_MATCHING_QRY_TRANSCRIPTS=`awk '{print $4}' $REFL.matched_locus_gene_transcript |sort |uniq |wc -l`
+N_MATCHING_QRY_CDS=`awk '{print $4}' $REFL.matched_locus_gene_CDS |sort |uniq |wc -l`
+N_QRY_CDS=`awk -F '\t' '{if($3=="transcript" ||$3=="mRNA"|| $3=="lnc_RNA") print}' $QRYL.fix.CDSasEXONS.gff |wc -l`
+
+#compute Sn Pr and F1 and print
+awk 'BEGIN{print "Transcript/CDS and gene evaluations:";
+  print "Reference Transcripts: '$N_REF_TRANSCRIPTS' Reference genes: '$N_REF_GENES'";
+  tsn=int('$N_MATCHING_REF_TRANSCRIPTS'/'$N_REF_TRANSCRIPTS'*1000+.5)/10;
+  tpr=int('$N_MATCHING_QRY_TRANSCRIPTS'/'$N_QRY_TRANSCRIPTS'*1000+.5)/10;
+  csn=int('$N_MATCHING_REF_CDS'/'$N_REF_CDS'*1000+.5)/10;
+  cpr=int('$N_MATCHING_QRY_CDS'/'$N_QRY_CDS'*1000+.5)/10;
+  gsn=int('$N_MATCHING_REF_GENES'/'$N_REF_GENES'*1000+.5)/10;
+  gpr=int('$N_MATCHING_QRY_LOCI'/'$N_QRY_LOCI'*1000+.5)/10;
+  print "Correct transcripts: '$N_MATCHING_QRY_TRANSCRIPTS' Matched reference transcripts: '$N_MATCHING_REF_TRANSCRIPTS' Total query transcripts: '$N_QRY_TRANSCRIPTS'\nCorrect CDS: '$N_MATCHING_QRY_CDS' Matched Reference CDS: '$N_MATCHING_REF_CDS' Total unique query CDS: '$N_QRY_CDS' Total unique reference CDS: '$N_REF_CDS'\nCorrect gene loci: '$N_MATCHING_QRY_LOCI' Total query gene loci: '$N_QRY_LOCI'\nTranscript Sensitivity: "tsn" Precision: "tpr" F1: "int(2*tsn*tpr/(tsn+tpr)*10+0.5)/10"\nCDS Sensitivity: "csn" Precision: "cpr" F1: "int(2*csn*cpr/(csn+cpr+0.001)*10+0.5)/10"\nGene Sensitivity: "gsn" Precision: "gpr" F1: "int(2*gsn*gpr/(gsn+gpr)*10+.5)/10}'
+
+rm -f $QRYL.fix $REFL.gene_transcript_lncRNA.gff $REFL.locus_gene_transcript $QRYL.gene_transcript $REFL.gene_transcript_lncRNA.CDSasEXONS.gff $QRYL.fix.CDSasEXONS.gff $REFL.matched_locus_gene_transcript $REFL.matched_locus_gene_CDS $QRYL.matched_locus_transcriptORCDS
 
