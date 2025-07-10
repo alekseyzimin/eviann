@@ -16,22 +16,24 @@ while(my $line=<FILE>){
 $genome_seqs{$scf}=$seq if(not($scf eq ""));
 
 my $lineno=1;
-open(FILE,"samtools view $ARGV[1] |");
+open(FILE,"samtools view -h $ARGV[1] |");
 while($line=<FILE>){
-  @F=split(/\t/,$line,7);
-  if($F[5]=~/N/){
-    @f=split(/(\D)/,$F[5]);
-    $offset=$F[3];
-    $ori=".";
-    $ori=$1 if($line =~/XS:A:(\S)/);
-    for($i=0;$i<$#f;$i+=2){
-      if($f[$i+1] eq "M" || $f[$i+1] eq "X" ||  $f[$i+1] eq "D" || $f[$i+1] eq "="){
-        $offset+=$f[$i]; 
-      }elsif($f[$i+1] eq "N"){
-        $junc{"$F[2]\t$offset\t".($offset+$f[$i])}++;
-        $junc_ori{"$F[2]\t$offset\t".($offset+$f[$i])}=$ori;
-        $junc_line{"$F[2]\t$offset\t".($offset+$f[$i])}.="$lineno ";
-	$offset+=$f[$i];
+  unless($line =~ /^(@|#)/){
+    @F=split(/\t/,$line,7); 
+    if($F[5]=~/N/){
+      @f=split(/(\D)/,$F[5]);
+      $offset=$F[3];
+      $ori=".";
+      $ori=$1 if($line =~/XS:A:(\S)/);
+      for($i=0;$i<$#f;$i+=2){
+        if($f[$i+1] eq "M" || $f[$i+1] eq "X" ||  $f[$i+1] eq "D" || $f[$i+1] eq "="){
+          $offset+=$f[$i]; 
+        }elsif($f[$i+1] eq "N"){
+          $junc{"$F[2]\t$offset\t".($offset+$f[$i])}++;
+          $junc_ori{"$F[2]\t$offset\t".($offset+$f[$i])}=$ori;
+          $junc_line{"$F[2]\t$offset\t".($offset+$f[$i])}.="$lineno ";
+          $offset+=$f[$i];
+        }
       }
     }
   }
@@ -61,7 +63,8 @@ foreach $j(keys %junc){
 
   $dir=$orif>$orir ? "+" : "-";
   
-  if(not($dir eq $junc_ori{$j}) && $junc{$j}<5){
+  if(not($dir eq $junc_ori{$j}) && $junc{$j}<5 && not($junc_ori{$j} eq ".")){
+  #print "DEBUG filtering out $j $dir $junc_ori{$j} $junc{$j}\n";
     @f=split(/\s/,$junc_line{$j});
     foreach my $n(@f){
       $bad_lines{$n}=1;

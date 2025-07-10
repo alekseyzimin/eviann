@@ -357,7 +357,7 @@ if [ ! -e transcripts_assemble.success ];then
     }' $RNASEQ >> hisat_stringtie.sh
   fi
   echo "#!/bin/bash
-  filter_junctions.pl $GENOMEFILE \$1 | samtools view -bhS | $MYPATH/stringtie -p $NUM_THREADS /dev/stdin | awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' > \$1.gtf.filtered.tmp && \\
+  $MYPATH/stringtie -p $NUM_THREADS \$1 | awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' > \$1.gtf.filtered.tmp && \\
     mv \$1.gtf.filtered.tmp \$1.gtf  " > run_stringtie.sh && \
     chmod 0755 run_stringtie.sh && \
   echo "#!/bin/bash
