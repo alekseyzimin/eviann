@@ -22,16 +22,17 @@ while($line=<FILE>){
   if($F[5]=~/N/){
     @f=split(/(\D)/,$F[5]);
     $offset=$F[3];
-    if($line =~/XS:A:(\S)/){
+    $ori=".";
+    $ori=$1 if($line =~/XS:A:(\S)/);
     for($i=0;$i<$#f;$i+=2){
-      if($f[$i+1] eq "M" || $f[$i+1] eq "S" ||  $f[$i+1] eq "I"){
+      if($f[$i+1] eq "M" || $f[$i+1] eq "X" ||  $f[$i+1] eq "D" || $f[$i+1] eq "="){
         $offset+=$f[$i]; 
       }elsif($f[$i+1] eq "N"){
         $junc{"$F[2]\t$offset\t".($offset+$f[$i])}++;
-        $junc_ori{"$F[2]\t$offset\t".($offset+$f[$i])}=$1;
+        $junc_ori{"$F[2]\t$offset\t".($offset+$f[$i])}=$ori;
         $junc_line{"$F[2]\t$offset\t".($offset+$f[$i])}.="$lineno ";
+	$offset+=$f[$i];
       }
-    }
     }
   }
   $lineno++;

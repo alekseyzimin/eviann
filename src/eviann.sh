@@ -357,22 +357,16 @@ if [ ! -e transcripts_assemble.success ];then
     }' $RNASEQ >> hisat_stringtie.sh
   fi
   echo "#!/bin/bash
-  $MYPATH/stringtie -p $NUM_THREADS \$1 -o \$1.gtf.tmp && \\
-    awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\
-    mv \$1.gtf.filtered.tmp \$1.gtf && \\
-    rm -f \$1.gtf.tmp " > run_stringtie.sh && \
+  filter_junctions.pl $GENOMEFILE \$1 | samtools view -bhS | $MYPATH/stringtie -p $NUM_THREADS /dev/stdin | awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' > \$1.gtf.filtered.tmp && \\
+    mv \$1.gtf.filtered.tmp \$1.gtf  " > run_stringtie.sh && \
     chmod 0755 run_stringtie.sh && \
   echo "#!/bin/bash
   $MYPATH/stringtie -p $NUM_THREADS \$1 -L -o \$1.gtf.tmp && \\
-    awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\
-    mv \$1.gtf.filtered.tmp \$1.gtf  && \\
-    rm -f \$1.gtf.tmp " > run_stringtie_lr.sh && \
+    mv \$1.gtf.tmp \$1.gtf " > run_stringtie_lr.sh && \
     chmod 0755 run_stringtie_lr.sh && \
   echo "#!/bin/bash
-  $MYPATH/stringtie -p $NUM_THREADS \$1 \$2 --mix -o \$1.gtf.tmp && \\
-    awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' \$1.gtf.tmp > \$1.gtf.filtered.tmp && \\
-    mv \$1.gtf.filtered.tmp \$1.gtf  && \\
-    rm -f \$1.gtf.tmp " > run_stringtie_mix.sh && \
+  $MYPATH/stringtie -p $NUM_THREADS \$1 \$2 --mix | awk -F '\t' 'BEGIN{flag=0}{if(\$3==\"transcript\"){n=split(\$9,a,\";\");for(i=1;i<=n;i++){if(a[i] ~ /TPM/){ m=split(a[i],b,\"\\\"\");tpm=b[m-1];}else if(a[i] ~ /FPKM/){ m=split(a[i],b,\"\\\"\");fpkm=b[m-1];}}if(fpkm > $MIN_TPM || tpm > $MIN_TPM ) flag=1; else flag=0;}if(flag){print \$0}}' > \$1.gtf.filtered.tmp && \\
+    mv \$1.gtf.filtered.tmp \$1.gtf  " > run_stringtie_mix.sh && \
   chmod 0755 run_stringtie.sh && \
   chmod 0755 run_stringtie_lr.sh && \
   chmod 0755 run_stringtie_mix.sh && \
