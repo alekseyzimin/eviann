@@ -198,7 +198,7 @@ if(defined($ARGV[3])){
     chomp($line);
     @f=split(/\t/,$line);
     $f[2]++;
-    $reliable{"$f[0] $f[1] $f[2] $f[5]"}++;
+    $reliable{"$f[0] $f[1] $f[2] $f[5]"}+=$f[4];
   }
 }
 
@@ -221,7 +221,7 @@ for my $g(keys %transcript_gff){
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $acceptor_seq=reverse($acceptor_seq);
       }
-      my $rel=($reliable{"$gff_fields_prev[0] $gff_fields_prev[4] $gff_fields[3] $gff_fields[6]"}-1)*2 if(defined($reliable{"$gff_fields_prev[0] $gff_fields_prev[4] $gff_fields[3] $gff_fields[6]"}));
+      my $rel=2 if($reliable{"$gff_fields_prev[0] $gff_fields_prev[4] $gff_fields[3] $gff_fields[6]"}>=2);
       my $donor_score=0;
       my $acceptor_score=0;
       my $donor_hmm_score=0;
