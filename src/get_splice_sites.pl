@@ -44,6 +44,7 @@ $genome_seqs{$scf}=$seq if(not($scf eq ""));
 for my $g(keys %transcript_gff){
   my @gff_fields=();
   for(my $j=1;$j<=$#{$transcript_gff{$g}};$j++){
+    #print "DEBUG ${$transcript_gff{$g}}[$j]\n";
     @gff_fields=split(/\t/,${$transcript_gff{$g}}[$j]);
     die("Genome sequence $gff_fields[0] needed for transcript $g not found!") if(not(defined($genome_seqs{$gff_fields[0]})));
     my @gff_fields_prev=split(/\t/,${$transcript_gff{$g}}[$j-1]);
@@ -52,6 +53,7 @@ for my $g(keys %transcript_gff){
       $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-3,2));
       my $dtype=($donor_seq eq "GT") ? "CANONICAL" : "NONCANONICAL";
       my $atype=($acceptor_seq eq "AG") ? "CANONICAL" : "NONCANONICAL";
+      next if($donor_seq =~/N/ || $acceptor_seq =~ /N/);
       print "DONOR $gff_fields[0] $gff_fields_prev[4] $gff_fields_prev[6] $donor_seq $dtype\n";
       print "ACCEPTOR $gff_fields[0] $gff_fields[3] $gff_fields[6] $acceptor_seq $atype\n";
     }else{
@@ -63,6 +65,7 @@ for my $g(keys %transcript_gff){
       $acceptor_seq=reverse($acceptor_seq);
       my $dtype=($donor_seq eq "GT") ? "CANONICAL" : "NONCANONICAL";
       my $atype=($acceptor_seq eq "AG") ? "CANONICAL" : "NONCANONICAL";
+      next if($donor_seq =~/N/ || $acceptor_seq =~ /N/);
       print "ACCEPTOR $gff_fields[0] $gff_fields_prev[4] $gff_fields_prev[6] $acceptor_seq $atype\n";
       print "DONOR $gff_fields[0] $gff_fields[3] $gff_fields[6] $donor_seq $dtype\n";
     }
