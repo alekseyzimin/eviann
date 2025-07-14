@@ -273,7 +273,7 @@ log "All dependencies checks passed"
 if [ $MAX_INTRON -le 1 ];then
   log "Auto-determining the maximum intron size based on the genome size" && \
   MAX_INTRON=`ufasta n50 -S $GENOMEFILE | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/$p*2)*1000); $m=100000 if($m<100000); print $m;'` && \
-  echo "Maximum intron size set to $MAX_INTRON"
+  log "Maximum intron size set to $MAX_INTRON"
 fi
 
 if [ ! -e transcripts_assemble.success ];then
@@ -478,6 +478,7 @@ fi
 
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments" && \
+  log "Markov chain junction threshold $JUNCTION_THRESHOLD" && \
   if [ ! -s $GENOME.merged.gtf ];then
     error_exit "No transcripts useful for annotation, please check your inputs!"
   fi && \
