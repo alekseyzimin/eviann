@@ -18,7 +18,6 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	src/my_maker_functional_gff \
 	src/combine_gene_protein_gff.pl \
 	src/eviann.sh \
-	src/eviprot.sh \
 	src/fix_suspect_introns.pl \
 	src/fix_splice_junctions.pl  \
 	src/add_cds_to_gff.pl \
