@@ -22,7 +22,6 @@ export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
-LIFTOVER=0
 JUNCTION_THRESHOLD=4
 GC=
 RC=
@@ -82,7 +81,6 @@ function usage {
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 1.0"
- echo " --liftover            liftover mode, optimizes internal parameters for annotation liftover; also useful when supplying proteins from a single species, default: not set"
  echo " -f|--functional       perform functional annotation, default: not set"
  echo " --mito_contigs FILE   file with the list of input contigs to be treated as mitochondrial with different genetic code (stop is AGA,AGG,TAA,TAG)"
  echo " --extra FILE          extra features to add from an external GFF file.  Feautures MUST have gene records.  Any features that overlap with existing annotations will be ignored"
@@ -153,11 +151,6 @@ do
             UNIPROT="$2"
             if [ ! -s $UNIPROT ];then error_exit "uniprot proteins file $UNIPROT is empty or does not exist!";fi
             shift
-            ;;
-        -l|--liftover)
-            LIFTOVER=1
-            JUNCTION_THRESHOLD=-1000
-            log "Liftover mode ON"
             ;;
         -f|--functional)
             FUNCTIONAL=1
@@ -385,6 +378,9 @@ fi
 NUM_TISSUES=`ls tissue*.bam.sorted.bam.gtf| grep -v "_lr" |wc -l`
 if [ -e tissue0.bam.sorted.bam.gtf ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
+  if [ $NUM_TISSUES -lt 1 ];then
+    JUNCTION_THRESHOLD=-1000
+  fi
 fi
 
 if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];then
