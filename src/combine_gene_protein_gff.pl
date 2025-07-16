@@ -233,11 +233,13 @@ while(my $line=<FILE>){
     $tori=$gff_fields[6];
     my $class_code="";
     my $protID="";
+    my $container="";
     foreach my $attr(@attributes){
       $class_code=substr($attr,11,1) if($attr =~ /^class_code=/);
       $protID=substr($attr,8) if($attr =~ /^cmp_ref=/);
       $locID=substr($attr,7) if($attr =~ /^geneID=/);
       $locID=substr($attr,5) if($attr =~ /^xloc=/);
+      $container=substr($attr,13) if($attr =~/^contained_in=/);
     }
     if($gff_fields[1] eq "EviAnnP" && $ID =~ /_EXTERNAL$/){
       $protID=$ID;
@@ -263,10 +265,10 @@ while(my $line=<FILE>){
       $transcripts_cds_loci{$locID}.="$ID ";
       $transcript_cds_modified{$ID}=0;
       print "DEBUG transcript $ID start $tstart end $tend CDS start $protein_start{$protID} end $protein_end{$protID}\n";
-    }
-    if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && $discard_contains){
-      print "DEBUG ignoring contained transcript $gff_fields[8]\n";
-      $transcript_class{$ID}="NA";
+      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && not($gff_fields[1] eq "EviAnnP" && $container=~/^MSTRG/) && $discard_contains){
+        print "DEBUG ignoring contained transcript $gff_fields[8] contained in $container\n";
+        $transcript_class{$ID}="NA";
+      }
     }
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$ID}) || defined($transcript_u{$ID}));
