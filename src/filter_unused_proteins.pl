@@ -7,6 +7,7 @@ my $k_file=$ARGV[3];
 my %similarity;
 my %contigs;
 my %used_intron_chains=();
+my $ext=33;
 
 #read in genome sequence file
 open(FILE,$genome_file);
@@ -85,25 +86,33 @@ while($line=<STDIN>){
     my $end=$f[4];
     my $ori=$f[6];
     if($ori eq "+"){
-      $startcodon=uc(substr($contigs{$f[0]},$start-1,3));
-      $stopcodon1=uc(substr($contigs{$f[0]},$end,3));
-      $stopcodon2=uc(substr($contigs{$f[0]},$end-3,3));
+      for(my $i=0;$i<$ext;$i+=3){
+        $startcodon=uc(substr($contigs{$f[0]},$start-1-$i,3));
+        last if (valid_start($startcodon));
+      }
+      for(my $i=0;$i<$ext;$i+=3){
+        $stopcodon=uc(substr($contigs{$f[0]},$end-3+$i,3));
+        last if(valid_stop($stopcodon,$gcode));
+      }
     }else{
-      my $seq=substr($contigs{$f[0]},$end-3,3);
-      $seq=~tr/acgtACGT/tgcaTGCA/;
-      $startcodon=uc(reverse($seq));
-      $seq=substr($contigs{$f[0]},$start-4,3);
-      $seq=~tr/acgtACGT/tgcaTGCA/;
-      $stopcodon1=uc(reverse($seq));
-      $seq=substr($contigs{$f[0]},$start-1,3);
-      $seq=~tr/acgtACGT/tgcaTGCA/;
-      $stopcodon2=uc(reverse($seq));
+      for(my $i=0;$i<$ext;$i+=3){
+        my $seq=substr($contigs{$f[0]},$end-3+$i,3);
+        $seq=~tr/acgtACGT/tgcaTGCA/;
+        $startcodon=uc(reverse($seq));
+        last if (valid_start($startcodon));
+      }
+      for(my $i=0;$i<$ext;$i+=3){
+        my $seq=substr($contigs{$f[0]},$start-1-$i,3);
+        $seq=~tr/acgtACGT/tgcaTGCA/;
+        $stopcodon=uc(reverse($seq));
+        last if(valid_stop($stopcodon,$gcode));
+      }
     }
     my $codon_score=0;
     $codon_score++ if(valid_start($startcodon));
-    $codon_score++ if(valid_stop($stopcodon1,$gcode) || valid_stop($stopcodon2,$gcode));
-    if($codon_score>0){
-      my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id}/$codon_score;#this scoring boosts proteins that have multiple evidence
+    $codon_score++ if(valid_stop($stopcodon,$gcode));
+    if($codon_score>1){
+      my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id $codon_score");
       #print "DEBUG $score $gene_id $transcript_id $ori $codon_score\n";
     }
