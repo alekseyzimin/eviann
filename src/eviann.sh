@@ -684,7 +684,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
     mv $GENOME.unused_proteins.spliceFiltered.gff.tmp $GENOME.unused_proteins.spliceFiltered.gff && \
-    gffread --cluster-only --tlf $GENOME.unused_proteins.spliceFiltered.gff | \
+    gffread --cluster-only $GENOME.unused_proteins.spliceFiltered.gff -g $GENOMEFILE  -V |  detect_readthroughs.pl > $GENOME.readthrough_proteins.txt.tmp && \
+    mv $GENOME.readthrough_proteins.txt.tmp $GENOME.readthrough_proteins.txt && \
+    gffread --nids  $GENOME.readthrough_proteins.txt --cluster-only --tlf -g $GENOMEFILE  -V $GENOME.unused_proteins.spliceFiltered.gff | \
       filter_unused_proteins.pl \
         $GENOMEFILE \
         $GENOME.unused_proteins.spliceFiltered.gff \

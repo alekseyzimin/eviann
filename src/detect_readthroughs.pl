@@ -11,7 +11,7 @@ my %endCDS;
 while($line=<STDIN>){
   chomp($line);
   @gff_fields=split(/\t/,$line);
-  if($gff_fields[2] eq "mRNA"){
+  if($gff_fields[2] eq "mRNA"|| $gff_fields[2] eq "gene"){
     if($gff_fields[8] =~ /^ID=(\S+);locus=(\S+)$/){
       $tid=$1;
       $gid=$2;

@@ -102,8 +102,8 @@ while($line=<STDIN>){
     my $codon_score=0;
     $codon_score++ if(valid_start($startcodon));
     $codon_score++ if(valid_stop($stopcodon1,$gcode) || valid_stop($stopcodon2,$gcode));
-    if($codon_score+$gcode>1){
-      my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id};#this scoring boosts proteins that have multiple evidence
+    if($codon_score>0){
+      my $score=100-(100-$similarity{$transcript_id})/$pcount{$transcript_id}/$codon_score;#this scoring boosts proteins that have multiple evidence
       push(@scores,"$score $gene_id $transcript_id $codon_score");
       #print "DEBUG $score $gene_id $transcript_id $ori $codon_score\n";
     }
@@ -119,17 +119,19 @@ my $add_thresh=.9999;
 #first we only consider complete proteins
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
+  #print "DEBUG consider $scores_sorted[$i] $hn{$F[1]} $hs{$F[1]}\n";
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
     $min_complete_score=$F[0] if($F[0]<$min_complete_score);
     $h{$F[2]}=1;#we mark the proteins to keep
+    #print "DEBUG keep $F[2]\n";
   }
 }
 
 #here we adjust the threshold for secondary protein alignments based on the ratio of complete to protein_only
 $add_thresh-=scalar(keys %h)/$num_complete/150;
-print "#DEBUG $add_thresh $num_complete $min_complete_score\n";
+#print "DEBUG $add_thresh $num_complete $min_complete_score\n";
 my %h=();
 my %hs=();
 my %hn=();
