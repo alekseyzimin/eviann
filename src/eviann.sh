@@ -412,7 +412,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
     mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
     perl -F'\t' -ane '
     BEGIN{
-      $thresh=int('$NUM_TISSUES')/11;
+      $thresh=int('$NUM_TISSUES')/60;
       open(FILE,"'$GENOME'.max_tpm.samples.txt");
       while($line=<FILE>){
         chomp($line);
@@ -422,11 +422,11 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       }
     }{
       if($F[2] eq "transcript"){
-        $flag=1;
+        $flag=0;
         if($F[8]=~/transcript_id \"(\S+)\";/){
           $transcript=$1;
           $new_transcript_id="$transcript:$samples{$transcript}:$tpm{$transcript}";
-          $flag=0 if($samples{$transcript}<$thresh);
+          $flag=1 if($samples{$transcript}>=$thresh || $tpm{$transcript}>=5);
         }else{
           die("no transcript id found on line ".join("\t",@F));
         }
