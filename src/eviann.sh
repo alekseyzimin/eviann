@@ -702,9 +702,12 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread -g $GENOMEFILE -w $GENOME.lncRNA.fa $GENOME.u.gff && \
     rm -rf $GENOME.lncRNA.fa.transdecoder* && \
     TransDecoder.LongOrfs -S -t $GENOME.lncRNA.fa 1>transdecoder.LongOrfs.out 2>&1 && \
-    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only  1>transdecoder.Predict.out 2>&1
+    makeblastdb -in $PROTEIN.uniq -input_type fasta -dbtype prot -out proteins 1>makeblastdb.out 2>&1 && \
+    blastp -query $GENOME.lncRNA.fa.transdecoder_dir/longest_orfs.pep -db proteins  -max_target_seqs 1 -outfmt 6  -evalue 0.000001 -num_threads $NUM_THREADS 2>blastp2.out > $GENOME.proteins.blastp.tmp && \
+    mv $GENOME.proteins.blastp.tmp $GENOME.proteins.blastp && \
+    TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.proteins.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
-      add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9~/ORF type:complete/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
+      add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9!~/ORF type:internal/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) <  $GENOME.u.gff | \
       gffread -C | \
       perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "mRNA"); print join("\t",@F);}' > $GENOME.u.cds.gff.tmp && \
       mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff 
@@ -797,7 +800,7 @@ fi
 if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.num_introns.txt
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
-  rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
+  rm -f proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
   rm -f $GENOME.unused_proteins.gff $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff $GENOME.readthrough_proteins.txt
   rm -f $GENOME.abundanceFiltered.spliceFiltered.gtf
   rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
@@ -909,7 +912,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
   rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
   rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.std.gff $GENOME.cds.gff
-  rm -f $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp
+  rm -f $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp $GENOME.proteins.blastp
 fi
 
 
