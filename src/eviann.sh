@@ -378,9 +378,6 @@ fi
 NUM_TISSUES=`ls tissue*.bam.sorted.bam.gtf| grep -v "_lr" |wc -l`
 if [ -e tissue0.bam.sorted.bam.gtf ];then
   let NUM_TISSUES=$NUM_TISSUES-1;
-  if [ $NUM_TISSUES -lt 1 ];then
-    JUNCTION_THRESHOLD=-1000
-  fi
 fi
 
 if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];then
@@ -478,7 +475,6 @@ fi
 
 if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ ! -e merge.success ];then
   log "Deriving gene models from protein and transcript alignments" && \
-  log "Markov chain junction threshold $JUNCTION_THRESHOLD" && \
   if [ ! -s $GENOME.merged.gtf ];then
     error_exit "No transcripts useful for annotation, please check your inputs!"
   fi && \
@@ -587,7 +583,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       while($line=<FILE>){
         chomp($line);
         @f=split(/\s+/,$line);
-        $reliable{$f[0]}=int('$JUNCTION_THRESHOLD');
+        $reliable{$f[0]}=30;
       }
     }{
       chomp($F[8]);
@@ -596,9 +592,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $exons=$3;
         $geneid=$4;
         ($name,$samples,$tpm)=split(/:/,$id);
-        $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})));
-        $score{$id}+=2 if($tpm > 10||$samples>1);
-        $score{$id}+=2 if($ex_score{$id}>'$JUNCTION_THRESHOLD');
+        $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
+        $score{$id}+=2 if($tpm > 10 || $samples > 1);
+        $score{$id}+=2 if($ex_score{$id} > '$JUNCTION_THRESHOLD');
         $score{$id}+=$reliable{$id};
         if($score{$id}>int('$JUNCTION_THRESHOLD')){
           @f=split(/-/,$exons);
