@@ -7,7 +7,7 @@ my $k_file=$ARGV[3];
 my %similarity;
 my %contigs;
 my %used_intron_chains=();
-my $ext=33;
+my $ext=39;
 
 #read in genome sequence file
 open(FILE,$genome_file);
