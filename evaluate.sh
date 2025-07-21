@@ -43,9 +43,6 @@ if [ ! -s $REF ] || [ ! -s $QRY ] || [ ! -s $GENOME ];then
   exit 1
 fi
 
-REF=$1
-QRY=$2
-GENOME=$3
 REFL=`basename $REF`
 QRYL=`basename $QRY`
 
