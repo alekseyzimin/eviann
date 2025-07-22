@@ -17,7 +17,6 @@ while($line=<FILE>){
   $id=substr($attrs[0],3);
   if(defined($cds_s{$id})){
     ($cds_start,$cds_end)=find_cds_start_end(@attrs[2],$F[6],$cds_s{$id},$cds_e{$id});
-    print "#FOUND $cds_s{$id} $cds_e{$id}\n";
     print join("\t",@F[0..7])."\t",join(";",@attrs[0..2]),";CDS=$cds_start:$cds_end;CDSphase=0;$attrs[3]\n";
   }else{
     print "$line\n";
@@ -38,11 +37,11 @@ sub find_cds_start_end{
      my ($s,$e)=split(/-/,$exons[$i]);
      $tl+=$e-$s+1;
   }
-  print "#DEBUG transcript length $tl\n";
   if($ori eq "-"){
     $cds_s=$tl-$_[3]+1;
     $cds_e=$tl-$_[2]+1;
   }
+  #print "#DEBUG transcript length $tl $cds_s $cds_e\n";
   for(my $i=0;$i<=$#exons;$i++){
     my ($s,$e)=split(/-/,$exons[$i]);
     if($cds_s<=$e-$s+$offset){
@@ -52,6 +51,7 @@ sub find_cds_start_end{
       $offset+=$e-$s+1;
     }
   }
+  $offset=1;
   for(my $i=0;$i<=$#exons;$i++){
     my ($s,$e)=split(/-/,$exons[$i]);
     if($offset<=$cds_e && $cds_e<=$e-$s+$offset){
