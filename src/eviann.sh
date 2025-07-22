@@ -709,10 +709,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
       add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9!~/ORF type:internal/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) $GENOME.u.gff | \
       gffread -C | \
+      sed 's/_lncRNA//g' \
       perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "mRNA"); print join("\t",@F);}' > $GENOME.u.cds.gff.tmp && \
       mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff 
     fi
-    exit
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
   fi
   log "Working on final merge"
