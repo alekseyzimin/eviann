@@ -610,13 +610,17 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       foreach $c(keys %transcripts){
         @ec=split(/,/,$c);
         $ec=$#ec+1;
-        $start=10000000000;
+        $start=0;
         $end=0;
         @tr=split(/\s/,$transcripts{$c});
+        $n=0;
         for($i=0;$i<$#tr;$i+=6){
-          $start=$tr[$i+3] if($tr[$i+3]<$start);
-          $end=$tr[$i+4] if($end<$tr[$i+4]);
+          $start+=$tr[$i+3];
+          $end+=$tr[$i+4];
+          $n++;
         }
+        $start=int($start/$n);
+        $end=int($end/$n);
         print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n";
       }
     }' | gffread -T  > $GENOME.spliceFiltered.gtf.tmp && \
@@ -827,7 +831,7 @@ if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
     perl -ane '{
       @f1=split(/-/,$F[0]);
       @f2=split(/-/,$F[5]);
-      if($F[3]>90 && $F[2]/($F[1]+1)>0.9 && not($f1[0] eq $f2[0])){
+      if($F[3]>95 && $F[2]/($F[1]+1)>0.95 && not($f1[0] eq $f2[0])){
         $pseudo{$f1[0]}=1;
       }
     }END{
