@@ -86,22 +86,22 @@ while($line=<STDIN>){
     my $end=$f[4];
     my $ori=$f[6];
     if($ori eq "+"){
-      for(my $i=0;$i<$ext;$i+=3){
+      for(my $i=-15;$i<$ext;$i+=3){
         $startcodon=uc(substr($contigs{$f[0]},$start-1-$i,3));
         last if (valid_start($startcodon));
       }
-      for(my $i=0;$i<$ext;$i+=3){
+      for(my $i=-15;$i<$ext;$i+=3){
         $stopcodon=uc(substr($contigs{$f[0]},$end-3+$i,3));
         last if(valid_stop($stopcodon,$gcode));
       }
     }else{
-      for(my $i=0;$i<$ext;$i+=3){
+      for(my $i=-15;$i<$ext;$i+=3){
         my $seq=substr($contigs{$f[0]},$end-3+$i,3);
         $seq=~tr/acgtACGT/tgcaTGCA/;
         $startcodon=uc(reverse($seq));
         last if (valid_start($startcodon));
       }
-      for(my $i=0;$i<$ext;$i+=3){
+      for(my $i=-15;$i<$ext;$i+=3){
         my $seq=substr($contigs{$f[0]},$start-1-$i,3);
         $seq=~tr/acgtACGT/tgcaTGCA/;
         $stopcodon=uc(reverse($seq));
