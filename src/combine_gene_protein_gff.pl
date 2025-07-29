@@ -1049,7 +1049,7 @@ for my $locus(keys %transcripts_cds_loci){
 for my $locus(keys %transcripts_only_loci){
   #next if we have seen this locus with a protein match
   print "DEBUG lncRNA at locus $locus $transcripts_only_loci{$locus} protein $transcripts_cds_loci{$locus}\n";
-  next if(defined($transcripts_cds_loci{$locus}));
+  #next if(defined($transcripts_cds_loci{$locus}));
   my @output=();
   my @transcripts_at_loci=split(/\s+/,$transcripts_only_loci{$locus});
   my @gff_fields=split(/\t/,$transcript_u{$transcripts_at_loci[0]});

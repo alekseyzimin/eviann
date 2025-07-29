@@ -508,28 +508,40 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |gffread -y $PROTEIN.cds -g $GENOMEFILE && \
     PROTEINFILE=$PROTEIN.cds 
   fi
-#here we use the "fixed" protein alignments as reference and compare our transcripts. This annotates each transcript with a protein match and a match code
+
+#here we fix missing or incorrect orientations in the GTF transcripts file
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.merged.gtf && \
-  #assign_class_code.pl <(trmap $GENOME.palign.fixed.gff $GENOME.merged.gtf -o /dev/stdout) < $GENOME.merged.gtf > $GENOME.protref.annotated.gtf && \
-  rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref && \
-#here we fix missing orientations in the GTF transcripts file
-  perl -F'\t' -ane '{
-    if($F[2] eq "transcript" && $F[8]=~/^transcript_id "(\S+)"; gene_id/){
-      $ori{$1}=$F[6];
+  gffread --tlf $GENOME.merged.gtf | \
+  perl -F'\t' -ane '{next if($F[6] eq ".");$ori=($F[6] eq "+")?"-":"+";print join("\t",@F[0..5])."\t$ori\t$F[7]\t$F[8]"}' |\
+  gffread -T > $GENOME.merged.rev.gtf.tmp && \
+  mv $GENOME.merged.rev.gtf.tmp $GENOME.merged.rev.gtf && \
+  gffcompare -T -o $GENOME.protref.rev -r $GENOME.palign.fixed.gff $GENOME.merged.rev.gtf && \
+  perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+ class_code \"=\";/){print $1,"\n"}}' $GENOME.protref.rev.annotated.gtf > $GENOME.misoriented_transcripts.txt.tmp && \
+  mv $GENOME.misoriented_transcripts.txt.tmp $GENOME.misoriented_transcripts.txt && \
+  rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref $GENOME.protref.rev.{loci,tracking,stats,annotated.gtf} $GENOME.protref.rev && \
+  echo -n "Found misoriented transcripts: " && wc -l $GENOME.misoriented_transcripts.txt && \
+  perl -F'\t' -ane 'BEGIN{
+    open(FILE,"'$GENOME'.misoriented_transcripts.txt");
+    while($line=<FILE>){
+      chomp($line);
+      $misoriented{$line}=1;
     }
+  }{
+    $ori{$1}=$F[6] if($F[2] eq "transcript" && $F[8]=~/^transcript_id "(\S+)"; gene_id/);
   }END{
     open(FILE,"'$GENOME'.merged.gtf");
     while($line=<FILE>){
       chomp($line);
-      @f=split(/\t/,$line);
-      if($f[6] eq "."){
-        $f[8]=~/transcript_id "(\S+)";/;
-        $f[6]=$ori{$1} if(defined($ori{$1}));
-      }
+      @f = split(/\t/,$line);
+      $f[8] =~ /transcript_id "(\S+)";/;
+      my $id = $1;
+      $f[6] = ($f[6] eq "+") ? "-" : "+" if(defined($misoriented{$id}));
+      $f[6] = $ori{$id} if(defined($ori{$id}) && $f[6] eq ".");
       print join("\t",@f)."\n" unless($f[6] eq ".");
     }
   }' $GENOME.protref.annotated.gtf > $GENOME.gtf.tmp && \
   mv $GENOME.gtf.tmp $GENOME.gtf && \
+  gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
 #here we combine the transcripts and protein matches
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
