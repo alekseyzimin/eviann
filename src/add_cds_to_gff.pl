@@ -13,7 +13,6 @@ open(FILE,"gffread --tlf $input_gff |");
 while($line=<FILE>){
   chomp($line);
   @F=split(/\t/,$line);
-  next if($F[6] eq "-");#this means that the transcript is misoriented
   @attrs=split(/;/,$F[8]);
   $id=substr($attrs[0],3);
   if(defined($cds_s{$id})){
