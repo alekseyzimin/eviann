@@ -512,11 +512,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we fix missing or incorrect orientations in the GTF transcripts file
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.merged.gtf && \
   gffread --tlf $GENOME.merged.gtf | \
-  perl -F'\t' -ane '{next if($F[6] eq ".");$ori=($F[6] eq "+")?"-":"+";print join("\t",@F[0..5])."\t$ori\t$F[7]\t$F[8]"}' |\
+  perl -F'\t' -ane '{next if($F[6] eq ".");if($F[8]=~/exonCount=1;/){$ori=($F[6] eq "+")?"-":"+";print join("\t",@F[0..5])."\t$ori\t$F[7]\t$F[8]"}}' |\
   gffread -T > $GENOME.merged.rev.gtf.tmp && \
   mv $GENOME.merged.rev.gtf.tmp $GENOME.merged.rev.gtf && \
   gffcompare -T -o $GENOME.protref.rev -r $GENOME.palign.fixed.gff $GENOME.merged.rev.gtf && \
-  perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+ class_code \"=\";/){print $1,"\n"}}' $GENOME.protref.rev.annotated.gtf > $GENOME.misoriented_transcripts.txt.tmp && \
+  perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+ class_code \"(=|k)\";/){print $1,"\n"}}' $GENOME.protref.rev.annotated.gtf > $GENOME.misoriented_transcripts.txt.tmp && \
   mv $GENOME.misoriented_transcripts.txt.tmp $GENOME.misoriented_transcripts.txt && \
   rm -f $GENOME.protref.{loci,tracking,stats} $GENOME.protref $GENOME.protref.rev.{loci,tracking,stats,annotated.gtf} $GENOME.protref.rev && \
   echo -n "Found misoriented transcripts: " && wc -l $GENOME.misoriented_transcripts.txt && \
