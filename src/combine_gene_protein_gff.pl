@@ -601,15 +601,17 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
 
 #fixing start/stop, extending if needed
-    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-    $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+    ($cds_start_on_transcript_fix,$cds_end_on_transcript_fix)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+    $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript_fix,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript_fix-3,3);
     print "DEBUG fix codons $first_codon $last_codon\n";
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && ($cds_end_on_transcript_fix-$cds_start_on_transcript_fix < $cds_length*$length_fraction || not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
       print "DEBUG attempting extension\n";
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
     }else{
       print "DEBUG no need to extend\n";
+      $cds_start_on_transcript=$cds_start_on_transcript_fix;
+      $cds_end_on_transcript=$cds_end_on_transcript_fix;
       $transcript_seqs_5pext_actual{$g}="";
       $transcript_seqs_3pext_actual{$g}="";
     }
@@ -772,15 +774,17 @@ for my $g(keys %transcript_cds){
     ($cds_start_on_transcript,$cds_end_on_transcript)=fix_in_frame_stops_keep_frame($cds_start_on_transcript_original,$cds_end_on_transcript_original,$transcript_seqs{$g});
 
 #fixing start/stop, extending if needed
-    ($cds_start_on_transcript,$cds_end_on_transcript)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
-    $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript,3);
-    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript-3,3);
+    ($cds_start_on_transcript_fix,$cds_end_on_transcript_fix)=fix_start_stop_codon($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g});
+    $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript_fix,3);
+    $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript_fix-3,3);
     print "DEBUG fix codons $first_codon $last_codon\n";
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && (not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && ($cds_end_on_transcript_fix-$cds_start_on_transcript_fix < $cds_length*$length_fraction || not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
       print "DEBUG attempting extension\n";
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
     }else{
       print "DEBUG no need to extend\n";
+      $cds_start_on_transcript=$cds_start_on_transcript_fix;
+      $cds_end_on_transcript=$cds_end_on_transcript_fix;
       $transcript_seqs_5pext_actual{$g}="";
       $transcript_seqs_3pext_actual{$g}="";
     }
