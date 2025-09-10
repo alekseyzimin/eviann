@@ -560,6 +560,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   log "Computing Markov chain matrices at splice junctions" && \
+  #gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' |perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' > $GENOME.training.gff && \
   gffread -F --tlf $GENOME.k.gff |\
     perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;/){$tid=$4;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC$n\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' | \
     tee >(wc -l > $GENOME.num_introns.txt) | \
@@ -807,7 +808,7 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
     awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
   mv $GENOME.k.std.gff.tmp $GENOME.k.std.gff && \
-  gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(reassign_transcripts.pl $GENOME.locus_transcripts < $GENOME.k.std.gff) $GENOME.u.gff|\
+  gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(sed 's/Class=.;//' $GENOME.k.std.gff | reassign_transcripts.pl $GENOME.locus_transcripts) $GENOME.u.gff|\
     awk -F '\t' '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{if($3!=prev){counter=1}if($9 ~ /^Parent=/){print $0";ID="substr($9,8)":"$3":"counter;counter++;}else{print $0}prev=$3;}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
   touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
