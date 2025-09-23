@@ -408,7 +408,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
     #rm -f tissue*.bam.sorted.bam.junc.bed.tmp && \
     log "Merging transcripts" && \
     gffcompare -ST tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
-    awk '{tpm=0;num_samples=0;for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print $1" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
+    awk '{tpm=0;num_samples=0;split($1,t,"|");tname=t[1];for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print tname" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
     mv $GENOME.max_tpm.samples.tmp $GENOME.max_tpm.samples.txt && \
     perl -F'\t' -ane '
     BEGIN{
