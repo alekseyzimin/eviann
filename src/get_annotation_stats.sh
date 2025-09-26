@@ -10,6 +10,7 @@ fi
 
 function usage {
  echo "Usage: get_annotation_stats.sh [options]"
+ echo "Compute basic statistics of gene annotation"
  echo "Options:"
  echo " -a FILE MANDATORY:annotation file in GFF format default: none"
  echo " -g FILE MANDATORY:genome fasta file default: none"
@@ -22,6 +23,12 @@ function error_exit {
 }
 
 #parsing arguments
+if [ $# -lt 1 ];then
+  usage
+  error_exit ""
+fi
+
+
 while [[ $# > 0 ]]
 do
     key="$1"
@@ -36,6 +43,15 @@ do
             GENOME="$2"
             if [ ! -s $GENOME ];then error_exit "genome file $GENOME is empty or does not exist!";fi
             shift
+            ;;
+        -h|--help|-u|--usage)
+            usage
+            exit 255
+            ;;
+        *)
+            echo "Unknown option $1"
+            usage
+            exit 1        # unknown option
             ;;
     esac
     shift
