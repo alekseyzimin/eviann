@@ -23,7 +23,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 JUNCTION_THRESHOLD=4
-MIN_ORF=100
+MIN_ORF=75
 GC=
 RC=
 NC=
@@ -82,7 +82,7 @@ function usage {
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 1.0"
- echo " --min_prot            minimum protein length (in amino-acids) for ab initio ORF detection without homology evidence, default: 100"
+ echo " --min_prot            minimum protein length (in amino-acids) for ab initio ORF detection without homology evidence, default: 75"
  echo " -f|--functional       perform functional annotation, default: not set"
  echo " --mito_contigs FILE   file with the list of input contigs to be treated as mitochondrial with different genetic code (stop is AGA,AGG,TAA,TAG)"
  echo " --extra FILE          extra features to add from an external GFF file.  Feautures MUST have gene records.  Any features that overlap with existing annotations will be ignored"

@@ -499,13 +499,15 @@ for my $g(keys %transcript_cds){
   $nstarts++;
 }
 
-print "DEBUG Start PWM\n";
-for(my $i=0;$i<12;$i++){
-  for(my $j=0;$j<4;$j++){
-    $start_pwm[$i][$j]=log($start_pwm[$i][$j]/$nstarts*4+1e-10);
-    print "$start_pwm[$i][$j] ";
+if($nstarts>0){
+  print "DEBUG Start PWM\n";
+  for(my $i=0;$i<12;$i++){
+    for(my $j=0;$j<4;$j++){
+      $start_pwm[$i][$j]=log($start_pwm[$i][$j]/$nstarts*4+1e-10);
+      print "$start_pwm[$i][$j] ";
+    }
+    print "\n";
   }
-  print "\n";
 }
 
 
