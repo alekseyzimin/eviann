@@ -548,6 +548,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   }' $GENOME.protref.annotated.gtf > $GENOME.gtf.tmp && \
   mv $GENOME.gtf.tmp $GENOME.gtf && \
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
+  NUM_MATCHES=0 && \
+  NUM_MATCHES=`grep 'class code "="' $GENOME.protref.annotated.gtf |wc -l` && \
+  if [ $NUM_MATCHES -lt 1 ];then echo "WARNING!!! NO intron chain matches found between transcripts and aligned proteins! Check your input data for mismatching sequence names or lack of proteins from related species.";fi
 #here we combine the transcripts and protein matches
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
