@@ -22,7 +22,6 @@ export PATH=$MYPATH:$PATH;
 set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
-JUNCTION_THRESHOLD=4
 MIN_ORF=75
 GC=
 RC=
@@ -407,11 +406,11 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
       touch transcripts_merge.success && \
       rm -f merge.success || error_exit "Failed to merge transcripts"
   elif [ $OUTCOUNT -ge $NUM_TISSUES ];then
-    #log "Computing splice junctions" && \
-    #ls tissue*.bam.sorted.bam | xargs -P 4 -I {} bash -c "samtools view {} | compute_junction_counts.pl $GENOMEFILE > {}.junc.bed.tmp" && \
-    #cat tissue*.bam.sorted.bam.junc.bed.tmp| perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\n"}}'  |sort -k1,1 -k2,3n -S 10% > $GENOME.junc.bed.tmp && \
-    #mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
-    #rm -f tissue*.bam.sorted.bam.junc.bed.tmp && \
+    log "Computing splice junctions" && \
+    ls tissue*.bam.sorted.bam | xargs -P 4 -I {} bash -c "samtools view {} | compute_junction_counts.pl $GENOMEFILE > {}.junc.bed.tmp" && \
+    cat tissue*.bam.sorted.bam.junc.bed.tmp| perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\n"}}'  |sort -k1,1 -k2,3n -S 10% > $GENOME.junc.bed.tmp && \
+    mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
+    rm -f tissue*.bam.sorted.bam.junc.bed.tmp && \
     log "Merging transcripts" && \
     gffcompare -ST tissue*.bam.sorted.bam.gtf  -o $GENOME.tmp -p MSTRG 1>gffcompare.out 2>&1 && \
     awk '{tpm=0;num_samples=0;split($1,t,"|");tname=t[1];for(i=4;i<=NF;i++){if($i ~ /^q/){num_samples++;split($i,a,"|");if(a[5]>tpm){tpm=a[5]}}}print tname" "tpm" "num_samples}'  $GENOME.tmp.tracking > $GENOME.max_tpm.samples.tmp && \
@@ -566,16 +565,81 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.k.gff.tmp $GENOME.k.gff && \
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
-  perl -F'\t' -ane '{if($F[2] eq "mRNA"){$protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);$F[2]="gene";$F[8]="ID=$protid\n";unless(defined($out{$protid})){$gene{$protid}=join("\t",@F);$cds{$protid}="";$beg{$protid}=0;$end{$protid}=0;$ori{$protid}=$F[6];$flag=1;$out{$protid}=1;}else{$flag=0}}elsif($F[2] eq "CDS" && $flag){$beg{$protid}=$F[3] if($beg{$protid}==0); $end{$protid}=$F[4] if($end{$protid}<$F[4]);$F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);$F[2]="exon";$gene{$protid}.=join("\t",@F);}}END{foreach $p(keys %gene){@f=split(/\t/,$gene{$p});$f[3]=$beg{$p};$f[4]=$end{$p}; print join("\t",@f),"$cds{$p}"}}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
+  perl -F'\t' -ane '{
+    if($F[2] eq "mRNA"){
+      $protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);
+      $F[2]="gene";
+      $F[8]="ID=$protid\n";
+      unless(defined($out{$protid})){
+        $gene{$protid}=join("\t",@F);
+        $cds{$protid}="";
+        $beg{$protid}=0;
+        $end{$protid}=0;
+        $ori{$protid}=$F[6];
+        $flag=1;
+        $out{$protid}=1;
+      }else{
+        $flag=0;
+      }
+    }elsif($F[2] eq "CDS" && $flag){
+      $beg{$protid}=$F[3] if($beg{$protid}==0);
+      $end{$protid}=$F[4] if($end{$protid}<$F[4]);
+      $F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);
+      $F[2]="exon";$gene{$protid}.=join("\t",@F);
+    }
+  }END{
+    foreach $p(keys %gene){
+      @f=split(/\t/,$gene{$p});
+      $f[3]=$beg{$p};
+      $f[4]=$end{$p};
+      print join("\t",@f),"$cds{$p}";
+    }
+  }'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   log "Computing Markov chain matrices at splice junctions" && \
-  #gffread -F $GENOME.k.gff |grep -P '\-mRNA\-1$|\-mRNA-1;' |perl -F'\t' -ane '{if($F[2] eq "mRNA"){$flag=0;if($F[8] =~ /Class==;/){$flag=1}}print if($flag)}' > $GENOME.training.gff && \
   gffread -F --tlf $GENOME.k.gff |\
     perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;/){$tid=$4;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC$n\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' | \
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
+  gffread --tlf $GENOME.gtf |\
+  perl -F'\t' -ane 'BEGIN{
+      $n=1;
+    }{
+      if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);/){
+        $tid=$4;
+        $exons=$3;
+        @f=split(/-/,$exons);
+        for($i=1;$i<$#f;$i++){
+          ($c1,$c2)=split(/,/,$f[$i]);
+          $c2--;
+          if($F[6] eq "+"){
+            $don{"$F[0] $c1 $F[6]"}=1;
+            $acc{"$F[0] $c2 $F[6]"}=1;
+          }else{
+            $don{"$F[0] $c2 $F[6]"}=1;
+            $acc{"$F[0] $c1 $F[6]"}=1;
+          }
+        }
+      }
+    }END{
+      open(FILE,"'$GENOME'.junc.bed");
+      while($line=<FILE>){
+        chomp($line);
+        @f=split(/\t+/,$line);
+        next if($f[5] eq "." || $f[4]>3);
+        if($f[5] eq "+"){
+          print "don\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[1] $f[5]"}));
+          print "acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[2] $f[5]"}));
+        }else{
+          print "acc\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[1] $f[5]"}));
+          print "don\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[2] $f[5]"}));
+        }
+      }
+    }' | \
+  compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.pwm.err && \
   mv $GENOME.pwm.tmp $GENOME.pwm && \
-  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm <(cat <(gffread -F --tlf $GENOME.gtf |    perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=/){$tid=$1;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' ) <(gffread -F --tlf $GENOME.palign.fixed.gff |    perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=/){$tid=$1;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}')) > $GENOME.transcript_splice_scores.txt.tmp && \
+  mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm && \
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm > $GENOME.transcript_splice_scores.txt.tmp && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
@@ -614,11 +678,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $exons=$3;
         $geneid=$4;
         ($name,$samples,$tpm)=split(/:/,$id);
-        $score{$id}=int('$JUNCTION_THRESHOLD')+1 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
+        $score{$id}++ if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
         $score{$id}+=2 if($tpm > 10 || $samples > 1);
-        $score{$id}+=2 if($ex_score{$id} > '$JUNCTION_THRESHOLD');
+        $score{$id}+=2 if($ex_score{$id} > 4);
         $score{$id}+=$reliable{$id};
-        if($score{$id}>int('$JUNCTION_THRESHOLD')){
+        if($score{$id}>0){
           @f=split(/-/,$exons);
           if($#f>1){
             $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
@@ -684,7 +748,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
-    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm > $GENOME.protein_splice_scores.txt && \
+    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm > $GENOME.protein_splice_scores.txt && \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.num_introns.txt");
       $index = 2;
@@ -701,7 +765,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }{
       if($F[2] eq "gene"){
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$JUNCTION_THRESHOLD' && $ex_score{$id}>0)) ? 1 : 0;
+        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>0 && $ex_score{$id}>0)) ? 1 : 0;
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
