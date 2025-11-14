@@ -626,7 +626,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       while($line=<FILE>){
         chomp($line);
         @f=split(/\t+/,$line);
-        next if($f[5] eq "." || $f[4]>3);
+        next if($f[5] eq "." || $f[4]>2);
         if($f[5] eq "+"){
           print "don\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[1] $f[5]"}));
           print "acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[2] $f[5]"}));
