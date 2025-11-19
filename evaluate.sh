@@ -104,4 +104,5 @@ awk 'BEGIN{print "Transcript/CDS and gene evaluations:";
   cpr=int('$N_MATCHING_QRY_CDS'/'$N_QRY_CDS'*1000+.5)/10;
   gsn=int('$N_MATCHING_REF_GENES'/'$N_REF_GENES'*1000+.5)/10;
   gpr=int('$N_MATCHING_QRY_LOCI'/'$N_QRY_LOCI'*1000+.5)/10;
+  print "Correct transcripts: '$N_MATCHING_QRY_TRANSCRIPTS' Matched reference transcripts: '$N_MATCHING_REF_TRANSCRIPTS' Total query transcripts: '$N_QRY_TRANSCRIPTS'\nCorrect CDS: '$N_MATCHING_QRY_CDS' Matched Reference CDS: '$N_MATCHING_REF_CDS' Total unique query CDS: '$N_QRY_CDS' Total unique reference CDS: '$N_REF_CDS'\nCorrect gene loci: '$N_MATCHING_QRY_LOCI' Total query gene loci: '$N_QRY_LOCI'\nTranscript Sensitivity: "tsn" Precision: "tpr" F1: "int(2*tsn*tpr/(tsn+tpr)*10+0.5)/10"\nCDS Sensitivity: "csn" Precision: "cpr" F1: "int(2*csn*cpr/(csn+cpr+0.001)*10+0.5)/10"\nGene Sensitivity: "gsn" Precision: "gpr" F1: "int(2*gsn*gpr/(gsn+gpr)*10+.5)/10}'
 
