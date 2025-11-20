@@ -371,19 +371,6 @@ if(defined($pwms)){
           $i++;
         }
         $acceptor_length=$i;
-      }elsif($line=~/^Start/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NNN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<=3;$j++){
-            $coding_start_freq[$i][$j]=$f[$j];
-          }
-          $coding_start_freq[$i][4]=0;
-          $i++;
-        }
       }
     }
   }
