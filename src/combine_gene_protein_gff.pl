@@ -257,6 +257,8 @@ while(my $line=<FILE>){
       #$transcript_source{$ID}=($gff_fields[8] =~ /contained_in=/ && not($protID =~ /_EXTERNAL$/)) ? "Contained" : $gff_fields[1];
       $transcript_source{$ID}=$gff_fields[1];
       $transcript_contained{$ID}= ($gff_fields[8] =~ /contained_in=/) ? 1 : 0;
+      $transcript_orig_start{$ID}=$tstart;
+      $transcript_orig_end{$ID}=$tend;
       $transcript_cds_start{$ID}=$protein_start{$protID};
       $transcript_cds_start_codon{$ID}="MISSING";
       $transcript_cds_end{$ID}=$protein_end{$protID};
@@ -671,6 +673,7 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(valid_start($first_codon));
     $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon,$gcode));
+    $transcript_class{$g}="NA" if($transcript_orig_start{$g}>$transcript_cds_end{$g} || $transcript_orig_end{$g}<$transcript_cds_start{$g});
     if($output_partial){
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without a start or a stop
     }else{
@@ -843,6 +846,7 @@ for my $g(keys %transcript_cds){
     $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     $transcript_cds_start_codon{$g}=$first_codon if(valid_start($first_codon));
     $transcript_cds_end_codon{$g}=$last_codon if(valid_stop($last_codon,$gcode));
+    $transcript_class{$g}="NA" if($transcript_orig_start{$g}>$transcript_cds_end{$g} || $transcript_orig_end{$g}<$transcript_cds_start{$g});
     if($output_partial){
       $transcript_class{$g}="NA" if($transcript_cds_start_codon{$g} eq "MISSING" && $transcript_cds_end_codon{$g} eq "MISSING");#we eliminate transcripts without at least a start or a stop
     }else{
