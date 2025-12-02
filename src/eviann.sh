@@ -601,44 +601,47 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;/){$tid=$4;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC$n\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' | \
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
-  gffread --tlf $GENOME.gtf |\
-  perl -F'\t' -ane 'BEGIN{
-      $n=1;
-    }{
-      if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);/){
-        $tid=$4;
-        $exons=$3;
-        @f=split(/-/,$exons);
-        for($i=1;$i<$#f;$i++){
-          ($c1,$c2)=split(/,/,$f[$i]);
-          $c2--;
-          if($F[6] eq "+"){
-            $don{"$F[0] $c1 $F[6]"}=1;
-            $acc{"$F[0] $c2 $F[6]"}=1;
-          }else{
-            $don{"$F[0] $c2 $F[6]"}=1;
-            $acc{"$F[0] $c1 $F[6]"}=1;
+  rm -f $GENOME.neg.pwm && \
+  if [ $NUM_TISSUES -gt 0 ];then
+    gffread --tlf $GENOME.gtf |\
+    perl -F'\t' -ane 'BEGIN{
+        $n=1;
+      }{
+        if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);/){
+          $tid=$4;
+          $exons=$3;
+          @f=split(/-/,$exons);
+          for($i=1;$i<$#f;$i++){
+            ($c1,$c2)=split(/,/,$f[$i]);
+            $c2--;
+            if($F[6] eq "+"){
+              $don{"$F[0] $c1 $F[6]"}=1;
+              $acc{"$F[0] $c2 $F[6]"}=1;
+            }else{
+              $don{"$F[0] $c2 $F[6]"}=1;
+              $acc{"$F[0] $c1 $F[6]"}=1;
+            }
           }
         }
-      }
-    }END{
-      open(FILE,"'$GENOME'.junc.bed");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/\t+/,$line);
-        next if($f[5] eq "." || $f[4]>2);
-        if($f[5] eq "+"){
-          print "don\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[1] $f[5]"}));
-          print "acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[2] $f[5]"}));
-        }else{
-          print "acc\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[1] $f[5]"}));
-          print "don\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[2] $f[5]"}));
+      }END{
+        open(FILE,"'$GENOME'.junc.bed");
+        while($line=<FILE>){
+          chomp($line);
+          @f=split(/\t+/,$line);
+          next if($f[5] eq "." || $f[4]>2);
+          if($f[5] eq "+"){
+            print "don\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[1] $f[5]"}));
+            print "acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[2] $f[5]"}));
+          }else{
+            print "acc\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[1] $f[5]"}));
+            print "don\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[2] $f[5]"}));
+          }
         }
-      }
-    }' | \
-  compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.pwm.err && \
-  mv $GENOME.pwm.tmp $GENOME.pwm && \
-  mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm && \
+      }' | \
+    compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.pwm.err && \
+    mv $GENOME.pwm.tmp $GENOME.pwm && \
+    mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm
+  fi
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm > $GENOME.transcript_splice_scores.txt.tmp && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
