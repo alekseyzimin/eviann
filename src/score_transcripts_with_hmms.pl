@@ -28,6 +28,7 @@ for($i=0;$i<4;$i++){
     }
   }
 }
+my $score_floor=4;
 my $donor_length;
 my $acceptor_length;
 
@@ -191,105 +192,6 @@ if(defined($ARGV[2])){
   }
 }
 
-#we load scores for the negative model
-if(defined($ARGV[3])){
-  print "DEBUG Loading SNAP HMMs\n";
-  open(FILE,$ARGV[3]);
-  $line=<FILE>;
-  if($line =~ /^zoeHMM/){#check format
-    while($line=<FILE>){
-      chomp($line);
-      if($line=~/^Donor 0HMM/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<4;$j++){
-            $donor_nfreq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
-        $donor_length=$i;
-      }elsif($line=~/^Donor 1HMM/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<16;$j++){
-            $donor_hmm_nfreq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
-      }elsif($line=~/^Donor 2HMM/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<64;$j++){
-            $donor_hmm2_nfreq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
-      }elsif($line=~/^Acceptor 0HMM/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<4;$j++){
-            $acceptor_nfreq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
-        $acceptor_length=$i;
-      }elsif($line=~/^Acceptor 1HMM/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<16;$j++){
-            $acceptor_hmm_nfreq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
-      }elsif($line=~/^Acceptor 2HMM/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<64;$j++){
-            $acceptor_hmm2_nfreq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
-      }
-    }
-  }
-}
-
-
-#we load the more reliable junctions
-#if(defined($ARGV[4])){
-#  open(FILE,$ARGV[4]);
-#  while($line=<FILE>){
-#    chomp($line);
-#    @f=split(/\t/,$line);
-#    $f[2]++;
-#    $reliable{"$f[0] $f[1] $f[2] $f[5]"}+=$f[4];
-#  }
-#}
-
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){
   my @gff_fields=();
@@ -317,55 +219,39 @@ for my $g(keys %transcript_gff){
       my $acceptor_hmm_score=0;
       my $donor_hmm2_score=0;
       my $acceptor_hmm2_score=0;
-      my $donor_nscore=0;
-      my $acceptor_nscore=0;
-      my $donor_hmm_nscore=0;
-      my $acceptor_hmm_nscore=0;
-      my $donor_hmm2_nscore=0;
-      my $acceptor_hmm2_nscore=0;
 
       for(my $i=0;$i<$donor_length;$i++){
         $donor_score+=$donor_freq[$i][$code{substr($donor_seq,$i,1)}] if(defined($code{substr($donor_seq,$i,1)}));
-	$donor_nscore+=$donor_nfreq[$i][$code{substr($donor_seq,$i,1)}] if(defined($code{substr($donor_seq,$i,1)}));
       }
       for(my $i=0;$i<$acceptor_length;$i++){
         $acceptor_score+=$acceptor_freq[$i][$code{substr($acceptor_seq,$i,1)}] if(defined($code{substr($acceptor_seq,$i,1)}));
-        $acceptor_nscore+=$acceptor_nfreq[$i][$code{substr($acceptor_seq,$i,1)}] if(defined($code{substr($acceptor_seq,$i,1)}));	
       }
       
       for(my $i=0;$i<($donor_length-1);$i++){
         $donor_hmm_score+=$donor_hmm_freq[$i][$code2{substr($donor_seq,$i,2)}] if(defined($code2{substr($donor_seq,$i,2)}));
-        $donor_hmm_nscore+=$donor_hmm_nfreq[$i][$code2{substr($donor_seq,$i,2)}] if(defined($code2{substr($donor_seq,$i,2)}));
       }
       $donor_hmm_score+=$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
-      $donor_hmm_nscore+=$donor_nfreq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
       for(my $i=0;$i<($acceptor_length-1);$i++){
         $acceptor_hmm_score+=$acceptor_hmm_freq[$i][$code2{substr($acceptor_seq,$i,2)}] if(defined($code2{substr($acceptor_seq,$i,2)}));
-        $acceptor_hmm_nscore+=$acceptor_hmm_nfreq[$i][$code2{substr($acceptor_seq,$i,2)}] if(defined($code2{substr($acceptor_seq,$i,2)}));
       }
       $acceptor_hmm_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
-      $acceptor_hmm_nscore+=$acceptor_nfreq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       
       for(my $i=0;$i<($donor_length-2);$i++){
         $donor_hmm2_score+=$donor_hmm2_freq[$i][$code3{substr($donor_seq,$i,3)}] if(defined($code3{substr($donor_seq,$i,3)}));
-        $donor_hmm2_nscore+=$donor_hmm2_nfreq[$i][$code3{substr($donor_seq,$i,3)}] if(defined($code3{substr($donor_seq,$i,3)}));
       }
       #$donor_hmm2_score+=$donor_freq[0][$code{substr($donor_seq,0,1)}] if(defined($code{substr($donor_seq,0,1)}));
       $donor_hmm2_score+=$donor_hmm_freq[0][$code2{substr($donor_seq,0,2)}] if(defined($code2{substr($donor_seq,0,2)}));
-      $donor_hmm2_nscore+=$donor_hmm_nfreq[0][$code2{substr($donor_seq,0,2)}] if(defined($code2{substr($donor_seq,0,2)}));
       for(my $i=0;$i<($acceptor_length-2);$i++){
         $acceptor_hmm2_score+=$acceptor_hmm2_freq[$i][$code3{substr($acceptor_seq,$i,3)}] if(defined($code3{substr($acceptor_seq,$i,3)}));
-        $acceptor_hmm2_nscore+=$acceptor_hmm2_nfreq[$i][$code3{substr($acceptor_seq,$i,3)}] if(defined($code3{substr($acceptor_seq,$i,3)}));
       }
       #$acceptor_hmm2_score+=$acceptor_freq[0][$code{substr($acceptor_seq,0,1)}] if(defined($code{substr($acceptor_seq,0,1)}));
       $acceptor_hmm2_score+=$acceptor_hmm_freq[0][$code2{substr($acceptor_seq,0,2)}] if(defined($code2{substr($acceptor_seq,0,2)}));
-      $acceptor_hmm2_nscore+=$acceptor_hmm_nfreq[0][$code2{substr($acceptor_seq,0,2)}] if(defined($code2{substr($acceptor_seq,0,2)}));
 
       #print "DEBUG D $donor_seq $donor_score $donor_nscore $donor_hmm_score $donor_hmm_nscore $donor_hmm2_score $donor_hmm2_nscore A $acceptor_seq $acceptor_score $acceptor_nscore $acceptor_hmm_score $acceptor_hmm_nscore $acceptor_hmm2_score $acceptor_hmm2_nscore\n";
       #here we calibrate the scores so that they are universal
-      my $junction0_score=($donor_score-$donor_nscore+$acceptor_score-$acceptor_nscore)+2.5;
-      my $junction1_score=($donor_hmm_score-$donor_hmm_nscore+$acceptor_hmm_score-$acceptor_hmm_nscore)*0.45+2.5;
-      my $junction2_score=($donor_hmm2_score-$donor_hmm2_nscore+$acceptor_hmm2_score-$acceptor_hmm2_nscore)*.32+2.5;
+      my $junction0_score=($donor_score+$acceptor_score)+$score_floor;
+      my $junction1_score=($donor_hmm_score+$acceptor_hmm_score)*0.45+$score_floor;
+      my $junction2_score=($donor_hmm2_score+$acceptor_hmm2_score)*.32+$score_floor;
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
       my $fix_score=$fix_donor_score+$fix_acceptor_score;
