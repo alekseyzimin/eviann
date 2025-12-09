@@ -889,21 +889,6 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
   touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
 
-#cleanup
-if [ $DEBUG -lt 1 ];then
-  rm -f $GENOME.num_introns.txt
-  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
-  rm -f proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
-  rm -f $GENOME.unused_proteins.gff $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff $GENOME.readthrough_proteins.txt
-  rm -f $GENOME.abundanceFiltered.spliceFiltered.gtf
-  rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
-  rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
-  rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
-  rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
-  rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
-  rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.std.gff $GENOME.cds.gff
-fi
-
 if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes" && \
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
@@ -1007,7 +992,6 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.std.gff $GENOME.cds.gff
   rm -f $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp $GENOME.proteins.blastp
 fi
-
 
 if [ -s $EXTRA_GFF ] && [ -e merge.success ];then
   if [ ! -e add_external.success ];then

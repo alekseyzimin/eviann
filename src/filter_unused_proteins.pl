@@ -124,6 +124,10 @@ my %h=();
 my %hs=();
 my %hn=();
 my $add_thresh=.9999;
+my $score_thresh=(split(/\s+/,$scores_sorted[int($#scores_sorted*0.5)]))[0];
+print "# score_thresh=$score_thresh\n";
+$score_thresh=0 if($score_thresh>85);
+print "# score_thresh=$score_thresh\n";
 #here we figure out what the additional threshold should be based on the ratio of complete to protein-only
 #first we only consider complete proteins
 for(my $i=0;$i<=$#scores_sorted;$i++){
@@ -146,6 +150,7 @@ my %hs=();
 my %hn=();
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
+  next if($F[0]<$score_thresh);
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
