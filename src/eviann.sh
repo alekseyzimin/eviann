@@ -684,7 +684,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $score{$id}++ if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
         $score{$id}+=2 if($tpm > 10 || $samples > 1);
         $score{$id}+=$reliable{$id};
-        if($score{$id}>0){
+        if($score{$id}>-0.5){
           @f=split(/-/,$exons);
           if($#f>1){
             $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
