@@ -981,11 +981,12 @@ fi
 if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.num_introns.txt
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
-  rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
+  rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
   rm -f $GENOME.unused_proteins.gff $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff
   rm -f $GENOME.abundanceFiltered.spliceFiltered.gtf
-  rm -f $GENOME.protref.annotated.gtf $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
-  rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all
+  rm -f $GENOME.merged.rev.gtf
+  rm -f $GENOME.protref.{loci,stats,tracking,annotated.gtf} $GENOME.protref $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
+  rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
   rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
   rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt

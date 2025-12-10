@@ -126,7 +126,7 @@ my %hn=();
 my $add_thresh=.9999;
 my $score_thresh=(split(/\s+/,$scores_sorted[int($#scores_sorted*0.5)]))[0]-5;
 print "# score_thresh=$score_thresh\n";
-$score_thresh=0 if($score_thresh>85);
+$score_thresh=0 if($score_thresh>80);
 print "# score_thresh=$score_thresh\n";
 #here we figure out what the additional threshold should be based on the ratio of complete to protein-only
 #first we only consider complete proteins
