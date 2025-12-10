@@ -377,9 +377,9 @@ for my $g(keys %transcript_gff){
         $acceptor_hmm2_nscore+=$acceptor_hmm_nfreq[0][$code2{substr($acceptor_seq,0,2)}] if(defined($code2{substr($acceptor_seq,0,2)}));
 
         #print "DEBUG D $donor_seq $donor_score $donor_nscore $donor_hmm_score $donor_hmm_nscore $donor_hmm2_score $donor_hmm2_nscore A $acceptor_seq $acceptor_score $acceptor_nscore $acceptor_hmm_score $acceptor_hmm_nscore $acceptor_hmm2_score $acceptor_hmm2_nscore\n";
-        $junction0_score=($donor_score-$donor_nscore+$acceptor_score-$acceptor_nscore)+2.3;
-        $junction1_score=($donor_hmm_score-$donor_hmm_nscore+$acceptor_hmm_score-$acceptor_hmm_nscore)*0.45+2.3;
-        $junction2_score=($donor_hmm2_score-$donor_hmm2_nscore+$acceptor_hmm2_score-$acceptor_hmm2_nscore)*.32+2.3;
+        $junction0_score=($donor_score-$donor_nscore+$acceptor_score-$acceptor_nscore)+3;
+        $junction1_score=($donor_hmm_score-$donor_hmm_nscore+$acceptor_hmm_score-$acceptor_hmm_nscore)*0.45+3;
+        $junction2_score=($donor_hmm2_score-$donor_hmm2_nscore+$acceptor_hmm2_score-$acceptor_hmm2_nscore)*.32+3;
       }
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
