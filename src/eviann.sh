@@ -681,7 +681,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $exons=$3;
         $geneid=$4;
         ($name,$samples,$tpm)=split(/:/,$id);
-        $score{$id}++ if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
+        $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
         $score{$id}+=2 if($tpm > 10 || $samples > 1);
         $score{$id}+=$reliable{$id};
         if($score{$id}>-0.5){
