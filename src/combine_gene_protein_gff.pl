@@ -267,7 +267,7 @@ while(my $line=<FILE>){
       $transcripts_cds_loci{$locID}.="$ID ";
       $transcript_cds_modified{$ID}=0;
       print "DEBUG transcript $ID start $tstart end $tend CDS start $protein_start{$protID} end $protein_end{$protID}\n";
-      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && not($gff_fields[1] eq "EviAnnP" && $container=~/^MSTRG/) && $discard_contains){
+      if($transcript_contained{$ID} && not($ID =~ /_EXTERNAL$/ || $original_transcript_name{$ID} =~ /_EXTERNAL$/) && not($gff_fields[1] eq "EviAnnP" && ($container=~/^MSTRG/ || $container=~/^STRG/ )) && $discard_contains){
         print "DEBUG ignoring contained transcript $gff_fields[8] contained in $container\n";
         $transcript_class{$ID}="NA";
       }
@@ -1092,7 +1092,7 @@ for my $locus(keys %transcripts_only_loci){
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
     print "DEBUG u $final_pass transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
-    next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && $transcriptID =~ /^MSTRG/ && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
+    next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && ($transcriptID =~ /^MSTRG/ || $transcriptID =~ /^STRG/ ) && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
     print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;
     my $type=$final_pass==1 ? "lnc_RNA" : "mRNA";
