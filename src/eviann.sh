@@ -390,7 +390,7 @@ if [ -e transcripts_assemble.success ] && [ ! -e  transcripts_merge.success ];th
   ls tissue*.bam.sorted.bam | xargs -P 4 -I {} bash -c "samtools view {} | compute_junction_counts.pl $GENOMEFILE > {}.junc.bed.tmp" && \
   cat tissue*.bam.sorted.bam.junc.bed.tmp| perl -F'\t' -ane '{$count{"$F[0]\t$F[1]\t$F[2]\t$F[5]"}+=$F[4];}END{foreach $j(keys %count){@f=split(/\t/,$j);print "$f[0]\t$f[1]\t$f[2]\tJUNC\t$count{$j}\t$f[3]\n"}}'  |sort -k1,1 -k2,3n -S 10% > $GENOME.junc.bed.tmp && \
   mv $GENOME.junc.bed.tmp $GENOME.junc.bed && \
-  rm -f tissue*.bam.sorted.bam.junc.bed.tmp && 
+  rm -f tissue*.bam.sorted.bam.junc.bed.tmp
   OUTCOUNT=`ls tissue*.bam.sorted.bam.gtf|wc -l`
   if [ $OUTCOUNT -eq 1 ];then
     # a single tissue, we add 1 for the number of samples and the TPMs
