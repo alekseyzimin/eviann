@@ -86,6 +86,7 @@ if($opts->{cmd} eq "one"){
   open(FILE,$opts->{fstr});
   while(my $line=<FILE>){
     chomp($line);
+    $line=(split(/\s+/,$line))[0];
     $names{$line}=1;
   }
   while(my $line=<STDIN>){
