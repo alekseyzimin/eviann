@@ -257,6 +257,12 @@ if [ -s $CDSFILE ];then
 fi
 
 #checking if dependencies are installed
+if [ -s $MYPATH/ufasta ];then
+  UFASTA=$MYPATH/ufasta
+else
+  UFASTA=$MYPATH/ufasta.pl
+fi
+log "ufasta is $UFASTA"
 log "Checking dependencies"
 for prog in $(echo "stringtie gffread gffcompare miniprot TransDecoder.Predict TransDecoder.LongOrfs");do
   echo -n "Checking for $prog in $MYPATH ... " && \
@@ -277,7 +283,7 @@ log "All dependencies checks passed"
 
 if [ $MAX_INTRON -le 1 ];then
   log "Auto-determining the maximum intron size based on the genome size" && \
-  MAX_INTRON=`cat $GENOMEFILE <(echo "") |ufasta.pl n50 -S | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/$p*2)*1000); $m=100000 if($m<100000); print $m;'` && \
+  MAX_INTRON=`cat $GENOMEFILE <(echo "") |$UFASTA n50 -S | perl -ane '$p=int('$PLOIDY'); $p=2 if($p<=0);$m=int(sqrt($F[1]/1000/$p*2)*1000); $m=100000 if($m<100000); print $m;'` && \
   log "Maximum intron size set to $MAX_INTRON"
 fi
 
@@ -285,7 +291,7 @@ if [ ! -e transcripts_assemble.success ];then
   if [ -s $ALT_EST ];then
     log "Processing transcripts from related species"
     if [ ! -s tissue0.bam.sorted.bam.gtf ];then 
-      cat <(cat $GENOMEFILE <(echo "") |ufasta.pl sizes -H | awk '{print "@SQ\tSN:"$1"\tLN:"$2}') \
+      cat <(cat $GENOMEFILE <(echo "") |$UFASTA sizes -H | awk '{print "@SQ\tSN:"$1"\tLN:"$2}') \
         <(minimap2 -a -u f -x splice:hq -t $NUM_THREADS -G $MAX_INTRON $GENOMEFILE $ALT_EST 2>tissue0.err | grep -v '^@') | \
         samtools view -bhS /dev/stdin > tissue0.bam.tmp && \
       mv tissue0.bam.tmp tissue0.bam  
@@ -314,7 +320,7 @@ if [ ! -e transcripts_assemble.success ];then
     awk 'BEGIN{n=1}{
       if(NF == 4){
         if($NF == "mix"){
-          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ] || [ $FIRSTCHAR = \"@\" ];then\n hisat2 -x '$GENOME'.hst -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam -T sts -O bam> tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam;\n cat <(cat '$GENOMEFILE' <(echo \"\") |ufasta.pl sizes -H | awk \047{print \"@SQ\\tSN:\"$1\"\\tLN:\"$2}\047) <(minimap2 -a -u f -x splice -t '$NUM_THREADS' -G '$MAX_INTRON' '$GENOMEFILE' "$3" 2>tissue"n".err| grep -v \047^@\047) | samtools view -bhS /dev/stdin > tissue"n"_lr.bam.tmp && mv tissue"n"_lr.bam.tmp tissue"n"_lr.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n"_lr.bam -T sts -O bam> tissue"n"_lr.bam.sorted.tmp.bam && mv tissue"n"_lr.bam.sorted.tmp.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n".bam tissue"n"_lr.bam;\nif [ -s tissue"n"_lr.bam.sorted.bam ];then\n ./run_stringtie_mix.sh tissue"n".bam.sorted.bam tissue"n"_lr.bam.sorted.bam;\nelse\n ./run_stringtie.sh tissue"n".bam.sorted.bam;\nfi\nfi\nfi";
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ] || [ $FIRSTCHAR = \"@\" ];then\n hisat2 -x '$GENOME'.hst -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -1 "$1" -2 "$2" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam -T sts -O bam> tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam;\n cat <(cat '$GENOMEFILE' <(echo \"\") |$UFASTA sizes -H | awk \047{print \"@SQ\\tSN:\"$1\"\\tLN:\"$2}\047) <(minimap2 -a -u f -x splice -t '$NUM_THREADS' -G '$MAX_INTRON' '$GENOMEFILE' "$3" 2>tissue"n".err| grep -v \047^@\047) | samtools view -bhS /dev/stdin > tissue"n"_lr.bam.tmp && mv tissue"n"_lr.bam.tmp tissue"n"_lr.bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n"_lr.bam -T sts -O bam> tissue"n"_lr.bam.sorted.tmp.bam && mv tissue"n"_lr.bam.sorted.tmp.bam tissue"n"_lr.bam.sorted.bam && rm tissue"n".bam tissue"n"_lr.bam;\nif [ -s tissue"n"_lr.bam.sorted.bam ];then\n ./run_stringtie_mix.sh tissue"n".bam.sorted.bam tissue"n"_lr.bam.sorted.bam;\nelse\n ./run_stringtie.sh tissue"n".bam.sorted.bam;\nfi\nfi\nfi";
           n++;
         }
       }else if(NF == 3){
@@ -336,7 +342,7 @@ if [ ! -e transcripts_assemble.success ];then
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nsamtools sort -@ '$NUM_THREADS' -m 1G "$1"  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nfi"; 
           n++;
         }else if($NF == "isoseq"){
-          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ] || [ $FIRSTCHAR = \"@\" ];then\n cat <(cat '$GENOMEFILE' <(echo \"\") | ufasta.pl sizes -H| awk \047{print \"@SQ\\tSN:\"$1\"\\tLN:\"$2}\047) <(minimap2 -a -u f -x splice:hq -t '$NUM_THREADS' -G '$MAX_INTRON' '$GENOMEFILE' "$1" 2>tissue"n".err | grep -v \047^@\047) | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
+          print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ] || [ $FIRSTCHAR = \"@\" ];then\n cat <(cat '$GENOMEFILE' <(echo \"\") | $UFASTA sizes -H| awk \047{print \"@SQ\\tSN:\"$1\"\\tLN:\"$2}\047) <(minimap2 -a -u f -x splice:hq -t '$NUM_THREADS' -G '$MAX_INTRON' '$GENOMEFILE' "$1" 2>tissue"n".err | grep -v \047^@\047) | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie_lr.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
           n++;
         }else if($NF == "fasta"){
           print "if [ ! -s tissue"n".bam.sorted.bam.gtf ];then\nif [ ! -s "$1" ];then echo \"Input data file "$1" does not exist or empty!\";exit 1;fi\nFIRSTCHAR=`zcat -f "$1" | head -n 1 | cut -b 1`\nif [ $FIRSTCHAR = \">\" ];then\n hisat2 -x '$GENOME'.hst -f -p '$NUM_THREADS' --min-intronlen 20 --max-intronlen '$MAX_INTRON' -U "$1" 2>tissue"n".err | samtools view -bhS /dev/stdin > tissue"n".bam.tmp && mv tissue"n".bam.tmp tissue"n".bam && samtools sort -@ '$NUM_THREADS' -m 1G tissue"n".bam  -T sts -O bam >tissue"n".bam.sorted.tmp.bam && mv tissue"n".bam.sorted.tmp.bam tissue"n".bam.sorted.bam && rm tissue"n".bam && ./run_stringtie.sh tissue"n".bam.sorted.bam || exit 1\nelse echo \"WARNING! Invalid fasta format file "$1", ignoring it\"\nfi\nfi";
@@ -451,7 +457,7 @@ fi
 if [ ! -e protein2genome.deduplicate.success ];then
   if [ -s $PROTEINFILE ];then 
     log "Deduplicating input proteins"
-    ufasta.pl one < $PROTEINFILE | \
+    $UFASTA one < $PROTEINFILE | \
       awk '{if($0 ~ /^>/){header=$1}else{print header,$1}}' |\
       sort  -S 10% -k2,2 |\
       uniq -f 1 |\
@@ -779,7 +785,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $GENOMEFILE \
         $GENOME.unused_proteins.spliceFiltered.gff \
         <(gffread -V -x /dev/stdout -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff | \
-          ufasta.pl one | \
+          $UFASTA one | \
           awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
         ) \
         $GENOME.k.gff $MITO_CTG_LIST_FILE \
@@ -837,10 +843,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.broken_ref.txt.tmp $GENOME.broken_ref.txt && \
   if [ -s $GENOME.u.cds.gff ];then
     cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.u.cds.gff) | \
-      ufasta.pl extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp && \
+      $UFASTA extract -f $GENOME.broken_ref.txt > $GENOME.broken_ref.faa.tmp && \
       mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
   else
-    ufasta.pl extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
+    $UFASTA extract -f $GENOME.broken_ref.txt $PROTEINFILE > $GENOME.broken_ref.faa.tmp && \
     mv $GENOME.broken_ref.faa.tmp $GENOME.broken_ref.faa
   fi
   rm -rf $GENOME.broken_cds.fa.transdecoder* && \
@@ -892,9 +898,9 @@ fi
 if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
   log "Detecting and annotating processed pseudogenes" && \
   gffread -S -g $GENOMEFILE -y $GENOME.proteins.fasta $GENOME.gff && \
-  ufasta.pl extract -f <(awk -F'\t' '{if($3=="exon"){split($9,a,";");print substr(a[1],8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
+  $UFASTA extract -f <(awk -F'\t' '{if($3=="exon"){split($9,a,";");print substr(a[1],8);}}'  $GENOME.gff|uniq -d) $GENOME.proteins.fasta > $GENOME.proteins.mex.fasta.tmp && \
   mv $GENOME.proteins.mex.fasta.tmp $GENOME.proteins.mex.fasta && \
-  ufasta.pl extract -f <(awk -F'\t' '{if($3=="exon"){split($9,a,";");print substr(a[1],8);}}'  $GENOME.gff|uniq -c | \
+  $UFASTA extract -f <(awk -F'\t' '{if($3=="exon"){split($9,a,";");print substr(a[1],8);}}'  $GENOME.gff|uniq -c | \
     perl -ane '{($gene,$junk)=split(/-/,$F[1]);$max_count{$gene}=$F[0] if($max_count{$gene}<$F[0]);$transcripts{$gene}.="$F[1]\n";}END{foreach $k(keys %max_count){if($max_count{$k}==1){print $transcripts{$k}}}}') $GENOME.proteins.fasta > $GENOME.proteins.sex.fasta.tmp && \
   mv $GENOME.proteins.sex.fasta.tmp $GENOME.proteins.sex.fasta && \
   if [ -s $GENOME.proteins.mex.fasta ] && [ -s $GENOME.proteins.sex.fasta ];then
@@ -974,7 +980,7 @@ if [ -e loci.success ] && [ -e pseudo_detect.success ];then
   echo -n "Number of processed pseudo genes: ";awk -F'\t' '{if($3=="gene")print $0}' $GENOME.pseudo_label.gff| grep 'pseudo=true' |wc -l
   echo -n "Number of transcripts: ";awk -F'\t' '{if($3=="mRNA")print $0}' $GENOME.pseudo_label.gff |wc -l
   echo -n "Number of long non-coding RNAs: "; awk -F '\t' '{if($3=="lnc_RNA") print}'  $GENOME.pseudo_label.gff |wc -l
-  echo -n "Number of distinct proteins: "; ufasta.pl one < $GENOME.proteins.fasta | grep -v '^>' |sort -S 10% |uniq |wc -l
+  echo -n "Number of distinct proteins: "; $UFASTA one < $GENOME.proteins.fasta | grep -v '^>' |sort -S 10% |uniq |wc -l
 fi
 
 #cleanup
