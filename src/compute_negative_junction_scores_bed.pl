@@ -90,13 +90,13 @@ while($line=<STDIN>){
   }
   next if($donor_seq=~/N/ || $acceptor_seq=~/N/);
   if($gff_fields[0] eq "don"){
-    #print "DEBUG donor $donor_seq $gff_fields[4]\n";
+    print STDERR "DEBUG donor $donor_seq $gff_fields[4]\n";
     for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++ if(defined($code{substr($donor_seq,$i,1)}));}
     for(my $i=0;$i<($donor_length-1);$i++) {$donor2_pwm[$i][$code2{substr($donor_seq,$i,2)}]++ if(defined($code2{substr($donor_seq,$i,2)}));}
     for(my $i=0;$i<($donor_length-2);$i++) {$donor3_pwm[$i][$code3{substr($donor_seq,$i,3)}]++ if(defined($code3{substr($donor_seq,$i,3)}));}
     $wd++;
   }else{
-    #print "DEBUG acceptor $acceptor_seq $gff_fields[4]\n";
+    print STDERR "DEBUG acceptor $acceptor_seq $gff_fields[4]\n";
     for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
     for(my $i=0;$i<($acceptor_length-1);$i++) {$acceptor2_pwm[$i][$code2{substr($acceptor_seq,$i,2)}]++ if(defined($code2{substr($acceptor_seq,$i,2)}));}
     for(my $i=0;$i<($acceptor_length-2);$i++) {$acceptor3_pwm[$i][$code3{substr($acceptor_seq,$i,3)}]++ if(defined($code3{substr($acceptor_seq,$i,3)}));}

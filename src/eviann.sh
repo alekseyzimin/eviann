@@ -652,7 +652,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           }
         }
       }' | \
-    compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.pwm.err && \
+    compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
     mv $GENOME.pwm.tmp $GENOME.pwm && \
     mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm
   fi
@@ -994,6 +994,7 @@ fi
 #cleanup
 if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.num_introns.txt
+  rm -f $GENOME.pwm.err $GENOME.neg.pwm.err
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
   rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
   rm -f $GENOME.unused_proteins.gff $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff

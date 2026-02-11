@@ -85,7 +85,7 @@ while($line=<STDIN>){
   next if($donor_seq=~/N/ || $acceptor_seq=~/N/);
   $donor7{substr($donor_seq,2,7)}++;
   $acceptor7{substr($acceptor_seq,$acceptor_length-9,7)}++;
-  #print "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[5]\n";
+  print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[5]\n";
   for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++ if(defined($code{substr($donor_seq,$i,1)}));}
   for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
   for(my $i=0;$i<($donor_length-1);$i++) {$donor2_pwm[$i][$code2{substr($donor_seq,$i,2)}]++ if(defined($code2{substr($donor_seq,$i,2)}));}
