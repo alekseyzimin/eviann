@@ -7,8 +7,8 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
-my $donor_length=15;
-my $acceptor_length=30;
+my $donor_length=50;
+my $acceptor_length=50;
 my $score_floor_value=1e-10;
 #these are genetic codes for Markov chains
 my %code=();

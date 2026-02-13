@@ -639,17 +639,23 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         }
       }END{
         open(FILE,"'$GENOME'.junc.bed");
+        my %output=();
         while($line=<FILE>){
           chomp($line);
           @f=split(/\t+/,$line);
           next if($f[5] eq "." || $f[4]>2);
           if($f[5] eq "+"){
-            print "don\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[1] $f[5]"}));
-            print "acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[2] $f[5]"}));
+            $output{"don\t$f[0]\t$f[1]\t$f[4]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}));
+            $output{"acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]"}=1 unless(defined($acc{"$f[0] $f[2] $f[5]"}));
+            $output{"pair\t$f[0]\t$f[1]\t$f[2]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}) || defined($acc{"$f[0] $f[2] $f[5]"}));
           }else{
-            print "acc\t$f[0]\t$f[1]\t$f[4]\t$f[5]\n" unless(defined($acc{"$f[0] $f[1] $f[5]"}));
-            print "don\t$f[0]\t$f[2]\t$f[4]\t$f[5]\n" unless(defined($don{"$f[0] $f[2] $f[5]"}));
+            $output{"acc\t$f[0]\t$f[1]\t$f[4]\t$f[5]"}=1 unless(defined($acc{"$f[0] $f[1] $f[5]"}));
+            $output{"don\t$f[0]\t$f[2]\t$f[4]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}));
+            $output{"pair\t$f[0]\t$f[2]\t$f[1]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}) || defined($acc{"$f[0] $f[1] $f[5]"}));
           }
+        }
+        foreach my $k(keys %output){
+          print "$k\n";
         }
       }' | \
     compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \

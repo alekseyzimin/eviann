@@ -7,8 +7,8 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
-my $donor_length=15;
-my $acceptor_length=30;
+my $donor_length=50;
+my $acceptor_length=50;
 my $score_floor_value=1e-10;
 #these are genetic codes for Markov chains
 my %code=();
@@ -74,19 +74,25 @@ while($line=<STDIN>){
   if($gff_fields[4] eq "+"){
     if($gff_fields[0] eq "don"){
       $donor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-3,$donor_length));
-    }else{
+    }elsif($gff_fields[0] eq "acc"){
       $acceptor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($acceptor_length-3),$acceptor_length));
+    }elsif($gff_fields[0] eq "pair"){
+      $pair_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-3,$donor_length))." ".uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[3]-($acceptor_length-3),$acceptor_length));
     }
   }else{
     if($gff_fields[0] eq "don"){
       $donor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($donor_length-3),$donor_length));
       $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
       $donor_seq=reverse($donor_seq);
-    }else{
+    }elsif($gff_fields[0] eq "acc"){
       $acceptor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-3,$acceptor_length));
       $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
       $acceptor_seq=reverse($acceptor_seq);
-    }
+    }elsif($gff_fields[0] eq "pair"){
+      $pair_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[3]-3,$acceptor_length))." ".uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($donor_length-3),$donor_length));
+      $pair_seq=~tr/ACGTNacgtn /TGCANtgcan /;
+      $pair_seq=reverse($pair_seq);
+    } 
   }
   next if($donor_seq=~/N/ || $acceptor_seq=~/N/);
   if($gff_fields[0] eq "don"){
@@ -95,12 +101,14 @@ while($line=<STDIN>){
     for(my $i=0;$i<($donor_length-1);$i++) {$donor2_pwm[$i][$code2{substr($donor_seq,$i,2)}]++ if(defined($code2{substr($donor_seq,$i,2)}));}
     for(my $i=0;$i<($donor_length-2);$i++) {$donor3_pwm[$i][$code3{substr($donor_seq,$i,3)}]++ if(defined($code3{substr($donor_seq,$i,3)}));}
     $wd++;
-  }else{
+  }elsif($gff_fields[0] eq "acc"){
     print STDERR "DEBUG acceptor $acceptor_seq $gff_fields[4]\n";
     for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
     for(my $i=0;$i<($acceptor_length-1);$i++) {$acceptor2_pwm[$i][$code2{substr($acceptor_seq,$i,2)}]++ if(defined($code2{substr($acceptor_seq,$i,2)}));}
     for(my $i=0;$i<($acceptor_length-2);$i++) {$acceptor3_pwm[$i][$code3{substr($acceptor_seq,$i,3)}]++ if(defined($code3{substr($acceptor_seq,$i,3)}));}
     $wa++;
+  }elsif($gff_fields[0] eq "pair"){
+    print STDERR "DEBUG pair $pair_seq $gff_fields[4]\n";
   }
 }
 
