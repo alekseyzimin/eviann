@@ -133,6 +133,7 @@ print "# score_thresh=$score_thresh\n";
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   next if($F[0]<$score_thresh);
+  next if($F[2]=~/_EXTERNAL$/);
   #print "DEBUG consider $scores_sorted[$i] $hn{$F[1]} $hs{$F[1]}\n";
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
@@ -152,6 +153,7 @@ my %hn=();
 for(my $i=0;$i<=$#scores_sorted;$i++){
   my @F=split(/\s+/,$scores_sorted[$i]);
   next if($F[0]<$score_thresh+5);
+  next if($F[2]=~/_EXTERNAL$/);
   if($hn{$F[1]} < 1 || $F[0]>$hs{$F[1]}*$add_thresh){
     $hn{$F[1]}+=1;#this is the number of proteins per locus
     $hs{$F[1]}=$F[0] if(not(defined($hs{$F[1]})));#this is the highest score per locus
@@ -160,6 +162,7 @@ for(my $i=0;$i<=$#scores_sorted;$i++){
 }
 
 my $flag=0;
+my $source="EviAnnP";
 foreach my $l(@unused){
   chomp($l);
   my @f=split(/\t/,$l);
@@ -167,10 +170,12 @@ foreach my $l(@unused){
   if($f[2] eq "gene"){
     $f[2]="transcript";
     $id=$1 if($f[8]=~ /ID=(\S+);geneID=(\S+);identity=(\S+);similarity=(\S+)$/);
+    $source=($id=~/_EXTERNAL$/) ? "EviAnnE" : "EviAnnP";
     #print "#DEBUG $id $intron_chains{$id} $h{$id} $used_intron_chains{$intron_chains{$id}}\n";
     $flag=((defined($h{$id}) || $id=~/_EXTERNAL$/) && not(defined($used_intron_chains{$intron_chains{$id}}))) ? 1 : 0;
     $used_intron_chains{$intron_chains{$id}}=1 if($flag);
   }
+  $f[1]=$source;
   print join("\t",@f),"\n" if($flag);
 }
 

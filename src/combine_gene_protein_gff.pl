@@ -872,11 +872,12 @@ for my $locus(keys %transcripts_cds_loci){
   my $parent=$geneID."-mRNA-";
   my $transcript_index=0;
   #we output transcripts by class code, first = then k and then j, and we record which cds we used; if the cds was used for a higher class we skip the transcript
-  for my $source("StringTie","EviAnnP"){
+  for my $source("StringTie","EviAnnP","EviAnnE"){
      for my $class ("=","k","j","m","n"){  
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
+        next if($source eq "EviAnnE" && $transcript_index > 0);#do not output external if there are already transcripts output for this gene locus
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source\n";
         my $protID=$transcript_cds{$t};
         if($source eq "EviAnnP" && $used_proteins{$protID}){
