@@ -612,7 +612,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   log "Computing Markov chain matrices at splice junctions" && \
   gffread -F --tlf $GENOME.k.gff |\
-    perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;/){$tid=$4;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\tJUNC$n\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' | \
+    perl -F'\t' -ane 'BEGIN{$n=1}{if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;Evidence=complete;/){$tid=$5;$exons=$3;@f=split(/-/,$exons);for($i=1;$i<$#f;$i++){($c1,$c2)=split(/,/,$f[$i]);$c2--; unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]"})){print "$F[0]\t$c1\t$c2\t$tid\t1\t$F[6]\n"; $output{"$F[0]\t$c1\t$c2\t$F[6]"}=1;$n++}}}}' |\
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   rm -f $GENOME.neg.pwm && \
