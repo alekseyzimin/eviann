@@ -108,7 +108,8 @@ while($line=<STDIN>){
     for(my $i=0;$i<($acceptor_length-2);$i++) {$acceptor3_pwm[$i][$code3{substr($acceptor_seq,$i,3)}]++ if(defined($code3{substr($acceptor_seq,$i,3)}));}
     $wa++;
   }elsif($gff_fields[0] eq "pair"){
-    print STDERR "DEBUG pair $pair_seq $gff_fields[4]\n";
+    my $max_len=int(abs($gff_fields[3]-$gff_fields[2])/2);
+    print STDERR "DEBUG pair $pair_seq $gff_fields[4] $max_len\n";
   }
 }
 
