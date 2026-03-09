@@ -13,6 +13,7 @@ export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=1.0
+export WAM_THRESHOLD=-0.5
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
@@ -704,7 +705,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
         $score{$id}+=2 if($tpm > 10 || $samples > 1);
         $score{$id}+=$reliable{$id};
-        if($score{$id}>-0.5){
+        if($score{$id}>'$WAM_THRESHOLD'){
           @f=split(/-/,$exons);
           if($#f>1){
             $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
@@ -787,7 +788,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }{
       if($F[2] eq "gene"){
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>0 && $ex_score{$id}>0)) ? 1 : 0;
+        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$WAM_THRESHOLD' && $ex_score{$id}>0)) ? 1 : 0;
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
