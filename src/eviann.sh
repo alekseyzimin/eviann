@@ -788,7 +788,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }{
       if($F[2] eq "gene"){
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$WAM_THRESHOLD' && $ex_score{$id}>0)) ? 1 : 0;
+        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$WAM_THRESHOLD' && $ex_score{$id}>'$WAM_THRESHOLD')) ? 1 : 0;
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
@@ -829,12 +829,17 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
   fi
   log "Working on final merge"
+#these are extra protein copies for "j" transcripts
+  gffread -T --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)"; (.+) cmp_ref "(\S+)"; class_code "j";/){print "$3\n";}}' $GENOME.protref.spliceFiltered.annotated.gtf) $GENOME.palign.fixed.gff |\
+  gffread -T --nids <(perl -F'\t' -ane '{if($F[8]=~/ID=(\S+);geneID=/){print "$1\n";}}' $GENOME.best_unused_proteins.gff) |\
+  perl -F'\t' -ane '{$F[1]="EviAnnP";print join("\t",@F)}' > $GENOME.j_proteins.gtf.tmp && \
+  mv $GENOME.j_proteins.gtf.tmp $GENOME.j_proteins.gtf && \
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then
-    gffread -T $GENOME.best_unused_proteins.gff $GENOME.abundanceFiltered.spliceFiltered.gtf  > $GENOME.all.combined.gtf.tmp && \
+    gffread -T $GENOME.best_unused_proteins.gff $GENOME.j_proteins.gtf $GENOME.abundanceFiltered.spliceFiltered.gtf  > $GENOME.all.combined.gtf.tmp && \
     mv $GENOME.all.combined.gtf.tmp $GENOME.all.combined.gtf
   else
-    cp $GENOME.abundanceFiltered.spliceFiltered.gtf $GENOME.all.combined.gtf.tmp && \
+    gffread -T $GENOME.abundanceFiltered.spliceFiltered.gtf $GENOME.j_proteins.gtf > $GENOME.all.combined.gtf.tmp && \
     mv $GENOME.all.combined.gtf.tmp $GENOME.all.combined.gtf
   fi
 #now we have additional proteins produced by transdecoder, let's use them all, along with SNAP proteins that match the transcripts
