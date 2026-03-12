@@ -898,10 +898,10 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.k.gff.tmp $GENOME.k.gff && \
     mv $GENOME.u.gff.tmp $GENOME.u.gff && \
     rm -f $GENOME.unused_proteins.gff.tmp && \
-  touch merge.success && rm -f loci.success pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
+  touch merge.success && rm -f ab_initio.success loci.success pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
 
-if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO ];then
+if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];then
   log "Performing ab initio CDS finding for assembled transcripts" && \
   rm -rf ab_initio && mkdir -p ab_initio && \
   awk '{print $1}' $GENOMEFILE > ab_initio/$GENOME.training.fa && \
