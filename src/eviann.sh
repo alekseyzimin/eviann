@@ -24,6 +24,7 @@ set -o pipefail
 NUM_THREADS=1
 FUNCTIONAL=0
 MIN_ORF=75
+AB_INITIO=1
 GC=
 RC=
 NC=
@@ -900,6 +901,69 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   touch merge.success && rm -f loci.success pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
 fi
 
+if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO ];then
+  log "Performing ab initio CDS finding for assembled transcripts" && \
+  rm -rf ab_initio && mkdir -p ab_initio && \
+  awk '{print $1}' $GENOMEFILE > ab_initio/$GENOME.training.fa && \
+  gff3_to_zff.pl ab_initio/$GENOME.training.fa <( \
+  perl -F'\t' -ane '{
+    if($F[2] eq "mRNA"){
+      if($F[8]=~/^ID=(\S+)-mRNA-1;Parent=(\S+);Class=(=|k);/){
+        $flag=1;
+        $F[2]="gene";
+        if($F[8]=~/Parent=(\S+);EvidenceP/){
+          $parent=$1;
+        }
+        print join("\t",@F[0..7]),"\tID=$parent;geneID=$parent\n";
+        print;
+      }else{
+        $flag=0;
+      }
+    }else{
+      print if($flag && not($F[2] eq "gene"));
+    }
+  }' $GENOME.k.gff) > ab_initio/$GENOME.k.zff && \
+  (cd ab_initio && \
+    fathom -categorize 400 $GENOME.k.zff $GENOME.training.fa && \
+    fathom -export 400 -plus uni.* && \
+    forge export.ann export.dna && \
+    hmm-assembler.pl -A 2:30 -D 2:15 -M 2:15 -S 0:9 -C 4 -I 4 -N 4 Org . > Org.hmm && \
+    gffread -T \
+      <(snap -plus -gff -quiet Org.hmm $GENOME.training.fa > snap_plus.gff && \
+        perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]f\"\n";print join("\t",@F)}' snap_plus.gff) \
+      <(snap -minus -gff -quiet Org.hmm $GENOME.training.fa > snap_minus.gff && \
+        perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]r\"\n";print join("\t",@F)}' snap_minus.gff) \
+      > $GENOME.snap.combined.gtf.tmp && \
+    mv $GENOME.snap.combined.gtf.tmp ../$GENOME.snap.combined.gtf) && \
+  gffread --ids \
+    <(trmap -c '=' $GENOME.palign.fixed.gff $GENOME.snap.combined.gtf | awk '{if($1~/^>/) print substr($1,2)}';\
+      trmap -c 'k=' $GENOME.spliceFiltered.gtf $GENOME.snap.combined.gtf | awk '{if($1~/^>/) print substr($1,2)}') $GENOME.snap.combined.gtf |\
+    perl -F'\t' -ane '{if($F[2] eq "transcript"){$F[2]="gene";}if($F[2] eq "exon"){$F[2]="CDS";print join("\t",@F);$F[2]="exon";}print join("\t",@F)}' > $GENOME.snap.filtered.gff.tmp && \
+  mv $GENOME.snap.filtered.gff.tmp $GENOME.snap.filtered.gff && \
+  gffread --nids <(perl -F'\t' -ane '{if($F[8] =~/EvidenceTranscriptID=(\S+);StartCodon=/){print "$1\n";}}'  $GENOME.k.gff) $GENOME.spliceFiltered.gtf > $GENOME.spliceFiltered.nomatch.gtf.tmp && \
+  mv $GENOME.spliceFiltered.nomatch.gtf.tmp $GENOME.spliceFiltered.nomatch.gtf && \
+  gffcompare -T -o $GENOME.snapref -r $GENOME.snap.filtered.gff $GENOME.spliceFiltered.nomatch.gtf && \
+  cat $GENOME.palign.all.gff $GENOME.snap.filtered.gff | \
+    combine_gene_protein_gff.pl \
+      --prefix $GENOME \
+      --annotated <(cat $GENOME.protref.all.annotated.class.gff <(gffread -F $GENOME.snapref.annotated.gtf| perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=($F[8] =~ /class_code=(k|=)/)?1:0;} $F[8]=~s/geneID=XLOC_/geneID=AXLOC_/;$F[8]=~s/xloc=XLOC_/xloc=AXLOC_/;print join("\t",@F) if($flag);}')) \
+      --genome $GENOMEFILE \
+      --transdecoder $GENOME.fixed_cds.txt \
+      --pwms $GENOME.pwm \
+      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
+      --mito $MITO_CTG_LIST_FILE \
+      --final_pass \
+      --proteins <(cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.snap.filtered.gff)) \
+      --output_partial $PARTIAL \
+      --lncrnamintpm $LNCRNATPM \
+      1>combine.out 2>&1 && \
+    mv $GENOME.k.gff $GENOME.k.gff.bak && \
+    mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+    mv $GENOME.u.gff.tmp $GENOME.u.gff && \
+    rm -f $GENOME.unused_proteins.gff.tmp && \
+    touch ab_initio.success && rm -f loci.success pseudo_detect.success functional.success || error_exit "ab initio gene finding failed."
+fi
+
 if [ -e merge.success ] && [ ! -e loci.success ];then
   log "Reassigning loci based on coding sequences" && \
   gffread -F $GENOME.k.gff |\
@@ -1005,6 +1069,7 @@ fi
 
 #cleanup
 if [ $DEBUG -lt 1 ];then
+  rm -rf ab_initio $GENOME.snapref.{loci,stats,tracking,annotated.gtf} $GENOME.spliceFiltered.nomatch.gtf $GENOME.snap.combined.gtf $GENOME.snap.filtered.gff
   rm -f $GENOME.num_introns.txt
   rm -f $GENOME.pwm.err $GENOME.neg.pwm.err
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
