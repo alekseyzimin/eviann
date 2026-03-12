@@ -51,4 +51,5 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	stringtie \
 	TransDecoder-v5.7.1a.tar.gz \
 	samtools \
-	miniprot.tgz
+	miniprot.tgz \
+	snap.tgz
