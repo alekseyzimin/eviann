@@ -948,7 +948,7 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
   cat $GENOME.palign.all.gff $GENOME.snap.filtered.gff | \
     combine_gene_protein_gff.pl \
       --prefix $GENOME \
-      --annotated <(cat <(gffread -F --nids <(perl -F'\t' -ane '{if($F[8] =~/EvidenceTranscriptID=(\S+);StartCodon=/){print "$1\n";}}'  $GENOME.k.gff) $GENOME.protref.all.annotated.class.gff) <(gffread -F $GENOME.snapref.annotated.gtf| perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=($F[8] =~ /class_code=(k|=)/)?1:0;} $F[8]=~s/geneID=XLOC_/geneID=AXLOC_/;$F[8]=~s/xloc=XLOC_/xloc=AXLOC_/;print join("\t",@F) if($flag);}')) \
+      --annotated <(cat <(gffread -F --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";(.+) class_code "(=|k)";/){print "$1\n"}}' $GENOME.snapref.annotated.gtf) $GENOME.protref.all.annotated.class.gff) <(gffread -F $GENOME.snapref.annotated.gtf| perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=($F[8] =~ /class_code=(k|=)/)?1:0;} $F[8]=~s/geneID=XLOC_/geneID=AXLOC_/;$F[8]=~s/xloc=XLOC_/xloc=AXLOC_/;print join("\t",@F) if($flag);}')) \
       --genome $GENOMEFILE \
       --transdecoder $GENOME.fixed_cds.txt \
       --pwms $GENOME.pwm \
