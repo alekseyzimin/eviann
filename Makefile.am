@@ -45,6 +45,7 @@ dist_bin_SCRIPTS = src/ez_maker.sh \
 	src/get_splice_sites.pl \
 	src/get_annotation_stats.sh \
 	src/ufasta.pl \
+	src/mask_fasta_file.pl \
 	exonerate \
 	makeblastdb blastp \
 	gffread gffcompare trmap \

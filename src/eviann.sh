@@ -923,15 +923,19 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
       print if($flag && not($F[2] eq "gene"));
     }
   }' $GENOME.k.gff) > ab_initio/$GENOME.k.zff && \
+  gffread --nids <(perl -F'\t' -ane '{if($F[8] =~/EvidenceTranscriptID=(\S+);StartCodon=/){print "$1\n";}}'  $GENOME.k.gff) $GENOME.spliceFiltered.gtf > $GENOME.spliceFiltered.nomatch.gtf.tmp && \
+  mv $GENOME.spliceFiltered.nomatch.gtf.tmp $GENOME.spliceFiltered.nomatch.gtf && \
+  cat $GENOMEFILE | mask_fasta_file.pl <(gffread -M $GENOME.spliceFiltered.nomatch.gtf) > ab_initio/$GENOME.masked.fa.tmp && \
+  mv ab_initio/$GENOME.masked.fa.tmp ab_initio/$GENOME.masked.fa && \
   (cd ab_initio && \
     fathom -categorize 400 $GENOME.k.zff $GENOME.training.fa && \
     fathom -export 400 -plus uni.* && \
     forge export.ann export.dna && \
     hmm-assembler.pl -A 2:30 -D 2:15 -M 2:15 -S 0:9 -C 4 -I 4 -N 4 Org . > Org.hmm && \
     gffread -T \
-      <(snap -plus -gff -quiet Org.hmm $GENOME.training.fa > snap_plus.gff && \
+      <(snap -plus -gff -quiet Org.hmm $GENOME.masked.fa 1>snap_plus.gff 2>/dev/null && \
         perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]f\"\n";print join("\t",@F)}' snap_plus.gff) \
-      <(snap -minus -gff -quiet Org.hmm $GENOME.training.fa > snap_minus.gff && \
+      <(snap -minus -gff -quiet Org.hmm $GENOME.masked.fa 1> snap_minus.gff 2>/dev/null && \
         perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]r\"\n";print join("\t",@F)}' snap_minus.gff) \
       > $GENOME.snap.combined.gtf.tmp && \
     mv $GENOME.snap.combined.gtf.tmp ../$GENOME.snap.combined.gtf) && \
@@ -940,8 +944,6 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
       trmap -c 'k=' $GENOME.spliceFiltered.gtf $GENOME.snap.combined.gtf | awk '{if($1~/^>/) print substr($1,2)}') $GENOME.snap.combined.gtf |\
     perl -F'\t' -ane '{if($F[2] eq "transcript"){$F[2]="gene";}if($F[2] eq "exon"){$F[2]="CDS";print join("\t",@F);$F[2]="exon";}print join("\t",@F)}' > $GENOME.snap.filtered.gff.tmp && \
   mv $GENOME.snap.filtered.gff.tmp $GENOME.snap.filtered.gff && \
-  gffread --nids <(perl -F'\t' -ane '{if($F[8] =~/EvidenceTranscriptID=(\S+);StartCodon=/){print "$1\n";}}'  $GENOME.k.gff) $GENOME.spliceFiltered.gtf > $GENOME.spliceFiltered.nomatch.gtf.tmp && \
-  mv $GENOME.spliceFiltered.nomatch.gtf.tmp $GENOME.spliceFiltered.nomatch.gtf && \
   gffcompare -T -o $GENOME.snapref -r $GENOME.snap.filtered.gff $GENOME.spliceFiltered.nomatch.gtf && \
   cat $GENOME.palign.all.gff $GENOME.snap.filtered.gff | \
     combine_gene_protein_gff.pl \
