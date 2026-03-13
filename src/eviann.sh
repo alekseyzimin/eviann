@@ -928,6 +928,8 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
     fathom -export 400 -plus uni.* && \
     forge export.ann export.dna && \
     hmm-assembler.pl -A 2:30 -D 2:15 -M 2:15 -S 0:9 -C 4 -I 4 -N 4 Org . > Org.hmm && \
+    cat $GENOME.training.fa |\
+    mask_fasta_file.pl <(gffread -M ../$GENOME.spliceFiltered.nomatch.gtf) |\
     perl -ne '
       BEGIN { $batch=1; $size=0; $limit=100000000; open OUT, sprintf(">batch_%d.fasta",$batch) }
         if (/^>/) {
@@ -942,7 +944,7 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
           chomp;
           $size += length($_);
           print OUT $_, "\n";
-        }' $GENOME.training.fa && \
+        }' && \
     gffread -T \
       <(ls batch_*.fasta | xargs -P $((NUM_THREADS/4+1)) -I {} bash -c 'snap -plus -gff -quiet Org.hmm "{}" 1>"{}.plus.gff" 2>/dev/null' && \
         cat batch_*.fasta.plus.gff |perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]f\"\n";print join("\t",@F)}') \
