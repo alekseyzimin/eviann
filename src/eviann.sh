@@ -930,6 +930,23 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
     fathom -export 400 -plus uni.* && \
     forge export.ann export.dna && \
     hmm-assembler.pl -A 2:30 -D 2:15 -M 2:15 -S 0:9 -C 4 -I 4 -N 4 Org . > Org.hmm && \
+    perl -ne '
+BEGIN { $batch=1; $size=0; $limit=100_000_000; open OUT, sprintf(">batch_%02d.fasta",$batch) }
+if (/^>/) {
+    if ($size >= $limit) {
+        close OUT;
+        $batch++;
+        $size = 0;
+        open OUT, sprintf(">batch_%02d.fasta",$batch);
+    }
+    print OUT $_;
+} else {
+    chomp;
+    $size += length($_);
+    print OUT $_, "\n";
+}
+' input.fasta
+
     gffread -T \
       <(snap -plus -gff -quiet Org.hmm $GENOME.masked.fa 1>snap_plus.gff 2>/dev/null && \
         perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]f\"\n";print join("\t",@F)}' snap_plus.gff) \
