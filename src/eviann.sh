@@ -908,12 +908,10 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
   gff3_to_zff.pl ab_initio/$GENOME.training.fa <( \
   perl -F'\t' -ane '{
     if($F[2] eq "mRNA"){
-      if($F[8]=~/^ID=(\S+)-mRNA-1;Parent=(\S+);Class=(=|k);/){
+      if($F[8]=~/^ID=(\S+)-mRNA-1;Parent=(\S+);EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=(\S\S\S);StopCodon=(\S\S\S);Class=(=|k);/){
         $flag=1;
         $F[2]="gene";
-        if($F[8]=~/Parent=(\S+);EvidenceP/){
-          $parent=$1;
-        }
+        $parent=$2;
         print join("\t",@F[0..7]),"\tID=$parent;geneID=$parent\n";
         print;
       }else{
