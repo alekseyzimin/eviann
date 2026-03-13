@@ -925,7 +925,7 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
   mv $GENOME.spliceFiltered.nomatch.gtf.tmp $GENOME.spliceFiltered.nomatch.gtf && \
   (cd ab_initio && \
     fathom -categorize 400 $GENOME.k.zff $GENOME.training.fa && \
-    fathom -export 400 -plus uni.* && \
+    fathom -export 400 -plus uni.ann uni.dna && \
     forge export.ann export.dna && \
     hmm-assembler.pl -A 2:30 -D 2:15 -M 2:15 -S 0:9 -C 4 -I 4 -N 4 Org . > Org.hmm && \
     cat $GENOME.training.fa |\
