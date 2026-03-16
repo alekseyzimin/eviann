@@ -74,6 +74,25 @@ open(OUTFILE4,">$output_prefix".".unused_proteins.gff.tmp");
 my $donor_length;
 my $acceptor_length;
 
+if(-e "psauron_score.csv"){
+  print "DEBUG loading frame file\n";
+  open(FILE,"psauron_score.csv");
+  $thresh=0.9;
+  while($line=<FILE>){
+    chomp($line);
+    @F=split(/,/,$line);
+    my $ncoding=0;
+    my $frame=-1;
+    for($fr=0;$fr<=2;$fr++){
+      if($F[$fr+2]>$thresh){
+        $frame=$fr;
+        $ncoding++;
+      }
+    }
+    $transcript_frame{$F[0]}=$frame if($ncoding==1);
+  }
+}
+
 #this is output of gffcompare -D -o protuniq ../GCF_000001735.4_TAIR10.1_genomic.fna.GCF_000001735.4_TAIR10.1_protein.faa.palign.gff
 #here we read in the aligned CDS features
 while(my $line=<STDIN>){#we just read in the whole file
@@ -568,7 +587,16 @@ for my $g(keys %transcript_cds){
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
       $transcript_cds_modified{$g}=1;
-      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
+      if(defined($transcript_frame{$g}) && $transcript_frame{$g}>-1){
+        print "\nDEBUG found new frame for $g: $transcript_frame{$g}\n";
+        my ($cds_start_on_transcript,$cds_end_on_transcript)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
+        print "Found new start/stop $cds_start_on_transcript,$cds_end_on_transcript\n";
+        $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+        if($cds_length==0){
+          $transcript_class{$g}="NA";
+          next;
+        }
+      }elsif(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
         print "end\n";
         $cds_length-=$cds_length%3;
       }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3),$gcode) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
@@ -576,6 +604,7 @@ for my $g(keys %transcript_cds){
         $cds_length-=$cds_length%3;
         print "beginning\n"
       }else{#fail
+        print "fail\n";
         $transcript_class{$g}="NA";
         next;
       }
@@ -742,7 +771,16 @@ for my $g(keys %transcript_cds){
     if($cds_length %3 >0){
       print "DEBUG CDS length $cds_length not divisible by 3, possible frameshift, adjusting ";
       $transcript_cds_modified{$g}=1;
-      if(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
+      if(defined($transcript_frame{$g}) && $transcript_frame{$g}>-1){
+        print "\nDEBUG found new frame for $g: $transcript_frame{$g}\n";
+        my ($cds_start_on_transcript,$cds_end_on_transcript)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
+        print "Found new start/stop $cds_start_on_transcript,$cds_end_on_transcript\n";
+        $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
+        if($cds_length==0){
+          $transcript_class{$g}="NA";
+          next;
+        }
+      }elsif(valid_start(substr($transcript_seqs{$g},$cds_start_on_transcript,3)) && $cds_start_on_transcript>=0){
         print "end\n";
         $cds_length-=$cds_length%3;
       }elsif(valid_stop(substr($transcript_seqs{$g},$cds_start_on_transcript+$cds_length-3,3),$gcode) && $cds_start_on_transcript+$cds_length<length($transcript_seqs{$g})){
@@ -750,6 +788,7 @@ for my $g(keys %transcript_cds){
         $cds_length-=$cds_length%3;
         print "beginning\n"
       }else{#fail
+        print "fail\n";
         $transcript_class{$g}="NA";
         next;
       }
@@ -1418,6 +1457,39 @@ sub fix_in_frame_stops_keep_frame{
   }
   return($cds_start_on_transcript,$cds_end_on_transcript);
 }
+
+sub find_longest_orf {
+    my ($seq, $frame) = @_;
+    $seq = uc($seq);
+
+    my %stop = map { $_ => 1 } qw(TAA TAG TGA);
+
+    my ($best_start, $best_end, $best_len) = (undef, undef, 0);
+
+    for (my $i = $frame; $i <= length($seq) - 3; $i += 3) {
+        my $codon = substr($seq, $i, 3);
+        next unless $codon eq 'ATG';
+
+        my $j = $i + 3;
+        while ($j <= length($seq) - 3) {
+            my $c = substr($seq, $j, 3);
+            if ($stop{$c}) {
+                my $start = $i;
+                my $end   = $j + 2;
+                my $len   = $end - $start + 1;
+
+                if ($len > $best_len) {
+                    ($best_start, $best_end, $best_len) = ($start, $end, $len);
+                }
+                last;
+            }
+            $j += 3;
+        }
+    }
+
+    return defined $best_start ? ($best_start, $best_end+1) : ();
+}
+
 
 sub valid_start{
   my $codon=uc($_[0]);

@@ -3,7 +3,7 @@
 my $gff=$ARGV[0];
 my %genome_seqs=();
 my %masked_genome_seqs=();
-my $padding=3000;
+my $padding=2000;
 while(my $line=<STDIN>){
   chomp($line);
   if($line=~ /^>/){
