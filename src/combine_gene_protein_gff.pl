@@ -562,6 +562,7 @@ for my $g(keys %transcript_cds){
       $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
+    $cds_length_original=$cds_length;
 
     if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
       $transcript_class{$g}="NA";
@@ -575,7 +576,7 @@ for my $g(keys %transcript_cds){
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
       $transcript_cds_modified{$g}=1;
     }
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g})," original CDS $cds_length_original\n";
 
 #do not mess with external CDS-only transcripts
     if($g =~ /_EXTERNAL$/ || $original_transcript_name{$g}=~ /_EXTERNAL$/){
@@ -627,7 +628,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript_fix,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript_fix-3,3);
     print "DEBUG fix codons $first_codon $last_codon\n";
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && ($cds_end_on_transcript_fix-$cds_start_on_transcript_fix < $cds_length*$length_fraction || not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && ($cds_end_on_transcript_fix-$cds_start_on_transcript_fix < $cds_length_original*$length_fraction || not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
       print "DEBUG attempting extension\n";
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
     }else{
@@ -671,12 +672,28 @@ for my $g(keys %transcript_cds){
     }
 
 #check to see if we truncated the cds -- maybe it is a special protein?
-    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*$length_fraction){
-      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript $cds_length\n";
-      $cds_end_on_transcript=$cds_end_on_transcript_original;
-      $cds_start_on_transcript=$cds_start_on_transcript_original;
-      $transcript_class{$g}="NA";
-      next;
+    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length_original*$length_fraction){
+      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript length $cds_length original $cds_length_original\n";
+      if(defined($transcript_frame{$g}) && $transcript_frame{$g}>-1){
+        print "DEBUG found new frame for $g: $transcript_frame{$g}\n";
+        my ($cds_start_on_transcript_p,$cds_end_on_transcript_p)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
+        if($cds_end_on_transcript_p-$cds_start_on_transcript_p>=$cds_length_original*$length_fraction){
+          print "Found new start/stop $cds_start_on_transcript_p,$cds_end_on_transcript_p\n";
+          $cds_start_on_transcript=$cds_start_on_transcript_p;
+	  $cds_end_on_transcript=$cds_end_on_transcript_p;
+          $cds_length=$cds_end_on_transcript_p-$cds_start_on_transcript_p;
+        }else{
+          $cds_end_on_transcript=$cds_end_on_transcript_original;
+          $cds_start_on_transcript=$cds_start_on_transcript_original;
+          $transcript_class{$g}="NA";
+          next;
+        }
+      }else{
+          $cds_end_on_transcript=$cds_end_on_transcript_original;
+          $cds_start_on_transcript=$cds_start_on_transcript_original;
+          $transcript_class{$g}="NA";
+          next;
+      }
     }
 
 #translating back to genome coords
@@ -748,6 +765,7 @@ for my $g(keys %transcript_cds){
       $cds_end_on_transcript=$transcript_cds_stop_on_transcript{$g};
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
     }
+    $cds_length_original=$cds_length;
 
     if(($cds_start_on_transcript < 0 || $cds_start_on_transcript > length($transcript_seqs{$g})) && ($cds_end_on_transcript < 0 || $cds_end_on_transcript > length($transcript_seqs{$g}))){#both start and end are messed up
       $transcript_class{$g}="NA";
@@ -761,7 +779,7 @@ for my $g(keys %transcript_cds){
       $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
       $transcript_cds_modified{$g}=1;
     }
-    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"\n";
+    print "DEBUG start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript transcript length ",length($transcript_seqs{$g}),"original CDS $cds_length_original\n";
 
 #do not mess with external CDS-only transcripts
     if($g =~ /_EXTERNAL$/ || $original_transcript_name{$g}=~ /_EXTERNAL$/){
@@ -813,7 +831,7 @@ for my $g(keys %transcript_cds){
     $first_codon=substr($transcript_seqs{$g},$cds_start_on_transcript_fix,3);
     $last_codon=substr($transcript_seqs{$g},$cds_end_on_transcript_fix-3,3);
     print "DEBUG fix codons $first_codon $last_codon\n";
-    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && ($cds_end_on_transcript_fix-$cds_start_on_transcript_fix < $cds_length*$length_fraction || not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
+    if((length($transcript_seqs_5pext{$g})==$ext_length && length($transcript_seqs_3pext{$g})==$ext_length) && ($cds_end_on_transcript_fix-$cds_start_on_transcript_fix < $cds_length_original*$length_fraction || not(valid_start($first_codon)) || not(valid_stop($last_codon,$gcode)))){
       print "DEBUG attempting extension\n";
       ($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs_5pext_actual{$g},$transcript_seqs_3pext_actual{$g})=fix_start_stop_codon_ext($cds_start_on_transcript,$cds_end_on_transcript,$transcript_seqs{$g},$transcript_seqs_5pext{$g},$transcript_seqs_3pext{$g}); #try to extend
     }else{
@@ -855,12 +873,28 @@ for my $g(keys %transcript_cds){
       }
     }
 
-    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length*$length_fraction){
-      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript $cds_length\n";
-      $cds_end_on_transcript=$cds_end_on_transcript_original;
-      $cds_start_on_transcript=$cds_start_on_transcript_original;
-      $transcript_class{$g}="NA";
-      next;
+    if($cds_end_on_transcript-$cds_start_on_transcript < $cds_length_original*$length_fraction){
+      print "DEBUG too short can't fix $first_codon $last_codon start_cds $cds_start_on_transcript end_cds $cds_end_on_transcript length $cds_length original $cds_length_original\n";
+      if(defined($transcript_frame{$g}) && $transcript_frame{$g}>-1){
+        print "DEBUG found new frame for $g: $transcript_frame{$g}\n";
+        my ($cds_start_on_transcript_p,$cds_end_on_transcript_p)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
+        if($cds_end_on_transcript_p-$cds_start_on_transcript_p>=$cds_length_original*$length_fraction){
+          print "Found new start/stop $cds_start_on_transcript_p,$cds_end_on_transcript_p\n";
+          $cds_start_on_transcript=$cds_start_on_transcript_p;
+	  $cds_end_on_transcript=$cds_end_on_transcript_p;
+          $cds_length=$cds_end_on_transcript_p-$cds_start_on_transcript_p;
+        }else{
+          $cds_end_on_transcript=$cds_end_on_transcript_original;
+          $cds_start_on_transcript=$cds_start_on_transcript_original;
+          $transcript_class{$g}="NA";
+          next;
+        }
+      }else{
+          $cds_end_on_transcript=$cds_end_on_transcript_original;
+          $cds_start_on_transcript=$cds_start_on_transcript_original;
+          $transcript_class{$g}="NA";
+          next;
+      }
     }
 
 #translating start and end to genome coords
