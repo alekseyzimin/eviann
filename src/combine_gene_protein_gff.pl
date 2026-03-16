@@ -589,10 +589,12 @@ for my $g(keys %transcript_cds){
       $transcript_cds_modified{$g}=1;
       if(defined($transcript_frame{$g}) && $transcript_frame{$g}>-1){
         print "\nDEBUG found new frame for $g: $transcript_frame{$g}\n";
-        my ($cds_start_on_transcript,$cds_end_on_transcript)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
-        print "Found new start/stop $cds_start_on_transcript,$cds_end_on_transcript\n";
-        $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-        if($cds_length==0){
+        my ($cds_start_on_transcript_p,$cds_end_on_transcript_p)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
+        if($cds_end_on_transcript_p-$cds_start_on_transcript_p>0){
+          print "Found new start/stop $cds_start_on_transcript_p,$cds_end_on_transcript_p\n";
+          $cds_start_on_transcript=$cds_start_on_transcript_p;
+          $cds_length=$cds_end_on_transcript_p-$cds_start_on_transcript_p;
+	}else{
           $transcript_class{$g}="NA";
           next;
         }
@@ -773,10 +775,12 @@ for my $g(keys %transcript_cds){
       $transcript_cds_modified{$g}=1;
       if(defined($transcript_frame{$g}) && $transcript_frame{$g}>-1){
         print "\nDEBUG found new frame for $g: $transcript_frame{$g}\n";
-        my ($cds_start_on_transcript,$cds_end_on_transcript)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
-        print "Found new start/stop $cds_start_on_transcript,$cds_end_on_transcript\n";
-        $cds_length=$cds_end_on_transcript-$cds_start_on_transcript;
-        if($cds_length==0){
+        my ($cds_start_on_transcript_p,$cds_end_on_transcript_p)=find_longest_orf($transcript_seqs{$g},$transcript_frame{$g});
+        if($cds_end_on_transcript_p-$cds_start_on_transcript_p>0){
+          print "Found new start/stop $cds_start_on_transcript_p,$cds_end_on_transcript_p\n";
+          $cds_start_on_transcript=$cds_start_on_transcript_p;
+          $cds_length=$cds_end_on_transcript_p-$cds_start_on_transcript_p;
+        }else{
           $transcript_class{$g}="NA";
           next;
         }
@@ -792,7 +796,7 @@ for my $g(keys %transcript_cds){
         $transcript_class{$g}="NA";
         next;
       }
-    }
+    }    
     $cds_end_on_transcript=$cds_start_on_transcript+$cds_length;
 
     my $cds_start_on_transcript_original=$cds_start_on_transcript;
