@@ -52,6 +52,7 @@ while(my $line=<FILE>){
     $transcript_acceptor2_score{$geneID}=10000;
     $transcript_fix_score{$geneID}=10000;
     $transcript{$geneID}=$line;
+    $transcript_gene{$geneID}=$locID;
   }elsif($gff_fields[2] eq "exon"){
     push(@exons,$line) if(defined($transcript{$geneID}));
   }
@@ -391,6 +392,15 @@ for my $g(keys %transcript_gff){
         $junction1_score=($donor_hmm_score-$donor_hmm_nscore+$acceptor_hmm_score-$acceptor_hmm_nscore)*0.45+2.3;
         $junction2_score=($donor_hmm2_score-$donor_hmm2_nscore+$acceptor_hmm2_score-$acceptor_hmm2_nscore)*.32+2.3;
       }
+
+      if($gff_fields[6] eq "+"){
+        print STDERR "$g\t$transcript_gene{$g}\tdonor\t$j\t$gff_fields[0]\t+\t$gff_fields_prev[4]\t$donor_seq\t",($donor_hmm2_score-$donor_hmm2_nscore)*.32+2.3,"\n";
+        print STDERR "$g\t$transcript_gene{$g}\tacceptor\t$j\t$gff_fields[0]\t+\t$gff_fields[3]\t$acceptor_seq\t",($acceptor_hmm2_score-$acceptor_hmm2_nscore)*.32+2.3,"\n";
+      }else{
+        print STDERR "$g\t$transcript_gene{$g}\tdonor\t$j\t$gff_fields[0]\t-\t$gff_fields[4]\t$donor_seq\t",($donor_hmm2_score-$donor_hmm2_nscore)*.32+2.3,"\n";
+        print STDERR "$g\t$transcript_gene{$g}\tacceptor\t$j\t$gff_fields[0]\t-\t$gff_fields_prev[3]\t$acceptor_seq\t",($acceptor_hmm2_score-$acceptor_hmm2_nscore)*.32+2.3,"\n";
+      }
+
       my $fix_donor_score=defined($sdonor{substr($donor_seq,2,7)})?$sdonor{substr($donor_seq,2,7)}:-10000;
       my $fix_acceptor_score=defined($sacceptor{substr($acceptor_seq,$acceptor_length-9,7)})?$sacceptor{substr($acceptor_seq,$acceptor_length-9,7)}:-10000;
       my $fix_score=$fix_donor_score+$fix_acceptor_score;

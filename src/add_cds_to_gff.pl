@@ -17,7 +17,9 @@ while($line=<FILE>){
   $id=substr($attrs[0],3);
   if(defined($cds_s{$id})){
     ($cds_start,$cds_end)=find_cds_start_end(@attrs[2],$F[6],$cds_s{$id},$cds_e{$id});
-    print join("\t",@F[0..7])."\t",join(";",@attrs[0..2]),";CDS=$cds_start:$cds_end;CDSphase=0;$attrs[3]\n";
+    my $outline="$F[0]\t$F[1]\tmRNA\t".(join("\t",@F[3..7]))."\t".(join(";",@attrs[0..2])).";CDS=$cds_start:$cds_end;CDSphase=0;$attrs[3]\n";
+    $outline=~s/_lncRNA//g;
+    print $outline;
   }else{
     print "$line\n";
   }

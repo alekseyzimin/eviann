@@ -664,7 +664,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $GENOME.pwm.tmp $GENOME.pwm && \
     mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm
   fi
-  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm > $GENOME.transcript_splice_scores.txt.tmp && \
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
@@ -772,7 +772,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
-    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm > $GENOME.protein_splice_scores.txt && \
+    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm 1>$GENOME.protein_splice_scores.txt 2>/dev/null && \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.num_introns.txt");
       $index = 2;
@@ -822,9 +822,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     TransDecoder.Predict -t $GENOME.lncRNA.fa --single_best_only --retain_blastp_hits $GENOME.proteins.blastp 1>transdecoder.Predict.out 2>&1
     if [ -s $GENOME.lncRNA.fa.transdecoder.gff3 ];then
       add_cds_to_gff.pl <(awk -F '\t' 'BEGIN{flag=0}{if($3=="gene"){if($9!~/ORF type:internal/){flag=1}else{flag=0}}if(flag){print}}' $GENOME.lncRNA.fa.transdecoder.gff3) $GENOME.u.gff | \
-      gffread -C | \
-      sed 's/_lncRNA//g' | \
-      perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "mRNA"); print join("\t",@F);}' > $GENOME.u.cds.gff.tmp && \
+      gffread -C |\
+      perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "mRNA");print join("\t",@F);}' > $GENOME.u.cds.gff.tmp && \
       mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff 
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
