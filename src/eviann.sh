@@ -1095,6 +1095,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
   rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
+  rm -f $GENOME.transcript_splice_scores.{err,txt}
   rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
   rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.std.gff $GENOME.cds.gff
   rm -f $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp $GENOME.proteins.blastp
