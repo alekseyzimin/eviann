@@ -945,9 +945,9 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
           print OUT $_, "\n";
         }' && \
     gffread -T \
-      <(ls batch_*.fasta | xargs -P $((NUM_THREADS/4+1)) -I {} bash -c 'snap -plus -gff -quiet Org.hmm "{}" 1>"{}.plus.gff" 2>/dev/null' && \
+      <(ls batch_*.fasta | xargs -P $((NUM_THREADS/4+1)) -I {} bash -c 'snap -lcmask -min-score 0 -plus -gff -quiet Org.hmm "{}" 1>"{}.plus.gff" 2>/dev/null' && \
         cat batch_*.fasta.plus.gff |perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]f\"\n";print join("\t",@F)}') \
-      <(ls batch_*.fasta | xargs -P $((NUM_THREADS/4+1)) -I {} bash -c 'snap -minus -gff -quiet Org.hmm "{}" 1>"{}.minus.gff" 2>/dev/null' && \
+      <(ls batch_*.fasta | xargs -P $((NUM_THREADS/4+1)) -I {} bash -c 'snap -lcmask -min-score 0 -minus -gff -quiet Org.hmm "{}" 1>"{}.minus.gff" 2>/dev/null' && \
         cat batch_*.fasta.minus.gff |perl -F'\t' -ane '{$F[0]=(split(/\s/,$F[0]))[0];$F[2]="exon";chomp($F[8]);$F[8]="transcript_id \"$F[8]r\"\n";print join("\t",@F)}') |\
       perl -F'\t' -ane 'BEGIN{$n=0}{$n++ if($F[2] eq "transcript");if($F[8]=~/transcript_id "(\S+)"/){print join("\t",@F[0..7]),"\ttranscript_id \"$1.$n\"\n"}}' > $GENOME.snap.combined.gtf.tmp && \
     mv $GENOME.snap.combined.gtf.tmp ../$GENOME.snap.combined.gtf) && \
