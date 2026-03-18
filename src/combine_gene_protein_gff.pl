@@ -77,19 +77,24 @@ my $acceptor_length;
 if(-e "psauron_score.csv"){
   print "DEBUG loading frame file\n";
   open(FILE,"psauron_score.csv");
-  $thresh=0.9;
+  $thresh_coding=0.9;
+  $thresh_ncoding=0.5;
   while($line=<FILE>){
     chomp($line);
     @F=split(/,/,$line);
     my $ncoding=0;
+    my $nncoding=0;
     my $frame=-1;
     for($fr=0;$fr<=2;$fr++){
-      if($F[$fr+2]>$thresh){
+      if($F[$fr+2]>$thresh_coding){
         $frame=$fr;
         $ncoding++;
+      }elsif($F[$fr+2]<$thresh_ncoding){
+        $nncoding++;
       }
     }
     $transcript_frame{$F[0]}=$frame if($ncoding==1);
+    $transcripr_noframe{$F[0]}=1 if($nncoding==6);
   }
 }
 
@@ -1172,7 +1177,7 @@ for my $locus(keys %transcripts_only_loci){
     $transcriptID=$original_transcript_name{$transcriptID} if(defined($original_transcript_name{$transcriptID}));
     my ($original_name,$num_samples,$tpm)=split(/:/,$transcriptID);
     print "DEBUG u $final_pass transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
-    next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && ($transcriptID =~ /^MSTRG/ || $transcriptID =~ /^STRG/ ) && $final_pass);#on the finaal pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
+    next if(($tpm < $lncRNA_TPM || $num_samples < 2 ) && ($transcriptID =~ /^MSTRG/ || $transcriptID =~ /^STRG/ ) && $final_pass);#on the final pass require this transcript to be in minimum 2 samples with TPM>=1, unless it is assembled from reference
     print "DEBUG output u transcript ",substr($attributes_t[0],3)," original $transcriptID $original_name,$num_samples,$tpm\n";
     $transcript_index++;
     my $type=$final_pass==1 ? "lnc_RNA" : "mRNA";

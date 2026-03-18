@@ -12,7 +12,7 @@ export MAX_INTRON=1
 export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
-export LNCRNATPM=1.0
+export LNCRNATPM=0.5
 export WAM_THRESHOLD=-0.5
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
@@ -82,7 +82,7 @@ function usage {
  echo " --partial             include transcripts with partial (mising start or stop codon) CDS in the output"
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
- echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 1.0"
+ echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 0.5"
  echo " --min_prot            minimum protein length (in amino-acids) for ab initio ORF detection without homology evidence, default: 75"
  echo " -f|--functional       perform functional annotation, default: not set"
  echo " --mito_contigs FILE   file with the list of input contigs to be treated as mitochondrial with different genetic code (stop is AGA,AGG,TAA,TAG)"
