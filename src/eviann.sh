@@ -688,7 +688,6 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         chomp($line);
         @f=split(/\s+/,$line);
         $score{$f[0]}=$f[$index];
-        $ex_score{$f[0]}=$f[1];
       }
       open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
       while($line=<FILE>){
@@ -704,7 +703,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $geneid=$4;
         ($name,$samples,$tpm)=split(/:/,$id);
         $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
-        $score{$id}+=2 if($tpm > 10 || $samples > 1);
+        $score{$id}+=$samples if($samples > 1);
         $score{$id}+=$reliable{$id};
         if($score{$id}>'$WAM_THRESHOLD'){
           @f=split(/-/,$exons);
