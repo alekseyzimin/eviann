@@ -69,31 +69,33 @@ my $w=1;
 while($line=<STDIN>){
   chomp($line);
 #print "DEBUG: processing transcript $g\n";
-  my @gff_fields=split(/\t/,$line);
-  die("Genome sequence $gff_fields[0] needed for transcript $gff_fields[3] not found!") if(not(defined($genome_seqs{$gff_fields[0]})));
-  if($gff_fields[5] eq "+"){
-    $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[1]-3,$donor_length));
-    $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[2]-($acceptor_length-3),$acceptor_length));
-  }else{
-    $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[2]-($donor_length-3),$donor_length));
-    $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[1]-3,$acceptor_length));
-    $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
-    $donor_seq=reverse($donor_seq);
-    $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
-    $acceptor_seq=reverse($acceptor_seq);
+  my @bed_fields=split(/\t/,$line);
+  if($bed_fields[-1] eq "I"){
+    die("Genome sequence $bed_fields[0] needed for transcript $bed_fields[3] not found!") if(not(defined($genome_seqs{$bed_fields[0]})));
+    if($bed_fields[5] eq "+"){
+      $donor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[1]-3,$donor_length));
+      $acceptor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[2]-($acceptor_length-3),$acceptor_length));
+    }else{
+      $donor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[2]-($donor_length-3),$donor_length));
+      $acceptor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[1]-3,$acceptor_length));
+      $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+      $donor_seq=reverse($donor_seq);
+      $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
+      $acceptor_seq=reverse($acceptor_seq);
+    }
+    next if($donor_seq=~/N/ || $acceptor_seq=~/N/);
+    $donor7{substr($donor_seq,2,7)}++;
+    $acceptor7{substr($acceptor_seq,$acceptor_length-9,7)}++;
+    my $max_len=int(($bed_fields[2]-$bed_fields[1])/2);
+    print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $bed_fields[5] $bed_fields[3] $max_len\n";
+    for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++ if(defined($code{substr($donor_seq,$i,1)}));}
+    for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
+    for(my $i=0;$i<($donor_length-1);$i++) {$donor2_pwm[$i][$code2{substr($donor_seq,$i,2)}]++ if(defined($code2{substr($donor_seq,$i,2)}));}
+    for(my $i=0;$i<($acceptor_length-1);$i++) {$acceptor2_pwm[$i][$code2{substr($acceptor_seq,$i,2)}]++ if(defined($code2{substr($acceptor_seq,$i,2)}));}
+    for(my $i=0;$i<($donor_length-2);$i++) {$donor3_pwm[$i][$code3{substr($donor_seq,$i,3)}]++ if(defined($code3{substr($donor_seq,$i,3)}));}
+    for(my $i=0;$i<($acceptor_length-2);$i++) {$acceptor3_pwm[$i][$code3{substr($acceptor_seq,$i,3)}]++ if(defined($code3{substr($acceptor_seq,$i,3)}));}
+    $w++;
   }
-  next if($donor_seq=~/N/ || $acceptor_seq=~/N/);
-  $donor7{substr($donor_seq,2,7)}++;
-  $acceptor7{substr($acceptor_seq,$acceptor_length-9,7)}++;
-  my $max_len=int(($gff_fields[2]-$gff_fields[1])/2);
-  print STDERR "DEBUG donor $donor_seq acceptor $acceptor_seq $gff_fields[5] $gff_fields[3] $max_len\n";
-  for(my $i=0;$i<$donor_length;$i++) {$donor_pwm[$i][$code{substr($donor_seq,$i,1)}]++ if(defined($code{substr($donor_seq,$i,1)}));}
-  for(my $i=0;$i<$acceptor_length;$i++) {$acceptor_pwm[$i][$code{substr($acceptor_seq,$i,1)}]++ if(defined($code{substr($acceptor_seq,$i,1)}));}
-  for(my $i=0;$i<($donor_length-1);$i++) {$donor2_pwm[$i][$code2{substr($donor_seq,$i,2)}]++ if(defined($code2{substr($donor_seq,$i,2)}));}
-  for(my $i=0;$i<($acceptor_length-1);$i++) {$acceptor2_pwm[$i][$code2{substr($acceptor_seq,$i,2)}]++ if(defined($code2{substr($acceptor_seq,$i,2)}));}
-  for(my $i=0;$i<($donor_length-2);$i++) {$donor3_pwm[$i][$code3{substr($donor_seq,$i,3)}]++ if(defined($code3{substr($donor_seq,$i,3)}));}
-  for(my $i=0;$i<($acceptor_length-2);$i++) {$acceptor3_pwm[$i][$code3{substr($acceptor_seq,$i,3)}]++ if(defined($code3{substr($acceptor_seq,$i,3)}));}
-  $w++;
 }
 
 #OUTPUT PWMs
