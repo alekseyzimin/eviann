@@ -13,7 +13,8 @@ export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=0.5
-export WAM_THRESHOLD=-0.5
+export WAM_TRANSCRIPT_THRESHOLD=-0.5
+export WAM_PROTEIN_THRESHOLD=-0.3
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
@@ -636,6 +637,29 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }' |\
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
+  gffread -F --tlf $GENOME.k.gff |\
+    perl -F'\t' -ane 'BEGIN{$n=1}{
+      if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\d+):(\d+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;Evidence=complete;/){
+        $tid=$7;
+        $exons=$3;
+        unless(defined($output{"$F[0]\t$4\t$5\t$F[6]\tC"})){
+          print "$F[0]\t$4\t$5\t$tid\t1\t$F[6]\tC\n";
+          $output{"$F[0]\t$4\t$5\t$F[6]\tC"}=1;
+          $n++;
+        }
+        @f=split(/-/,$exons);
+        for($i=1;$i<$#f;$i++){
+          ($c1,$c2)=split(/,/,$f[$i]);
+          $c2--;
+          unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]\tI"})){
+            print "$F[0]\t$c1\t$c2\t$tid\t1\t$F[6]\tI\n";
+            $output{"$F[0]\t$c1\t$c2\t$F[6]\tI"}=1;$n++;
+          }
+        }
+      }
+    }' |\
+    tee >(wc -l > $GENOME.num_introns.txt) | \
+    compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.coding.pwm.tmp 2>$GENOME.coding.pwm.err && \
   rm -f $GENOME.neg.pwm && \
   if [ $NUM_TISSUES -gt 0 ];then
     gffread --tlf $GENOME.gtf |\
@@ -681,6 +705,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       }' | \
     compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
     mv $GENOME.pwm.tmp $GENOME.pwm && \
+    mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
     mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm
   fi
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
@@ -724,7 +749,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
         $score{$id}+=$samples if($samples > 1);
         $score{$id}+=$reliable{$id};
-        if($score{$id}>'$WAM_THRESHOLD'){
+        if($score{$id}>'$WAM_TRANSCRIPT_THRESHOLD'){
           @f=split(/-/,$exons);
           if($#f>1){
             $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
@@ -790,7 +815,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
-    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm 1>$GENOME.protein_splice_scores.txt 2>/dev/null && \
+    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm 1>$GENOME.protein_splice_scores.txt 2>/dev/null && \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.num_introns.txt");
       $index = 2;
@@ -807,7 +832,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }{
       if($F[2] eq "gene"){
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$WAM_THRESHOLD' && $ex_score{$id}>'$WAM_THRESHOLD')) ? 1 : 0;
+        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$WAM_PROTEIN_THRESHOLD' && $ex_score{$id}>'$WAM_PROTEIN_THRESHOLD')) ? 1 : 0;
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \
@@ -1055,8 +1080,7 @@ if [ -e loci.success ] && [ ! -e pseudo_detect.success ];then
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
     rm -f $GENOME.functional_note.pseudo_label.gff add_external.success && \
     touch pseudo_detect.success
-  fi
-  if [ ! -e  pseudo_detect.success ];then
+  else
     cp $GENOME.gff $GENOME.pseudo_label.gff.tmp && \
     mv $GENOME.pseudo_label.gff.tmp $GENOME.pseudo_label.gff && \
     touch pseudo_detect.success
@@ -1119,7 +1143,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp $GENOME.proteins.blastp
 fi
 
-if [ -s $EXTRA_GFF ] && [ -e merge.success ];then
+if [ -s $EXTRA_GFF ] && [ -e pseudo_detect.success ];then
   if [ ! -e add_external.success ];then
     log "Adding extra features from $EXTRA_GFF"
     if [ -e functional.success ];then
