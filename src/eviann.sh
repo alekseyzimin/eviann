@@ -14,7 +14,7 @@ export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=0.5
 export WAM_TRANSCRIPT_THRESHOLD=-0.5
-export WAM_PROTEIN_THRESHOLD=-0.3
+export WAM_PROTEIN_THRESHOLD=-0.5
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
@@ -704,9 +704,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         }
       }' | \
     compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
+    compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
     mv $GENOME.pwm.tmp $GENOME.pwm && \
     mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
-    mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm
+    mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm && \
+    mv $GENOME.start.pwm.tmp $GENOME.start.pwm
   fi
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
