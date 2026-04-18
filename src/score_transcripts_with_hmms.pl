@@ -7,6 +7,7 @@ my $protID="";
 my $dir="";
 my $scf="";
 my $seq="";
+my $exon_bases=3;
 #these are genetic codes for Markov chains
 my %code=();
 my %code2=();
@@ -292,11 +293,11 @@ for my $g(keys %transcript_gff){
     if($j>0 && defined($ARGV[2])){
       my @gff_fields_prev=split(/\t/,${$transcript_gff{$g}}[$j-1]);
       if($gff_fields[6] eq "+"){
-        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,$donor_length));
-        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($acceptor_length-2),$acceptor_length));
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-$exon_bases,$donor_length));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($acceptor_length-($exon_bases-1)),$acceptor_length));
       }else{
-        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($donor_length-2),$donor_length));
-        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-3,$acceptor_length));
+        $donor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields[3]-($donor_length-($exon_bases-1)),$donor_length));
+        $acceptor_seq=uc(substr($genome_seqs{$gff_fields[0]},$gff_fields_prev[4]-$exon_bases,$acceptor_length));
         $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
         $donor_seq=reverse($donor_seq);
         $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;

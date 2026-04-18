@@ -13,8 +13,7 @@ export MIN_TPM=0.25
 export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=0.5
-export WAM_TRANSCRIPT_THRESHOLD=-0.5
-export WAM_PROTEIN_THRESHOLD=-0.5
+export WAM_THRESHOLD=-0.5
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
@@ -739,29 +738,41 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       while($line=<FILE>){
         chomp($line);
         @f=split(/\s+/,$line);
-        $reliable{$f[0]}=30;
+        $reliable{$f[0]}=10;
+        $reliable_t{$f[0]}=30 if($f[-1] =~ /=/);
       }
     }{
       chomp($F[8]);
+      #first determine the optimal threshold
+      push(@gff,join("\t",@F));
       if($F[8] =~ /^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){
-        $id=$1;
-        $exons=$3;
-        $geneid=$4;
-        ($name,$samples,$tpm)=split(/:/,$id);
-        $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
-        $score{$id}+=$samples if($samples > 1);
-        $score{$id}+=$reliable{$id};
-        if($score{$id}>'$WAM_TRANSCRIPT_THRESHOLD'){
-          @f=split(/-/,$exons);
-          if($#f>1){
-            $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
-          }elsif(not(defined($output{"$F[0] $F[6] $exons"}))){
-            $output{"$F[0] $F[6] $exons"}=1;
-            print;
+        push(@scores,$score{$1}) if(defined($reliable_t{$1}) && defined($score{$1}) );
+      }
+    }END{
+      @scores_sorted=sort {$b <=> $a} @scores;
+      $threshold=$scores_sorted[int($#scores_sorted*.997)];
+      print STDERR "$threshold\n";
+      foreach $t(@gff){
+        @F=split(/\t/,$t);
+        if($F[8] =~ /^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){
+          $id=$1;
+          $exons=$3;
+          $geneid=$4;
+          ($name,$samples,$tpm)=split(/:/,$id);
+          $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
+          $score{$id}+=$samples if($samples>1);
+          $score{$id}+=$reliable_t{$id};
+          if($score{$id}>$threshold){
+            @f=split(/-/,$exons);
+            if($#f>1){
+              $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
+            }elsif(not(defined($output{"$F[0] $F[6] $exons"}))){
+              $output{"$F[0] $F[6] $exons"}=1;
+              print join("\t",@F),"\n";
+            }
           }
         }
       }
-    }END{
       foreach $c(keys %transcripts){
         @ec=split(/,/,$c);
         $ec=$#ec+1;
@@ -778,7 +789,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $end=int($end/$n);
         print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n";
       }
-    }' | gffread -T  > $GENOME.spliceFiltered.gtf.tmp && \
+    }' 2>$GENOME.WAM_THRESHOLD.txt | gffread -T  > $GENOME.spliceFiltered.gtf.tmp && \
+  export WAM_THRESHOLD=`cat $GENOME.WAM_THRESHOLD.txt` && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
   if [ $(wc -l $GENOME.spliceFiltered.gtf|awk '{print $1}') -eq 0 ];then error_exit "Transcript file is empty, likely insufficient RNA-seq data, exiting...";fi && \
 #we compare and combine filtered proteins and transcripts files
@@ -834,7 +846,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }{
       if($F[2] eq "gene"){
         $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
-        $flag=($id =~/_EXTERNAL$/ || ($score{$id}>'$WAM_PROTEIN_THRESHOLD' && $ex_score{$id}>'$WAM_PROTEIN_THRESHOLD')) ? 1 : 0;
+        $flag=($id =~/_EXTERNAL$/ || ($score{$id} > '$WAM_THRESHOLD' && $ex_score{$id} > '$WAM_THRESHOLD')) ? 1 : 0;
       }
       print if($flag);
     }' $GENOME.unused_proteins.gff > $GENOME.unused_proteins.spliceFiltered.gff.tmp && \

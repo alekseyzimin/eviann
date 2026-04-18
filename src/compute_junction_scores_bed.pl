@@ -9,6 +9,7 @@ my $scf="";
 my $seq="";
 my $donor_length=16;
 my $acceptor_length=30;
+my $exon_bases=3;
 my $score_floor_value=1e-10;
 #these are genetic codes for Markov chains
 my %code=();
@@ -73,11 +74,11 @@ while($line=<STDIN>){
   if($bed_fields[-1] eq "I"){
     die("Genome sequence $bed_fields[0] needed for transcript $bed_fields[3] not found!") if(not(defined($genome_seqs{$bed_fields[0]})));
     if($bed_fields[5] eq "+"){
-      $donor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[1]-3,$donor_length));
-      $acceptor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[2]-($acceptor_length-3),$acceptor_length));
+      $donor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[1]-$exon_bases,$donor_length));
+      $acceptor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[2]-($acceptor_length-$exon_bases),$acceptor_length));
     }else{
-      $donor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[2]-($donor_length-3),$donor_length));
-      $acceptor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[1]-3,$acceptor_length));
+      $donor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[2]-($donor_length-$exon_bases),$donor_length));
+      $acceptor_seq=uc(substr($genome_seqs{$bed_fields[0]},$bed_fields[1]-$exon_bases,$acceptor_length));
       $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
       $donor_seq=reverse($donor_seq);
       $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;

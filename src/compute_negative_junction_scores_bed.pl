@@ -9,6 +9,7 @@ my $scf="";
 my $seq="";
 my $donor_length=16;
 my $acceptor_length=30;
+my $exon_bases=3;
 my $score_floor_value=1e-10;
 #these are genetic codes for Markov chains
 my %code=();
@@ -73,23 +74,23 @@ while($line=<STDIN>){
   die("Genome sequence $gff_fields[0] needed for transcript $g not found!") if(not(defined($genome_seqs{$gff_fields[1]})));
   if($gff_fields[4] eq "+"){
     if($gff_fields[0] eq "don"){
-      $donor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-3,$donor_length));
+      $donor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-$exon_bases,$donor_length));
     }elsif($gff_fields[0] eq "acc"){
-      $acceptor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($acceptor_length-3),$acceptor_length));
+      $acceptor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($acceptor_length-$exon_bases),$acceptor_length));
     }elsif($gff_fields[0] eq "pair"){
-      $pair_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-3,$donor_length))." ".uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[3]-($acceptor_length-3),$acceptor_length));
+      $pair_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-$exon_bases,$donor_length))." ".uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[3]-($acceptor_length-$exon_bases),$acceptor_length));
     }
   }else{
     if($gff_fields[0] eq "don"){
-      $donor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($donor_length-3),$donor_length));
+      $donor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($donor_length-$exon_bases),$donor_length));
       $donor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
       $donor_seq=reverse($donor_seq);
     }elsif($gff_fields[0] eq "acc"){
-      $acceptor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-3,$acceptor_length));
+      $acceptor_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-$exon_bases,$acceptor_length));
       $acceptor_seq=~tr/ACGTNacgtn/TGCANtgcan/;
       $acceptor_seq=reverse($acceptor_seq);
     }elsif($gff_fields[0] eq "pair"){
-      $pair_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[3]-3,$acceptor_length))." ".uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($donor_length-3),$donor_length));
+      $pair_seq=uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[3]-$exon_bases,$acceptor_length))." ".uc(substr($genome_seqs{$gff_fields[1]},$gff_fields[2]-($donor_length-$exon_bases),$donor_length));
       $pair_seq=~tr/ACGTNacgtn /TGCANtgcan /;
       $pair_seq=reverse($pair_seq);
     } 
