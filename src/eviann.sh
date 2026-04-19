@@ -750,7 +750,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       }
     }END{
       @scores_sorted=sort {$b <=> $a} @scores;
-      $threshold=$scores_sorted[int($#scores_sorted*.997)];
+      $threshold=$scores_sorted[int($#scores_sorted*.999)];
       print STDERR "$threshold\n";
       foreach $t(@gff){
         @F=split(/\t/,$t);
