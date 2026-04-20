@@ -282,6 +282,7 @@ if( -e $ARGV[3]){
   }
 }
 
+$exon_bases=$ARGV[4] if(defined($ARGV[4]));
 
 #we make the transcript sequences for protein coding transcripts and score the transcripts with HMMs
 for my $g(keys %transcript_gff){

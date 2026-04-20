@@ -51,6 +51,8 @@ while(my $line=<FILE>){
 }
 $genome_seqs{$scf}=$seq if(not($scf eq ""));
 
+$exon_bases=$ARGV[1] if(defined($ARGV[1]));
+
 #initialize PWMs
 for(my $i=0;$i<$acceptor_length;$i++){
   for(my $j=0;$j<4;$j++){

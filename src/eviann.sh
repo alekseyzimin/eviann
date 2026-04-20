@@ -14,6 +14,7 @@ export DEBUG=0
 export PARTIAL=0
 export LNCRNATPM=0.5
 export WAM_THRESHOLD=-0.5
+export EXON_BASES=3
 EXTRA_GFF="na"
 UNIPROT="$PWD/uniprot_sprot.fasta"
 MYPATH="`dirname \"$0\"`"
@@ -635,7 +636,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       }
     }' |\
     tee >(wc -l > $GENOME.num_introns.txt) | \
-    compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
+    compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
   gffread -F --tlf $GENOME.k.gff |\
     perl -F'\t' -ane 'BEGIN{$n=1}{
       if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\d+):(\d+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;Evidence=complete;/){
@@ -658,7 +659,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       }
     }' |\
     tee >(wc -l > $GENOME.num_introns.txt) | \
-    compute_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.coding.pwm.tmp 2>$GENOME.coding.pwm.err && \
+    compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.coding.pwm.tmp 2>$GENOME.coding.pwm.err && \
   rm -f $GENOME.neg.pwm && \
   if [ $NUM_TISSUES -gt 0 ];then
     gffread --tlf $GENOME.gtf |\
@@ -702,14 +703,14 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           print "$k\n";
         }
       }' | \
-    compute_negative_junction_scores_bed.pl $GENOMEFILE 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
+    compute_negative_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
     compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
     mv $GENOME.pwm.tmp $GENOME.pwm && \
     mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
     mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm && \
     mv $GENOME.start.pwm.tmp $GENOME.start.pwm
   fi
-  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
@@ -829,7 +830,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #here we process proteins that did not match to any transcripts -- we derive CDS-based transcripts from them
   if [ -s $GENOME.unused_proteins.gff ];then
     log "Filtering unused protein only loci" && \
-    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm 1>$GENOME.protein_splice_scores.txt 2>/dev/null && \
+    score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.unused_proteins.gff) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.protein_splice_scores.txt 2>/dev/null && \
     perl -F'\t' -ane 'BEGIN{
       open(FILE,"'$GENOME'.num_introns.txt");
       $index = 2;
