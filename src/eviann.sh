@@ -619,20 +619,26 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\d+):(\d+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class=(k|=);Evidence=complete;/){
         $tid=$7;
         $exons=$3;
-        unless(defined($output{"$F[0]\t$4\t$5\t$F[6]\tC"})){
-          print "$F[0]\t$4\t$5\t$tid\t1\t$F[6]\tC\n"; 
-          $output{"$F[0]\t$4\t$5\t$F[6]\tC"}=1;
-          $n++;
-        }
         @f=split(/-/,$exons);
         for($i=1;$i<$#f;$i++){
           ($c1,$c2)=split(/,/,$f[$i]);
           $c2--;
-          unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]\tI"})){
-            print "$F[0]\t$c1\t$c2\t$tid\t1\t$F[6]\tI\n";
-            $output{"$F[0]\t$c1\t$c2\t$F[6]\tI"}=1;$n++;
+          $half_intron_size=($c2-$c1)/2;
+          if($F[6] eq "+"){
+              $don{"$F[0]\t$c1\t$F[6]"}=$half_intron_size;
+              $acc{"$F[0]\t$c2\t$F[6]"}=$half_intron_size;
+          }else{
+              $don{"$F[0]\t$c2\t$F[6]"}=$half_intron_size;
+              $acc{"$F[0]\t$c1\t$F[6]"}=$half_intron_size;
           }
         }
+      }
+    }END{
+      foreach $k(keys %don){
+        print "don\t$k\t$don{$k}\n";
+      }
+      foreach $k(keys %acc){
+        print "acc\t$k\t$acc{$k}\n";
       }
     }' |\
     tee >(wc -l > $GENOME.num_introns.txt) | \
@@ -642,23 +648,28 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\d+):(\d+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;Evidence=complete;/){
         $tid=$7;
         $exons=$3;
-        unless(defined($output{"$F[0]\t$4\t$5\t$F[6]\tC"})){
-          print "$F[0]\t$4\t$5\t$tid\t1\t$F[6]\tC\n";
-          $output{"$F[0]\t$4\t$5\t$F[6]\tC"}=1;
-          $n++;
-        }
         @f=split(/-/,$exons);
         for($i=1;$i<$#f;$i++){
           ($c1,$c2)=split(/,/,$f[$i]);
           $c2--;
-          unless(defined($output{"$F[0]\t$c1\t$c2\t$F[6]\tI"})){
-            print "$F[0]\t$c1\t$c2\t$tid\t1\t$F[6]\tI\n";
-            $output{"$F[0]\t$c1\t$c2\t$F[6]\tI"}=1;$n++;
+          $half_intron_size=($c2-$c1)/2;
+          if($F[6] eq "+"){
+              $don{"$F[0]\t$c1\t$F[6]"}=$half_intron_size;
+              $acc{"$F[0]\t$c2\t$F[6]"}=$half_intron_size;
+          }else{
+              $don{"$F[0]\t$c2\t$F[6]"}=$half_intron_size;
+              $acc{"$F[0]\t$c1\t$F[6]"}=$half_intron_size;
           }
         }
       }
+    }END{
+      foreach $k(keys %don){
+        print "don\t$k\t$don{$k}\n";
+      }
+      foreach $k(keys %acc){
+        print "acc\t$k\t$acc{$k}\n";
+      }
     }' |\
-    tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.coding.pwm.tmp 2>$GENOME.coding.pwm.err && \
   rm -f $GENOME.neg.pwm && \
   if [ $NUM_TISSUES -gt 0 ];then
@@ -689,13 +700,14 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           chomp($line);
           @f=split(/\t+/,$line);
           next if($f[5] eq "." || $f[4]>2);
+          $half_intron_size=($f[2]-$f[1])/2;
           if($f[5] eq "+"){
-            $output{"don\t$f[0]\t$f[1]\t$f[4]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}));
-            $output{"acc\t$f[0]\t$f[2]\t$f[4]\t$f[5]"}=1 unless(defined($acc{"$f[0] $f[2] $f[5]"}));
+            $output{"don\t$f[0]\t$f[1]\t$f[5]\t$half_intron_size"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}));
+            $output{"acc\t$f[0]\t$f[2]\t$f[5]\t$half_intron_size"}=1 unless(defined($acc{"$f[0] $f[2] $f[5]"}));
             $output{"pair\t$f[0]\t$f[1]\t$f[2]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}) || defined($acc{"$f[0] $f[2] $f[5]"}));
           }else{
-            $output{"acc\t$f[0]\t$f[1]\t$f[4]\t$f[5]"}=1 unless(defined($acc{"$f[0] $f[1] $f[5]"}));
-            $output{"don\t$f[0]\t$f[2]\t$f[4]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}));
+            $output{"acc\t$f[0]\t$f[1]\t$f[5]\t$half_intron_size"}=1 unless(defined($acc{"$f[0] $f[1] $f[5]"}));
+            $output{"don\t$f[0]\t$f[2]\t$f[5]\t$half_intron_size"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}));
             $output{"pair\t$f[0]\t$f[2]\t$f[1]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}) || defined($acc{"$f[0] $f[1] $f[5]"}));
           }
         }
@@ -703,7 +715,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           print "$k\n";
         }
       }' | \
-    compute_negative_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
+    compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
     compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
     mv $GENOME.pwm.tmp $GENOME.pwm && \
     mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
