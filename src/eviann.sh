@@ -1126,7 +1126,7 @@ fi
 if [ $DEBUG -lt 1 ];then
   rm -rf ab_initio $GENOME.snapref.{loci,stats,tracking,annotated.gtf} $GENOME.spliceFiltered.nomatch.gtf $GENOME.snap.combined.gtf $GENOME.snap.filtered.gff
   rm -f $GENOME.num_introns.txt
-  rm -f $GENOME.pwm.err $GENOME.neg.pwm.err
+  rm -f $GENOME.coding.pwm.err $GENOME.neg.pwm.err
   rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
   rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
   rm -f $GENOME.unused_proteins.gff $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff
