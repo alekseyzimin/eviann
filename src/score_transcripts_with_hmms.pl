@@ -163,18 +163,6 @@ if(-e $ARGV[2]){
           }
           $i++;
         }
-      }elsif($line=~/^Start/){
-        my $i=0;
-        while($line=<FILE>){
-          last if($line=~/NNN TRM/);
-          chomp($line);
-          $line=~s/^\s+//;
-          my @f=split(/\s+/,$line);
-          for(my $j=0;$j<4;$j++){
-            $coding_start_freq[$i][$j]=$f[$j];
-          }
-          $i++;
-        }
       }elsif($line=~/^SDonor/){
         while($line=<FILE>){
           chomp($line);
