@@ -644,6 +644,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     }' |\
     tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.coding.pwm.tmp 2>$GENOME.coding.pwm.err && \
+  mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
   rm -f $GENOME.neg.pwm && \
   if [ $NUM_TISSUES -gt 0 ];then
     gffread --tlf $GENOME.gtf |\
@@ -675,25 +676,24 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
           next if($f[5] eq "." || $f[4]>2);
           $half_intron_size=($f[2]-$f[1])/2;
           if($f[5] eq "+"){
-            $output{"don\t$f[0]\t$f[1]\t$f[5]\t$half_intron_size"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}));
-            $output{"acc\t$f[0]\t$f[2]\t$f[5]\t$half_intron_size"}=1 unless(defined($acc{"$f[0] $f[2] $f[5]"}));
-            $output{"pair\t$f[0]\t$f[1]\t$f[2]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[1] $f[5]"}) || defined($acc{"$f[0] $f[2] $f[5]"}));
+            $output{"don\t$f[0]\t$f[1]\t$f[5]"}=$half_intron_size unless(defined($don{"$f[0] $f[1] $f[5]"}));
+            $output{"acc\t$f[0]\t$f[2]\t$f[5]"}=$half_intron_size unless(defined($acc{"$f[0] $f[2] $f[5]"}));
+            $output{"pair\t$f[0]\t$f[1]\t$f[2]\t$f[5]"}=$half_intron_size unless(defined($don{"$f[0] $f[1] $f[5]"}) || defined($acc{"$f[0] $f[2] $f[5]"}));
           }else{
-            $output{"acc\t$f[0]\t$f[1]\t$f[5]\t$half_intron_size"}=1 unless(defined($acc{"$f[0] $f[1] $f[5]"}));
-            $output{"don\t$f[0]\t$f[2]\t$f[5]\t$half_intron_size"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}));
-            $output{"pair\t$f[0]\t$f[2]\t$f[1]\t$f[5]"}=1 unless(defined($don{"$f[0] $f[2] $f[5]"}) || defined($acc{"$f[0] $f[1] $f[5]"}));
+            $output{"acc\t$f[0]\t$f[1]\t$f[5]"}=$half_intron_size unless(defined($acc{"$f[0] $f[1] $f[5]"}));
+            $output{"don\t$f[0]\t$f[2]\t$f[5]"}=$half_intron_size unless(defined($don{"$f[0] $f[2] $f[5]"}));
+            $output{"pair\t$f[0]\t$f[2]\t$f[1]\t$f[5]"}=$half_intron_size unless(defined($don{"$f[0] $f[2] $f[5]"}) || defined($acc{"$f[0] $f[1] $f[5]"}));
           }
         }
         foreach my $k(keys %output){
-          print "$k\n";
+          print "$k\t$output{$k}\n";
         }
       }' | \
     compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
-    compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
-    mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
-    mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm && \
-    mv $GENOME.start.pwm.tmp $GENOME.start.pwm
+    mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm
   fi
+  compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
+  mv $GENOME.start.pwm.tmp $GENOME.start.pwm && \
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
