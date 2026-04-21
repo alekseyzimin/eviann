@@ -614,35 +614,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   }'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
   log "Computing Markov chain matrices at splice junctions" && \
-  gffread -F --tlf $GENOME.k.gff |\
-    perl -F'\t' -ane 'BEGIN{$n=1}{
-      if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\d+):(\d+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class=(k|=);Evidence=complete;/){
-        $tid=$7;
-        $exons=$3;
-        @f=split(/-/,$exons);
-        for($i=1;$i<$#f;$i++){
-          ($c1,$c2)=split(/,/,$f[$i]);
-          $c2--;
-          $half_intron_size=($c2-$c1)/2;
-          if($F[6] eq "+"){
-              $don{"$F[0]\t$c1\t$F[6]"}=$half_intron_size;
-              $acc{"$F[0]\t$c2\t$F[6]"}=$half_intron_size;
-          }else{
-              $don{"$F[0]\t$c2\t$F[6]"}=$half_intron_size;
-              $acc{"$F[0]\t$c1\t$F[6]"}=$half_intron_size;
-          }
-        }
-      }
-    }END{
-      foreach $k(keys %don){
-        print "don\t$k\t$don{$k}\n";
-      }
-      foreach $k(keys %acc){
-        print "acc\t$k\t$acc{$k}\n";
-      }
-    }' |\
-    tee >(wc -l > $GENOME.num_introns.txt) | \
-    compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.pwm.tmp 2>$GENOME.pwm.err && \
+  rm -f $GENOME.coding.pwm && \
   gffread -F --tlf $GENOME.k.gff |\
     perl -F'\t' -ane 'BEGIN{$n=1}{
       if($F[8]=~/^ID=(\S+);exonCount=(\S+);exons=(\S+);CDS=(\d+):(\d+);(.+);EvidenceTranscriptID=(\S+);StartCodon=(.+);Class==;Evidence=complete;/){
@@ -670,6 +642,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         print "acc\t$k\t$acc{$k}\n";
       }
     }' |\
+    tee >(wc -l > $GENOME.num_introns.txt) | \
     compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.coding.pwm.tmp 2>$GENOME.coding.pwm.err && \
   rm -f $GENOME.neg.pwm && \
   if [ $NUM_TISSUES -gt 0 ];then
@@ -717,12 +690,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       }' | \
     compute_junction_scores_bed.pl $GENOMEFILE $EXON_BASES 1>$GENOME.neg.pwm.tmp 2>$GENOME.neg.pwm.err && \
     compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
-    mv $GENOME.pwm.tmp $GENOME.pwm && \
     mv $GENOME.coding.pwm.tmp $GENOME.coding.pwm && \
     mv $GENOME.neg.pwm.tmp $GENOME.neg.pwm && \
     mv $GENOME.start.pwm.tmp $GENOME.start.pwm
   fi
-  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
+  score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
   mv $GENOME.transcript_splice_scores.txt.tmp $GENOME.transcript_splice_scores.txt && \
   perl -F'\t' -ane '{if($F[8] =~ /^transcript_id "(\S+)"; gene_id "(\S+)"; xloc "(\S+)"; cmp_ref "(\S+)"; class_code "(k|=|c)"; tss_id/){print "$1 $4 $5\n"}}' $GENOME.protref.annotated.gtf > $GENOME.reliable_transcripts_proteins.txt && \
   #we now filter the transcripts file using the splice scores, leaving alone the transcripts that do match proteins and rerun combine
@@ -825,7 +797,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --genome $GENOMEFILE \
       --mito $MITO_CTG_LIST_FILE \
       --transdecoder <(echo "") \
-      --pwms $GENOME.pwm \
+      --pwms $GENOME.coding.pwm \
       1>combine.out 2>&1 && \
   mv $GENOME.u.gff.tmp $GENOME.u.gff && \
   mv $GENOME.unused_proteins.gff.tmp $GENOME.unused_proteins.gff && \
