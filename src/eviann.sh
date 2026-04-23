@@ -585,33 +585,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   perl -F'\t' -ane '{
     if($F[2] eq "mRNA"){
       $protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);
-      $F[2]="gene";
-      $F[8]="ID=$protid\n";
-      unless(defined($out{$protid})){
-        $gene{$protid}=join("\t",@F);
-        $cds{$protid}="";
-        $beg{$protid}=0;
-        $end{$protid}=0;
-        $ori{$protid}=$F[6];
-        $flag=1;
-        $out{$protid}=1;
-      }else{
-        $flag=0;
-      }
-    }elsif($F[2] eq "CDS" && $flag){
-      $beg{$protid}=$F[3] if($beg{$protid}==0);
-      $end{$protid}=$F[4] if($end{$protid}<$F[4]);
-      $F[8]="Parent=$protid\n";$cds{$protid}.=join("\t",@F);
-      $F[2]="exon";$gene{$protid}.=join("\t",@F);
-    }
-  }END{
-    foreach $p(keys %gene){
-      @f=split(/\t/,$gene{$p});
-      $f[3]=$beg{$p};
-      $f[4]=$end{$p};
-      print join("\t",@f),"$cds{$p}";
-    }
-  }'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
+    }elsif($F[2] eq "CDS"){
+      $F[8]="Parent=$protid\n";
+      print join("\t",@F);
+      $F[2]="exon";
+      print join("\t",@F);}}'  $GENOME.k.gff |\
+    gffread -F |\
+    perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "transcript");print join("\t",@F) unless $F[0] =~ /^#/;}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
 
   log "Computing Markov chain matrices at splice junctions, positive training data" && \
