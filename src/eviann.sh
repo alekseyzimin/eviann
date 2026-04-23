@@ -714,74 +714,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         uniq | \
         remove_readthrough_exons.pl $GENOME.gtf) | \
     gffread --tlf | \
-    perl -F'\t' -ane 'BEGIN{
-      open(FILE,"'$GENOME'.num_introns.txt");
-      $num_introns=int(<FILE>);
-      $index=2;
-      $index++ if($num_introns >= 1024);
-      $index++ if($num_introns >= 4096);
-      open(FILE,"'$GENOME'.transcript_splice_scores.txt");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/\s+/,$line);
-        $score{$f[0]}=$f[$index];
-      }
-      open(FILE,"'$GENOME'.reliable_transcripts_proteins.txt");
-      while($line=<FILE>){
-        chomp($line);
-        @f=split(/\s+/,$line);
-        $reliable{$f[0]}=10;
-        $reliable_t{$f[0]}=30 if($f[-1] =~ /=/);
-      }
-    }{
-      chomp($F[8]);
-      #first determine the optimal threshold
-      push(@gff,join("\t",@F));
-      if($F[8] =~ /^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){
-        push(@scores,$score{$1}) if(defined($reliable_t{$1}) && defined($score{$1}) );
-      }
-    }END{
-      @scores_sorted=sort {$b <=> $a} @scores;
-      $threshold=$scores_sorted[int($#scores_sorted*.999)];
-      print STDERR "$threshold\n";
-      foreach $t(@gff){
-        @F=split(/\t/,$t);
-        if($F[8] =~ /^ID=(\S+);exonCount=(\S+);exons=(\S+);geneID=(\S+)/){
-          $id=$1;
-          $exons=$3;
-          $geneid=$4;
-          ($name,$samples,$tpm)=split(/:/,$id);
-          $score{$id}=30 if(not(defined($score{$id})) || $name =~ /^REFSTRG/);
-          $score{$id}+=$samples if($samples>1);
-          $score{$id}+=$reliable_t{$id};
-          if($score{$id}>$threshold){
-            @f=split(/-/,$exons);
-            if($#f>1){
-              $transcripts{join("-",@f[1..$#f-1])}.="$id $F[0] $F[6] $f[0] $f[-1] $geneid ";
-            }elsif(not(defined($output{"$F[0] $F[6] $exons"}))){
-              $output{"$F[0] $F[6] $exons"}=1;
-              print join("\t",@F),"\n";
-            }
-          }
-        }
-      }
-      foreach $c(keys %transcripts){
-        @ec=split(/,/,$c);
-        $ec=$#ec+1;
-        $start=0;
-        $end=0;
-        @tr=split(/\s/,$transcripts{$c});
-        $n=0;
-        for($i=0;$i<$#tr;$i+=6){
-          $start+=$tr[$i+3];
-          $end+=$tr[$i+4];
-          $n++;
-        }
-        $start=int($start/$n);
-        $end=int($end/$n);
-        print "$tr[1]\tStringTie\ttranscript\t$start\t$end\t.\t$tr[2]\t.\tID=$tr[0];exonCount=$ec;exons=$start-$c-$end;geneID=$tr[5]\n";
-      }
-    }' 2>$GENOME.WAM_THRESHOLD.txt | gffread -T  > $GENOME.spliceFiltered.gtf.tmp && \
+    filter_by_score.pl $GENOME 2>$GENOME.WAM_THRESHOLD.txt | \
+    gffread -T > $GENOME.spliceFiltered.gtf.tmp && \
   export WAM_THRESHOLD=`cat $GENOME.WAM_THRESHOLD.txt` && \
   mv $GENOME.spliceFiltered.gtf.tmp $GENOME.spliceFiltered.gtf && \
   if [ $(wc -l $GENOME.spliceFiltered.gtf|awk '{print $1}') -eq 0 ];then 
