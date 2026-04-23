@@ -495,31 +495,33 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 #we fix suspect introns in the protein alignment files.  If an intron has never been seen before, switch it to the closest one that has been seen
   if [ -s $CDSFILE ] && [ -s $GENOME.$PROTEIN.uniq.palign.gff ];then
     log "Using external CDSs and protein alignments" && \
-    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |\
-      gffread -C -F | \
-      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos"."_EXTERNAL";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' |\
-      gffread -F | \
-      perl -F'\t' -ane '{next if($F[0] =~/^#/);chomp($F[8]);if($F[2] eq "transcript"){$F[2]="gene";$F[8].=";gene$F[8];identity=100.00;similarity=100.00";}print join("\t",@F),"\n";}' > $CDS.CDS.tmp &&
-    mv $CDS.CDS.tmp $CDS.CDS && \
-    cat $CDS.CDS <(gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.uniq.palign.gff )) >  $GENOME.palign.fixed.gff.tmp && \
+    gffread -F $GENOME.$PROTEIN.uniq.palign.gff \
+      <(perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); if($F[2] eq "CDS") { print join("\t",@F); $F[2]="exon";print join("\t",@F); }'  $CDSFILE | \
+        gffread -F | \
+        perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos"."_EXTERNAL";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' | \
+        gffread -F | \
+        perl -F'\t' -ane '{next if($F[0] =~/^#/);chomp($F[8]);if($F[2] eq "transcript"){$F[2]="gene";$F[8].=";gene$F[8];identity=100.00;similarity=100.00";}print join("\t",@F),"\n";}') > $GENOME.palign.fixed.gff.tmp && \
     mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
-    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE | gffread -y $PROTEIN.cds -g $GENOMEFILE && \
-    cat $PROTEIN.uniq $PROTEIN.cds > $PROTEIN.all.tmp && \
+    cat $PROTEIN.uniq \
+      <(perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F) if($F[2] eq "CDS");' $CDSFILE | \
+      gffread -y /dev/stdout -g $GENOMEFILE) > $PROTEIN.all.tmp && \
     mv $PROTEIN.all.tmp $PROTEIN.all && \
     PROTEINFILE=$PROTEIN.all 
   elif [ -s $GENOME.$PROTEIN.uniq.palign.gff ];then
     log "Using protein alignments" && \
-    gffread -F  <( fix_suspect_introns.pl $GENOME.merged.gtf < $GENOME.$PROTEIN.uniq.palign.gff ) > $GENOME.palign.fixed.gff.tmp && \
+    gffread -F  $GENOME.$PROTEIN.uniq.palign.gff > $GENOME.palign.fixed.gff.tmp && \
     mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff 
   elif [ -s $CDSFILE ];then
     log "Using external CDSs only" && \
-    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |\
-      gffread -C -F | \
-      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos"."_EXTERNAL";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' |\
+    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); if($F[2] eq "CDS") { print join("\t",@F); $F[2]="exon";print join("\t",@F); }'  $CDSFILE | \
+      gffread -F | \
+      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos"."_EXTERNAL";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' | \
       gffread -F | \
       perl -F'\t' -ane '{next if($F[0] =~/^#/);chomp($F[8]);if($F[2] eq "transcript"){$F[2]="gene";$F[8].=";gene$F[8];identity=100.00;similarity=100.00";}print join("\t",@F),"\n";}' > $GENOME.palign.fixed.gff.tmp && \
     mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
-    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F);' $CDSFILE |gffread -y $PROTEIN.cds -g $GENOMEFILE && \
+    perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); print join("\t",@F) if($F[2] eq "CDS");' $CDSFILE | \
+      gffread -y $PROTEIN.cds.tmp -g $GENOMEFILE && \
+    mv $PROTEIN.cds.tmp $PROTEIN.cds && \
     PROTEINFILE=$PROTEIN.cds 
   fi
 
@@ -566,10 +568,13 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   gffcompare -T -o $GENOME.protref -r $GENOME.palign.fixed.gff $GENOME.gtf && \
   NUM_MATCHES=0 && \
   NUM_MATCHES=`grep 'class code "="' $GENOME.protref.annotated.gtf |wc -l` && \
-  if [ $NUM_MATCHES -lt 1 ];then echo "WARNING!!! NO intron chain matches found between transcripts and aligned proteins! Check your input data for mismatching sequence names or lack of proteins from related species.";fi
+  if [ $NUM_MATCHES -lt 1 ];then 
+    echo "WARNING!!! NO intron chain matches found between transcripts and aligned proteins! Check your input data for mismatching sequence names or lack of proteins from related species.";
+  fi
 #here we combine the transcripts and protein matches
 #unused proteins gff file contains all protein alignments that did not match the transcripts; we will use them later
 #this produces files $GENOME.{k,u}.gff.tmp  and $GENOME.unused_proteins.gff.tmp
+  log "Created merged transcripts file $GENOME.gtf" && \
   cat $GENOME.palign.fixed.gff | \
     combine_gene_protein_gff.pl \
       --prefix $GENOME \
@@ -583,15 +588,17 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   extract_utr_transcripts.pl 0 < $GENOME.k.gff > $GENOME.utrs.gff.tmp && \
   mv $GENOME.utrs.gff.tmp $GENOME.utrs.gff && \
   perl -F'\t' -ane '{
-    if($F[2] eq "mRNA"){
-      $protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);
-    }elsif($F[2] eq "CDS"){
-      $F[8]="Parent=$protid\n";
-      print join("\t",@F);
-      $F[2]="exon";
-      print join("\t",@F);}}'  $GENOME.k.gff |\
+      if($F[2] eq "mRNA"){
+        $protid="$2:$1" if($F[8]=~/EvidenceProteinID=(\S+);EvidenceTranscriptID=(\S+);StartCodon=/);
+      }elsif($F[2] eq "CDS"){
+        $F[8]="Parent=$protid\n";
+        print join("\t",@F);
+        $F[2]="exon";
+        print join("\t",@F);
+      }
+    }'  $GENOME.k.gff |\
     gffread -F |\
-    perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "transcript");print join("\t",@F) unless $F[0] =~ /^#/;}'  $GENOME.k.gff > $GENOME.cds.gff.tmp && \
+    perl -F'\t' -ane '{$F[2]="gene" if($F[2] eq "transcript");print join("\t",@F) unless $F[0] =~ /^#/;}' > $GENOME.cds.gff.tmp && \
   mv $GENOME.cds.gff.tmp $GENOME.cds.gff && \
 
   log "Computing Markov chain matrices at splice junctions, positive training data" && \
@@ -957,7 +964,7 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
   log "Reassigning loci based on coding sequences" && \
   gffread -F $GENOME.k.gff |\
     tee $GENOME.k.std.gff.tmp |\
-    gffread --tlf | perl -F'\t' -ane '{if($F[8]=~/CDS=(\d+):(\d+);/) {$F[3]=$1+8;$F[4]=$2-8;$F[8]=(split(/;/,$F[8]))[0];print join("\t",@F),"\n";}}' | \
+    gffread --tlf | perl -F'\t' -ane '{if($F[8]=~/CDS=(\d+):(\d+);/) {$offset=($2-$1)<=16 ? 0 : 8; $F[3]=$1+$offset;$F[4]=$2-$offset;$F[8]=(split(/;/,$F[8]))[0];print join("\t",@F),"\n";}}' | \
     gffread --cluster-only |\
     awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
