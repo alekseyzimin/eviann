@@ -868,7 +868,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       --annotated $GENOME.protref.all.annotated.class.gff \
       --genome $GENOMEFILE \
       --transdecoder $GENOME.fixed_cds.txt \
-      --pwms $GENOME.pwm \
+      --pwms $GENOME.coding.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
       --mito $MITO_CTG_LIST_FILE \
       --final_pass \
@@ -945,7 +945,7 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
       --annotated <(cat <(gffread -F --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";(.+) class_code "(=|k)";/){print "$1\n"}}' $GENOME.snapref.annotated.gtf) $GENOME.protref.all.annotated.class.gff) <(gffread -F $GENOME.snapref.annotated.gtf| perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=($F[8] =~ /class_code=(k|=)/)?1:0;} $F[8]=~s/geneID=XLOC_/geneID=AXLOC_/;$F[8]=~s/xloc=XLOC_/xloc=AXLOC_/;print join("\t",@F) if($flag);}')) \
       --genome $GENOMEFILE \
       --transdecoder $GENOME.fixed_cds.txt \
-      --pwms $GENOME.pwm \
+      --pwms $GENOME.coding.pwm \
       --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
       --mito $MITO_CTG_LIST_FILE \
       --final_pass \
