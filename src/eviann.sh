@@ -1064,21 +1064,21 @@ fi
 
 #cleanup
 if [ $DEBUG -lt 1 ];then
-  rm -rf ab_initio $GENOME.snapref.{loci,stats,tracking,annotated.gtf} $GENOME.spliceFiltered.nomatch.gtf $GENOME.snap.combined.gtf $GENOME.snap.filtered.gff
+  rm -rf ab_initio $GENOME.snapref $GENOME.snapref.{loci,stats,tracking,annotated.gtf} $GENOME.spliceFiltered.nomatch.gtf $GENOME.snap.combined.gtf $GENOME.snap.filtered.gff
   rm -f $GENOME.num_introns.txt
   rm -f $GENOME.coding.pwm.err $GENOME.neg.pwm.err
-  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp
+  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{k,u,unused_proteins}.gff 
   rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
-  rm -f $GENOME.unused_proteins.gff $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff
+  rm -f $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff
   rm -f $GENOME.abundanceFiltered.spliceFiltered.gtf
-  rm -f $GENOME.merged.rev.gtf
+  rm -f $GENOME.merged.rev.gtf $GENOME.misoriented_transcripts.txt
   rm -f $GENOME.protref.{loci,stats,tracking,annotated.gtf} $GENOME.protref $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
   rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
   rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
   rm -f $GENOME.transcript_splice_scores.{err,txt}
   rm -rf $GENOME.palign.all.gff $GENOME.good_cds.fa $GENOME.broken_cds.fa $GENOME.broken_ref.{txt,faa} $GENOME.broken_cds.{blastp,fa.transdecoder.bed} $GENOME.fixed_cds.txt
-  rm -f $GENOME.utrs.gff  $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.std.gff $GENOME.cds.gff
+  rm -f $GENOME.utrs.gff $GENOME.readthroughs.txt $GENOME.readthrough_proteins.txt $GENOME.readthrough{1,2}.* $GENOME.readthrough{1,2} $GENOME.locus_transcripts $GENOME.k.std.gff $GENOME.cds.gff
   rm -f $GENOME.proteins.mex.p?? $GENOME.proteins.{s,m}ex.fasta  makeblastdb.sex2mex.out blastp5.out $GENOME.sex2mex.blastp $GENOME.proteins.blastp
 fi
 
