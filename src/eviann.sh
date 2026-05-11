@@ -938,26 +938,31 @@ if [ -e merge.success ] && [ ! -e ab_initio.success ] && [ $AB_INITIO -gt 0 ];th
       trmap -c 'k=' $GENOME.spliceFiltered.gtf $GENOME.snap.combined.gtf | awk '{if($1~/^>/) print substr($1,2)}') $GENOME.snap.combined.gtf |\
     perl -F'\t' -ane '{if($F[2] eq "transcript"){$F[2]="gene";}if($F[2] eq "exon"){$F[2]="CDS";print join("\t",@F);$F[2]="exon";}print join("\t",@F)}' > $GENOME.snap.filtered.gff.tmp && \
   mv $GENOME.snap.filtered.gff.tmp $GENOME.snap.filtered.gff && \
-  gffcompare -T -o $GENOME.snapref -r $GENOME.snap.filtered.gff $GENOME.spliceFiltered.nomatch.gtf && \
-  cat $GENOME.palign.all.gff $GENOME.snap.filtered.gff | \
-    combine_gene_protein_gff.pl \
-      --prefix $GENOME \
-      --annotated <(cat <(gffread -F --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";(.+) class_code "(=|k)";/){print "$1\n"}}' $GENOME.snapref.annotated.gtf) $GENOME.protref.all.annotated.class.gff) <(gffread -F $GENOME.snapref.annotated.gtf| perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=($F[8] =~ /class_code=(k|=)/)?1:0;} $F[8]=~s/geneID=XLOC_/geneID=AXLOC_/;$F[8]=~s/xloc=XLOC_/xloc=AXLOC_/;print join("\t",@F) if($flag);}')) \
-      --genome $GENOMEFILE \
-      --transdecoder $GENOME.fixed_cds.txt \
-      --pwms $GENOME.coding.pwm \
-      --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
-      --mito $MITO_CTG_LIST_FILE \
-      --final_pass \
-      --proteins <(cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.snap.filtered.gff)) \
-      --output_partial $PARTIAL \
-      --lncrnamintpm $LNCRNATPM \
-      1>combine.out 2>&1 && \
-    mv $GENOME.k.gff $GENOME.k.gff.bak && \
-    mv $GENOME.k.gff.tmp $GENOME.k.gff && \
-    mv $GENOME.u.gff.tmp $GENOME.u.gff && \
-    rm -f $GENOME.unused_proteins.gff.tmp && \
-    touch ab_initio.success && rm -f loci.success pseudo_detect.success functional.success || error_exit "ab initio gene finding failed."
+#only do this if there are any CDS matches between ab initio and transcripts
+  if [ -s $GENOME.snap.filtered.gff ];then
+    gffcompare -T -o $GENOME.snapref -r $GENOME.snap.filtered.gff $GENOME.spliceFiltered.nomatch.gtf && \
+    cat $GENOME.palign.all.gff $GENOME.snap.filtered.gff | \
+      combine_gene_protein_gff.pl \
+        --prefix $GENOME \
+        --annotated <(cat <(gffread -F --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";(.+) class_code "(=|k)";/){print "$1\n"}}' $GENOME.snapref.annotated.gtf) $GENOME.protref.all.annotated.class.gff) <(gffread -F $GENOME.snapref.annotated.gtf| perl -F'\t' -ane '{if($F[2] eq "transcript"){$flag=($F[8] =~ /class_code=(k|=)/)?1:0;} $F[8]=~s/geneID=XLOC_/geneID=AXLOC_/;$F[8]=~s/xloc=XLOC_/xloc=AXLOC_/;print join("\t",@F) if($flag);}')) \
+        --genome $GENOMEFILE \
+        --transdecoder $GENOME.fixed_cds.txt \
+        --pwms $GENOME.coding.pwm \
+        --names <(perl -F'\t' -ane '{if($F[2] eq "transcript"){print "$1 $3\n" if($F[8] =~ /transcript_id "(\S+)"; gene_id "(\S+)"; oId "(\S+)";/);}}'  $GENOME.all.combined.gtf) \
+        --mito $MITO_CTG_LIST_FILE \
+        --final_pass \
+        --proteins <(cat $PROTEINFILE <(gffread -y /dev/stdout -g $GENOMEFILE $GENOME.snap.filtered.gff)) \
+        --output_partial $PARTIAL \
+        --lncrnamintpm $LNCRNATPM \
+        1>combine.out 2>&1 && \
+      mv $GENOME.k.gff $GENOME.k.gff.bak && \
+      mv $GENOME.k.gff.tmp $GENOME.k.gff && \
+      mv $GENOME.u.gff.tmp $GENOME.u.gff && \
+      rm -f $GENOME.unused_proteins.gff.tmp && \
+      touch ab_initio.success && rm -f loci.success pseudo_detect.success functional.success || error_exit "ab initio gene finding failed."
+  else
+    touch ab_initio.success && rm -f loci.success pseudo_detect.success functional.success
+  fi
 fi
 
 if [ -e merge.success ] && [ ! -e loci.success ];then
