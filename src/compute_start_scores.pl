@@ -18,6 +18,7 @@ for($i=0;$i<4;$i++){
   }
 }
 
+my $start_length=40;
 my $fasta=$ARGV[0];
 my $gff=$ARGV[1];
 my $score_seq=$ARGV[2];
@@ -28,7 +29,7 @@ while($line=<FILE>){
   chomp($line);
   if($line =~/^>/){
     if($start>-1){
-      push(@seqs,uc(substr($seq,$start-20,25))) if(length(substr($seq,$start-20,25))==25);
+      push(@seqs,uc(substr($seq,$start-20,$start_length))) if(length(substr($seq,$start-20,$start_length))==$start_length);
     }
     $seq="";
     if($line=~/\sCDS=(\d+)-(\d+)\s/){
@@ -41,7 +42,6 @@ while($line=<FILE>){
   }
 }
 
-my $start_length=25;
 foreach $start_seq (@seqs){
  #print "Training: $start_seq\n";
  for(my $i=0;$i<$start_length;$i++) {$start_pwm[$i][$code{substr($start_seq,$i,1)}]++ if(defined($code{substr($start_seq,$i,1)}));}
