@@ -18,7 +18,7 @@ for($i=0;$i<4;$i++){
   }
 }
 
-my $start_length=40;
+my $start_length=60;
 my $fasta=$ARGV[0];
 my $gff=$ARGV[1];
 my $score_seq=$ARGV[2];
