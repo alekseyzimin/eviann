@@ -683,8 +683,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   fi
 
 #score coding start site patterns
-  compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
-  mv $GENOME.start.pwm.tmp $GENOME.start.pwm && \
+#  compute_start_scores.pl $GENOMEFILE $GENOME.k.gff > $GENOME.start.pwm.tmp && \
+#  mv $GENOME.start.pwm.tmp $GENOME.start.pwm && \
 
 #score transcripts with Markov WAM weights
   score_transcripts_with_hmms.pl <(gffread -F $GENOME.gtf) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.transcript_splice_scores.txt.tmp 2>$GENOME.transcript_splice_scores.err && \
@@ -1072,7 +1072,7 @@ if [ $DEBUG -lt 1 ];then
   rm -rf ab_initio $GENOME.snapref $GENOME.snapref.{loci,stats,tracking,annotated.gtf} $GENOME.spliceFiltered.nomatch.gtf $GENOME.snap.combined.gtf $GENOME.snap.filtered.gff
   rm -f $GENOME.num_introns.txt
   rm -f $GENOME.coding.pwm.err $GENOME.neg.pwm.err
-  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{k,u,unused_proteins}.gff 
+  rm -f $GENOME.{k,u,unused_proteins}.gff.tmp $GENOME.{k,u,unused_proteins}.gff $GENOME.j_proteins.gtf 
   rm -f broken_ref.{pjs,ptf,pto,pot,pdb,psq,phr,pin} proteins.{pjs,ptf,pto,pot,pdb,psq,phr,pin} makeblastdb.out blastp2.out
   rm -f $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff
   rm -f $GENOME.abundanceFiltered.spliceFiltered.gtf
