@@ -83,7 +83,7 @@ function usage {
  echo " --partial             include transcripts with partial (missing start or stop codon) CDS in the output"
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
- echo " --untrusted-cds       apply Markov/WAM thresholds to unmatched external CDSs supplied with -c"
+ echo " --untrusted-cds       apply splice-site filtering to unmatched external CDSs supplied with -c"
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 0.5"
  echo " --min_prot            minimum protein length (in amino-acids) for ab initio ORF detection without homology evidence, default: 75"
  echo " -f|--functional       perform functional annotation, default: not set"

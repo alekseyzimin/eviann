@@ -3,9 +3,9 @@ An evidence-based eukaryotic annotation pipeline.  This is the eviann submodule.
 
 ## External CDSs
 
-By default, external CDSs supplied with `-c` (or `--cds`) are trusted and bypass the splice score thresholds when they do not match assembled transcripts.
+By default, external CDSs supplied with `-c` (or `--cds`) are treated as trusted evidence.
 
-Use `--untrusted-cds` with `-c` to apply the same Markov/WAM thresholds used for unmatched protein-derived candidates. Both splice scores must exceed the existing threshold. This only affects external CDSs unmatched to transcripts; downstream external CDS handling is unchanged. Single-exon models have no splice junctions and pass this filter.
+For external CDSs that are not high-confidence, add `--untrusted-cds` to apply a subset of EviAnn's splice-site filters. This filtering applies only to CDSs without matching transcript evidence. Single-exon models have no splice sites and pass this filter.
 
 Example:
 
