@@ -516,7 +516,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     log "Using external CDSs only" && \
     perl -F'\t' -ane 'next if($F[0] =~/^#/);$F[6]="+" if(not($F[6] eq "+") && not($F[6] eq "-")); if($F[2] eq "CDS") { print join("\t",@F); $F[2]="exon";print join("\t",@F); }'  $CDSFILE | \
       gffread -F | \
-      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos"."_EXTERNAL";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' | \
+      perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' | \
       gffread -F | \
       perl -F'\t' -ane '{next if($F[0] =~/^#/);chomp($F[8]);if($F[2] eq "transcript"){$F[2]="gene";$F[8].=";gene$F[8];identity=100.00;similarity=100.00";}print join("\t",@F),"\n";}' > $GENOME.palign.fixed.gff.tmp && \
     mv $GENOME.palign.fixed.gff.tmp $GENOME.palign.fixed.gff && \
@@ -993,7 +993,7 @@ if [ -e merge.success ] && [ ! -e loci.success ];then
     awk -F'\t' '{if($3=="locus"){split($9,a,";");print substr(a[1],5)" "substr(a[2],13)}}' > $GENOME.locus_transcripts.tmp && \
   mv $GENOME.locus_transcripts.tmp $GENOME.locus_transcripts && \
   mv $GENOME.k.std.gff.tmp $GENOME.k.std.gff && \
-  gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(sed 's/class=.;//' $GENOME.k.std.gff | reassign_transcripts.pl $GENOME.locus_transcripts) $GENOME.u.gff|\
+  gffread -F --keep-exon-attrs --keep-genes --sort-alpha <(cat $GENOME.k.std.gff | reassign_transcripts.pl $GENOME.locus_transcripts) $GENOME.u.gff|\
     awk -F '\t' '{if($0 ~ /^# gffread/){print "# EviAnn automated annotation"}else{if($3!=prev){counter=1}if($9 ~ /^Parent=/){print $0";ID="substr($9,8)":"$3":"counter;counter++;}else{print $0}prev=$3;}}' > $GENOME.gff.tmp && \
   mv $GENOME.gff.tmp $GENOME.gff  && \
   touch loci.success && rm -f pseudo_detect.success functional.success || error_exit "Merging transcript and protein evidence failed."
