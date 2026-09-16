@@ -1116,8 +1116,10 @@ for my $locus(keys %transcripts_cds_loci){
   if(scalar(@output)>0){
     my $dir_factor=0;
     $dir_factor=0.5 if($gff_fields[6] eq "-");
-    $gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
-    push(@gene_records_k,$gff_fields[0]." ".($locus_start+$dir_factor));
+    # Equal starts must not overwrite distinct loci
+    my $record_key=$gff_fields[0]." ".($locus_start+$dir_factor)." ".$geneID;
+    $gene_record_k{$record_key}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
+    push(@gene_records_k,$record_key);
     push(@outputLOCchr,$gff_fields[0]);
     push(@outputLOCbeg,$locus_start);
     push(@outputLOCend,$locus_end);
@@ -1192,8 +1194,10 @@ for my $locus(keys %transcripts_only_loci){
   if($transcript_index>0){
     my $dir_factor=0;
     $dir_factor=0.5 if($gff_fields[6] eq "-");
-    $gene_record_u{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=lncRNA\n".join("\n",@output)."\n";
-    push(@gene_records_u,$gff_fields[0]." ".($locus_start+$dir_factor));
+    # Equal starts must not overwrite distinct loci
+    my $record_key=$gff_fields[0]." ".($locus_start+$dir_factor)." ".$geneID;
+    $gene_record_u{$record_key}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=lncRNA\n".join("\n",@output)."\n";
+    push(@gene_records_u,$record_key);
   }
 }
 
@@ -1245,9 +1249,9 @@ sub check_overlap{
 }
 
 sub mysort{
-my ($chroma,$coorda)=split(/\s+/,$a);
-my ($chromb,$coordb)=split(/\s+/,$b);
-return($chroma cmp $chromb || $coorda <=>$coordb);
+my ($chroma,$coorda,$ida)=split(/\s+/,$a);
+my ($chromb,$coordb,$idb)=split(/\s+/,$b);
+return($chroma cmp $chromb || $coorda <=>$coordb || $ida cmp $idb);
 }
 
 sub fix_start_stop_codon_ext{
