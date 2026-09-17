@@ -802,7 +802,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
 
 #here if we have external CDSs and proteins we figure out which ones do not overlap with annotated genes or best unused proteins, and add them as EXTERNAL
   if [ -s $CDSFILE ] && [ -s $GENOME.$PROTEIN.uniq.palign.gff ];then
-    log "Using external CDSs and protein alignments" && \
+    log "Using external CDSs and protein alignments: disabling ab initio CDS finding" && \
+    AB_INITIO=0 && \
     perl -F'\t' -ane 'next if($F[0] =~/^#/);if($F[2] eq "CDS") { print join("\t",@F); $F[2]="exon";print join("\t",@F); }'  $CDSFILE | \
       gffread -F | \
       perl -F'\t' -ane '{chomp($F[8]);if($F[2] eq "mRNA" || $F[2] eq "transcript"){$pos=($F[4]+$F[3])/2;@f=split(/;/,$F[8]);($junk,$id)=split(/=/,$f[0]);$id.=":$F[0]:$pos"."_EXTERNAL";}elsif(uc($F[2]) eq "CDS"){$F[2]=uc($F[2]); print join("\t",@F[0..7]),"\tParent=$id\n";$F[2]="exon";print join("\t",@F[0..7]),"\tParent=$id\n";}}' | \
@@ -818,7 +819,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' external.annotated.gtf ) $GENOME.palign.ext.gff | \
       tee -a $GENOME.palign.fixed.gff |\
       perl -F'\t' -ane '{$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F)}' >> $GENOME.best_unused_proteins.gff && \
-    rm external.annotated.gtf
+    rm -f external.annotated.gtf external.{loci,stats,tracking} $GENOME.palign.ext.gff 
   fi
 
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
