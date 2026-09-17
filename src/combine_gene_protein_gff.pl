@@ -1116,15 +1116,16 @@ for my $locus(keys %transcripts_cds_loci){
   if(scalar(@output)>0){
     my $dir_factor=0;
     $dir_factor=0.5 if($gff_fields[6] eq "-");
-    if(defined($gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)})){
-      print "DEBUG WARNING! Overwriting gene:\n",$gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)},"\n with $gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
+    if(not(defined($gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)})) || (defined($gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)}) && $geneID =~ /^XLOC/)){
+      $gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
+      push(@gene_records_k,$gff_fields[0]." ".($locus_start+$dir_factor));
+      push(@outputLOCchr,$gff_fields[0]);
+      push(@outputLOCbeg,$locus_start);
+      push(@outputLOCend,$locus_end);
+      push(@outputLOCdir,$gff_fields[6]);
+    }else{
+      print "DEBUG WARNING: Ignoring $gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
     }
-    $gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
-    push(@gene_records_k,$gff_fields[0]." ".($locus_start+$dir_factor));
-    push(@outputLOCchr,$gff_fields[0]);
-    push(@outputLOCbeg,$locus_start);
-    push(@outputLOCend,$locus_end);
-    push(@outputLOCdir,$gff_fields[6]);
   }
   #print $gff_fields[0]." ".($locus_start+$dir_factor),"\n",$gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)};
 }
