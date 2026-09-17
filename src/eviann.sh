@@ -792,6 +792,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     fi
     rm -rf $GENOME.lncRNA.fa $GENOME.lncRNA.u.blastp pipeliner.*.cmds $GENOME.lncRNA.fa.transdecoder_dir  $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints $GENOME.lncRNA.fa.transdecoder_dir.__checkpoints_longorfs transdecoder.LongOrfs.out $GENOME.lncRNA.fa.transdecoder.{cds,pep} blastp1.out transdecoder.Predict.out 
   fi
+
   log "Working on final merge" && \
 #these are extra protein copies for "j" transcripts
   gffread -T --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)"; (.+) cmp_ref "(\S+)"; class_code "j";/){print "$3\n";}}' $GENOME.protref.spliceFiltered.annotated.gtf) $GENOME.palign.fixed.gff |\
@@ -814,13 +815,11 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     PROTEINFILE=$PROTEIN.all
     #here we figure out which external CDSs overlap with complete annotations and then remove them
     gffcompare -T -r <(cat $GENOME.k.gff $GENOME.best_unused_proteins.gff) -o external $GENOME.palign.ext.gff && \
-    gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "u";/){print "$1\n"}}' external.annotated.gtf ) $GENOME.palign.ext.gff | \
+    gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' external.annotated.gtf ) $GENOME.palign.ext.gff | \
       tee -a $GENOME.palign.fixed.gff |\
       perl -F'\t' -ane '{$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F)}' >> $GENOME.best_unused_proteins.gff && \
     rm external.annotated.gtf
   fi
-
-#####################################################
 
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
   if [ -s $GENOME.best_unused_proteins.gff ];then

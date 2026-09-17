@@ -960,7 +960,7 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
-        next if($source eq "EviAnnE" && $mrna_transcript_index > 0);#do not output external if there are already transcripts output for this gene locus
+        next if($source eq "EviAnnE" && $mrna_transcript_index > 1);#do not output external if there are already transcripts output for this gene locus
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source\n";
         my $protID=$transcript_cds{$t};
         if($source eq "EviAnnP" && $used_proteins{$protID}){
@@ -1116,6 +1116,9 @@ for my $locus(keys %transcripts_cds_loci){
   if(scalar(@output)>0){
     my $dir_factor=0;
     $dir_factor=0.5 if($gff_fields[6] eq "-");
+    if(defined($gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)})){
+      print "DEBUG WARNING! Overwriting gene:\n",$gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)},"\n with $gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
+    }
     $gene_record_k{$gff_fields[0]." ".($locus_start+$dir_factor)}="$gff_fields[0]\tEviAnn\tgene\t$locus_start\t$locus_end\t".join("\t",@gff_fields[5..7])."\tID=$geneID;geneID=$geneID;gene_biotype=protein_coding\n".join("\n",@output)."\n";
     push(@gene_records_k,$gff_fields[0]." ".($locus_start+$dir_factor));
     push(@outputLOCchr,$gff_fields[0]);
