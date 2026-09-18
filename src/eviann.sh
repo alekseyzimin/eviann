@@ -815,11 +815,19 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     mv $PROTEIN.extra.tmp $PROTEIN.all && \
     PROTEINFILE=$PROTEIN.all
     #here we figure out which external CDSs overlap with complete annotations and then remove them
-    gffcompare -T -r <(cat $GENOME.k.gff $GENOME.best_unused_proteins.gff) -o external $GENOME.palign.ext.gff && \
-    gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' external.annotated.gtf ) $GENOME.palign.ext.gff | \
+    gffcompare -T -r <(cat $GENOME.k.gff $GENOME.best_unused_proteins.gff) -o externalk $GENOME.palign.ext.gff && \
+    #we do not want to add externals that match transcripts to the transcript file (best unused proteins)
+    gffcompare -T -r $GENOME.abundanceFiltered.spliceFiltered.gtf -o externalt $GENOME.palign.ext.gff && \
+    gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' externalk.annotated.gtf ) $GENOME.palign.ext.gff | \
       tee -a $GENOME.palign.fixed.gff |\
+      gffread -F --keep-exon-attrs --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(c|k|j|=)";/){print "$1\n"}}' externalt.annotated.gtf ) | \
       perl -F'\t' -ane '{$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F)}' >> $GENOME.best_unused_proteins.gff && \
-    rm -f external.annotated.gtf external.{loci,stats,tracking} $GENOME.palign.ext.gff 
+    #remove the unreliable "U" CDSs that match more reliable externals
+    gffcompare -T -r $GENOME.palign.ext.gff $GENOME.u.cds.gff -o externalu && \
+    mv $GENOME.u.cds.gff $GENOME.u.cds.gff.bak && \
+    gffread -F --keep-exon-attrs --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(=|k|c|j)";/){print "$1\n"}}' externalu.annotated.gtf ) $GENOME.u.cds.gff.bak > $GENOME.u.cds.gff.tmp && \
+    mv $GENOME.u.cds.gff.tmp $GENOME.u.cds.gff && \
+    rm -f external?.annotated.gtf external?.{loci,stats,tracking} $GENOME.palign.ext.gff 
   fi
 
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
