@@ -820,7 +820,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     gffcompare -T -r $GENOME.abundanceFiltered.spliceFiltered.gtf -o externalt $GENOME.palign.ext.gff && \
     gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' externalk.annotated.gtf ) $GENOME.palign.ext.gff | \
       tee -a $GENOME.palign.fixed.gff |\
-      gffread -F --keep-exon-attrs --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(c|k|j|=)";/){print "$1\n"}}' externalt.annotated.gtf ) | \
+      gffread -F --keep-exon-attrs --nids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(c|=)";/){print "$1\n"}}' externalt.annotated.gtf ) | \
       perl -F'\t' -ane '{$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F)}' >> $GENOME.best_unused_proteins.gff && \
     #remove the unreliable "U" CDSs that match more reliable externals
     gffcompare -T -r $GENOME.palign.ext.gff $GENOME.u.cds.gff -o externalu && \
