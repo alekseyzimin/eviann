@@ -4,6 +4,7 @@ PROTEINFILE="na"
 PLOIDY=2
 GENOMEFILE="na"
 CDSFILE="na"
+UNTRUSTED_CDS=0
 RNASEQ="na"
 ALT_EST="na"
 MITO_CTG_LIST_FILE="na"
@@ -82,6 +83,7 @@ function usage {
  echo " --partial             include transcripts with partial (missing start or stop codon) CDS in the output"
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
+ echo " --untrusted-cds       apply splice-site filtering to external CDSs supplied with -c; requires protein alignments"
  echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 0.5"
  echo " --min_prot            minimum protein length (in amino-acids) for ab initio ORF detection without homology evidence, default: 75"
  echo " -f|--functional       perform functional annotation, default: not set"
@@ -148,6 +150,10 @@ do
             rm -f merge.success
             shift
             ;;
+        --untrusted-cds)
+            UNTRUSTED_CDS=1
+            log "Will apply splice filtering to external CDSs"
+            ;;
         -d|--ploidy)
             PLOIDY="$2"
             shift
@@ -211,6 +217,10 @@ do
 done
 
 #checking inputs
+if [ $UNTRUSTED_CDS -eq 1 ] && [ "$CDSFILE" = "na" ];then
+  error_exit "--untrusted-cds can only be used with -c/--cds"
+fi
+
 if [ ! -s $RNASEQ ] && [ ! -s $ALT_EST ];then
   error_exit "Must specify at least one non-empty file with RNA sequencing data with -r or a file with ESTs from the same or closely related species with -e"
 fi
@@ -492,6 +502,9 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
   log "Deriving gene models from protein and transcript alignments" && \
   if [ ! -s $GENOME.merged.gtf ];then
     error_exit "No transcripts useful for annotation, please check your inputs!"
+  fi && \
+  if [ $UNTRUSTED_CDS -eq 1 ] && [ ! -s $GENOME.$PROTEIN.uniq.palign.gff ];then
+    error_exit "--untrusted-cds requires protein alignments to train splice-site models independently of external CDSs"
   fi && \
   if [ -s $GENOME.$PROTEIN.uniq.palign.gff ];then
     log "Using protein alignments" && \
@@ -814,12 +827,41 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
     cat $PROTEIN.uniq >> $PROTEIN.extra.tmp && \
     mv $PROTEIN.extra.tmp $PROTEIN.all && \
     PROTEINFILE=$PROTEIN.all
+    EXTERNAL_CDS_GFF=$GENOME.palign.ext.gff
+    if [ $UNTRUSTED_CDS -eq 1 ];then
+      log "Filtering external CDS splice sites" && \
+      score_transcripts_with_hmms.pl <(perl -F'\t' -ane '$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F);' $GENOME.palign.ext.gff) $GENOMEFILE $GENOME.coding.pwm $GENOME.neg.pwm $EXON_BASES 1>$GENOME.external_splice_scores.txt 2>/dev/null && \
+      perl -F'\t' -ane 'BEGIN{
+        open(FILE,"'$GENOME'.num_introns.txt");
+        $index = 2;
+        $num_introns = int(<FILE>);
+        $index++ if($num_introns >= 1024);
+        $index++ if($num_introns >= 4096);
+        open(FILE,"'$GENOME'.external_splice_scores.txt");
+        while($line=<FILE>){
+          chomp($line);
+          @f=split(/\s+/,$line);
+          $score{$f[0]}=$f[$index];
+          $ex_score{$f[0]}=$f[1];
+        }
+      }{
+        if($F[2] eq "gene"){
+          $id=$1 if($F[8] =~ /^ID=(\S+);geneID/);
+          $flag=(defined($score{$id}) && defined($ex_score{$id}) && $score{$id} > '$WAM_THRESHOLD' && $ex_score{$id} > '$WAM_THRESHOLD') ? 1 : 0;
+        }
+        print if($flag);
+      }' $GENOME.palign.ext.gff > $GENOME.palign.ext.spliceFiltered.gff.tmp && \
+      mv $GENOME.palign.ext.spliceFiltered.gff.tmp $GENOME.palign.ext.spliceFiltered.gff || error_exit "Filtering external CDS splice sites failed"
+      EXTERNAL_CDS_GFF=$GENOME.palign.ext.spliceFiltered.gff
+    fi
     #here we figure out which external CDSs overlap with complete annotations and then remove them
-    gffcompare -T -r <(cat $GENOME.k.gff $GENOME.best_unused_proteins.gff) -o external $GENOME.palign.ext.gff && \
-    gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' external.annotated.gtf ) $GENOME.palign.ext.gff | \
-      tee -a $GENOME.palign.fixed.gff |\
-      perl -F'\t' -ane '{$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F)}' >> $GENOME.best_unused_proteins.gff && \
-    rm -f external.annotated.gtf external.{loci,stats,tracking} $GENOME.palign.ext.gff 
+    if [ -s $EXTERNAL_CDS_GFF ];then
+      gffcompare -T -r <(cat $GENOME.k.gff $GENOME.best_unused_proteins.gff) -o external $EXTERNAL_CDS_GFF && \
+      gffread -F --keep-exon-attrs --ids <(perl -F'\t' -ane '{if($F[8]=~/transcript_id "(\S+)";.+class_code "(u|p|o|x|s)";/){print "$1\n"}}' external.annotated.gtf ) $EXTERNAL_CDS_GFF | \
+        tee -a $GENOME.palign.fixed.gff |\
+        perl -F'\t' -ane '{$F[2]="transcript" if($F[2] eq "gene");print join("\t",@F)}' >> $GENOME.best_unused_proteins.gff && \
+      rm -f external.annotated.gtf external.{loci,stats,tracking} $GENOME.palign.ext.gff 
+    fi
   fi
 
 #here we combine all transcripts, adding CDSs that did not match any transcript to the transcripts file
@@ -1105,7 +1147,7 @@ if [ $DEBUG -lt 1 ];then
   rm -f $GENOME.u.cds.gff $GENOME.unused_proteins.spliceFiltered.gff
   rm -f $GENOME.abundanceFiltered.spliceFiltered.gtf
   rm -f $GENOME.merged.rev.gtf $GENOME.misoriented_transcripts.txt
-  rm -f $GENOME.protref.{loci,stats,tracking,annotated.gtf} $GENOME.protref $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein}_splice_scores.txt $GENOME.transcripts_to_keep.txt
+  rm -f $GENOME.protref.{loci,stats,tracking,annotated.gtf} $GENOME.protref $GENOME.protref.spliceFiltered.annotated.gtf $GENOME.reliable_transcripts_proteins.txt $GENOME.{transcript,protein,external}_splice_scores.txt $GENOME.palign.ext.gff $GENOME.palign.ext.spliceFiltered.gff $GENOME.transcripts_to_keep.txt
   rm -f $GENOME.all.{loci,stats,tracking,combined.gtf,redundant.gtf} $GENOME.all 
   rm -f $GENOME.protref.all.{loci,stats,tracking,annotated.class.gff,annotated.gtf} $GENOME.protref.all
   rm -f $GENOME.protref.spliceFiltered.{loci,tracking,stats} $GENOME.protref.spliceFiltered
