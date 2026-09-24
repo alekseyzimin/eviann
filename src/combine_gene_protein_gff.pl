@@ -960,7 +960,7 @@ for my $locus(keys %transcripts_cds_loci){
       for my $t(@transcripts_at_loci){
         next unless($transcript_class{$t} eq $class);
         next unless($transcript_source{$t} eq $source);
-        next if($source eq "EviAnnE" && $mrna_transcript_index > 1);#do not output external if there are already transcripts output for this gene locus
+        next if($source eq "EviAnnE" && $mrna_transcript_index > 0);#do not output external if there are already transcripts output for this gene locus
         print "DEBUG considering transcript $t class $transcript_class{$t} protein $transcript_cds{$t} locus $locus source $source\n";
         my $protID=$transcript_cds{$t};
         if($source eq "EviAnnP" && $used_proteins{$protID}){
@@ -999,7 +999,7 @@ for my $locus(keys %transcripts_cds_loci){
         }
 
 #check the CDS if the transcript is contained, skip if the CDS has been output
-        if($source eq "EviAnnP"){
+        if($source eq "EviAnnP" || $source eq "EviAnnE"){
           my $intron_chain;
           if($transcript_cds_start_index<$transcript_cds_end_index){
             my @gff_fields=split(/\t/,${$transcript_gff{$t}}[$transcript_cds_start_index]);
@@ -1025,7 +1025,7 @@ for my $locus(keys %transcripts_cds_loci){
 
 #output transcript
         $transcript_index++;
-        $mrna_transcript_index++ if($source eq "StringTie");
+        $mrna_transcript_index++ if($source eq "StringTie" && $class =~/(=|k)/);
         print "DEBUG output transcript $t class $transcript_class{$t} protein $transcript_cds{$t}\n";
         my $evidence_type="complete";
         $evidence_type="protein_only" if($source eq "EviAnnP");
