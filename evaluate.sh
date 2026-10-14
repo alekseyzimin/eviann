@@ -83,9 +83,11 @@ cat $REFL.matched_locus_gene_transcript $REFL.matched_locus_gene_CDS |\
 #compute statistcs
 N_REF_TRANSCRIPTS=`awk '{print $3}' $REFL.locus_gene_transcript | wc -l`
 N_REF_GENES=`awk '{print $2}' $REFL.locus_gene_transcript | sort|uniq |wc -l`
+N_REF_CODING_LOCI=`awk '{if($3=="locus") n++}END{print n}' $REFL.gene_transcript_lncRNA.CDSasEXONS.gff`
 N_MATCHING_REF_TRANSCRIPTS=`awk '{print $3}' $REFL.matched_locus_gene_transcript |sort |uniq |wc -l`
 N_MATCHING_REF_CDS=`awk '{print $3}' $REFL.matched_locus_gene_CDS |sort |uniq |wc -l`
 N_MATCHING_REF_GENES=`cat $REFL.matched_locus_gene_transcript  $REFL.matched_locus_gene_CDS | awk '{print $2}' |sort |uniq |wc -l`
+N_MATCHING_REF_CODING_LOCI=`awk '{print $1}'  $REFL.matched_locus_gene_CDS|sort |uniq|wc -l`
 N_REF_CDS=`awk -F '\t' '{if($3=="transcript" ||$3=="mRNA"|| $3=="lnc_RNA" || $3=="primary_transcript") print}' $REFL.gene_transcript_lncRNA.CDSasEXONS.gff |wc -l`
 
 N_QRY_TRANSCRIPTS=`awk -F '\t' '{if($3=="transcript" ||$3=="mRNA"|| $3=="lnc_RNA") print}' $QRYL.fix  |wc -l`
@@ -94,6 +96,7 @@ N_MATCHING_QRY_LOCI=`awk '{print $1}' $QRYL.matched_locus_transcriptORCDS |sort|
 N_MATCHING_QRY_TRANSCRIPTS=`awk '{print $4}' $REFL.matched_locus_gene_transcript |sort |uniq |wc -l`
 N_MATCHING_QRY_CDS=`awk '{print $4}' $REFL.matched_locus_gene_CDS |sort |uniq |wc -l`
 N_QRY_CDS=`awk -F '\t' '{if($3=="transcript" ||$3=="mRNA"|| $3=="lnc_RNA") print}' $QRYL.fix.CDSasEXONS.gff |wc -l`
+N_QRY_CODING_LOCI=`awk '{if($3=="locus") n++}END{print n}' $QRYL.fix.CDSasEXONS.gff`
 
 #compute Sn Pr and F1 and print
 awk 'BEGIN{print "Transcript/CDS and gene evaluations:";
@@ -104,5 +107,16 @@ awk 'BEGIN{print "Transcript/CDS and gene evaluations:";
   cpr=int('$N_MATCHING_QRY_CDS'/'$N_QRY_CDS'*1000+.5)/10;
   gsn=int('$N_MATCHING_REF_GENES'/'$N_REF_GENES'*1000+.5)/10;
   gpr=int('$N_MATCHING_QRY_LOCI'/'$N_QRY_LOCI'*1000+.5)/10;
-  print "Correct transcripts: '$N_MATCHING_QRY_TRANSCRIPTS' Matched reference transcripts: '$N_MATCHING_REF_TRANSCRIPTS' Total query transcripts: '$N_QRY_TRANSCRIPTS'\nCorrect CDS: '$N_MATCHING_QRY_CDS' Matched Reference CDS: '$N_MATCHING_REF_CDS' Total unique query CDS: '$N_QRY_CDS' Total unique reference CDS: '$N_REF_CDS'\nCorrect gene loci: '$N_MATCHING_QRY_LOCI' Total query gene loci: '$N_QRY_LOCI'\nTranscript Sensitivity: "tsn" Precision: "tpr" F1: "int(2*tsn*tpr/(tsn+tpr)*10+0.5)/10"\nCDS Sensitivity: "csn" Precision: "cpr" F1: "int(2*csn*cpr/(csn+cpr+0.001)*10+0.5)/10"\nGene Sensitivity: "gsn" Precision: "gpr" F1: "int(2*gsn*gpr/(gsn+gpr)*10+.5)/10}'
+  cgsn=int('$N_MATCHING_REF_CODING_LOCI'/'$N_REF_CODING_LOCI'*1000+.5)/10;
+  cgpr=int('$N_MATCHING_REF_CODING_LOCI'/'$N_QRY_CODING_LOCI'*1000+.5)/10;
+  print "Correct transcripts: '$N_MATCHING_QRY_TRANSCRIPTS' Matched reference transcripts: '$N_MATCHING_REF_TRANSCRIPTS' Total query transcripts: '$N_QRY_TRANSCRIPTS'";
+  print "Correct CDS: '$N_MATCHING_QRY_CDS' Matched Reference CDS: '$N_MATCHING_REF_CDS' Total unique query CDS: '$N_QRY_CDS' Total unique reference CDS: '$N_REF_CDS'";
+  print "Correct gene loci: '$N_MATCHING_QRY_LOCI' Total query gene loci: '$N_QRY_LOCI'";
+  print "Transcript Sensitivity: "tsn" Precision: "tpr" F1: "int(2*tsn*tpr/(tsn+tpr)*10+0.5)/10;
+  print "CDS Sensitivity: "csn" Precision: "cpr" F1: "int(2*csn*cpr/(csn+cpr+0.001)*10+0.5)/10;
+  print "Gene Sensitivity: "gsn" Precision: "gpr" F1: "int(2*gsn*gpr/(gsn+gpr)*10+.5)/10;
+  print "Coding Gene Sensitivity: "cgsn" Precision: "cgpr" F1: "int(2*cgsn*cgpr/(cgsn+cgpr)*10+.5)/10;
+  }'
+
+rm -f $QRYL.fix $REFL.gene_transcript_lncRNA.gff $REFL.locus_gene_transcript $QRYL.gene_transcript $REFL.gene_transcript_lncRNA.CDSasEXONS.gff $QRYL.fix.CDSasEXONS.gff $REFL.matched_locus_gene_transcript $REFL.matched_locus_gene_CDS $QRYL.matched_locus_transcriptORCDS
 
