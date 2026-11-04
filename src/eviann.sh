@@ -765,8 +765,7 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
         $GENOME.unused_proteins.spliceFiltered.gff \
         <(gffread -V -x /dev/stdout -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff | \
           $UFASTA one | \
-          awk '{if($1 ~ /^>/){name=substr($1,2)}else{if(length($1)%3 == 0) names[$1]=names[$1]" "name}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}'\
-        ) \
+          awk '{if($1 ~ /^>/){name=substr($1,2);split(name,coord,":");}else{if(length($1)%3 == 0){k=coord[2]":"coord[3]":"$1;names[k]=names[k]" "name;}}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}') \
         $GENOME.k.gff $MITO_CTG_LIST_FILE \
       > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
