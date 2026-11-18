@@ -1159,6 +1159,7 @@ for my $locus(keys %transcripts_only_loci){
       $locus_end=$gff_fields_t[4] if($gff_fields_t[4]>$locus_end);
       #check if any of the transcripts overlap known protein coding loci
       $skip=check_overlap($gff_fields_t[0],$gff_fields_t[6],$locus_start,$locus_end);
+      last if($skip);
       for(my $j=1;$j<=$#{$transcript_gff_u{$t}};$j++){
         my @gff_fields_curr=split(/\t/,${$transcript_gff_u{$t}}[$j]);
         my @gff_fields_prev=split(/\t/,${$transcript_gff_u{$t}}[$j-1]);

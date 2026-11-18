@@ -8,10 +8,10 @@ RNASEQ="na"
 ALT_EST="na"
 MITO_CTG_LIST_FILE="na"
 export MAX_INTRON=1
-export MIN_TPM=0.25
+export MIN_TPM=0.0
 export DEBUG=0
 export PARTIAL=0
-export LNCRNATPM=0.5
+export LNCRNATPM=0.0
 export WAM_THRESHOLD=-0.5
 export EXON_BASES=3
 EXTRA_GFF="na"
@@ -82,7 +82,7 @@ function usage {
  echo " --partial             include transcripts with partial (missing start or stop codon) CDS in the output"
  echo " -d INT                set ploidy for the genome, this value is used in estimating the maximum intron size, default 2"
  echo " -c FILE               GFF file with CDS sequences for THIS genome to be used in annotations. Each CDS must have gene/transcript/mRNA AND exon AND CDS attributes"
- echo " --lncrnamintpm FLOAT  minimum TPM to include non-coding transcript into the annotation as lncRNA, default: 0.5"
+ echo " --lncrnamintpm FLOAT  minimum TPM to include a non-coding transcript into the annotation as lncRNA, default: 0.0"
  echo " --min_prot            minimum protein length (in amino-acids) for ab initio ORF detection without homology evidence, default: 75"
  echo " -f|--functional       perform functional annotation, default: not set"
  echo " --mito_contigs FILE   file with the list of input contigs to be treated as mitochondrial with different genetic code (stop is AGA,AGG,TAA,TAG)"
@@ -763,9 +763,8 @@ if [ -e transcripts_merge.success ] && [ -e protein2genome.align.success ] && [ 
       filter_unused_proteins.pl \
         $GENOMEFILE \
         $GENOME.unused_proteins.spliceFiltered.gff \
-        <(gffread -V -x /dev/stdout -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff | \
-          $UFASTA one | \
-          awk '{if($1 ~ /^>/){name=substr($1,2);split(name,coord,":");}else{if(length($1)%3 == 0){k=coord[2]":"coord[3]":"$1;names[k]=names[k]" "name;}}}END{for(a in names){n=split(names[a],b," ");print b[1]" "n}}') \
+        <(gffread -V --tlf -g $GENOMEFILE $GENOME.unused_proteins.spliceFiltered.gff | \
+          perl -F'\t' -ane '{if($F[8]=~ /ID=(\S+);exonCount=(\d+);exons=(\S+);CDS=(\S+);CDSphase=\d/){$names{$3.$F[0].$F[6]}.="$1 ";}}END{foreach $k(keys %names){@f=split(/\s+/,$names{$k});print "$f[0] ",$#f+1,"\n";}}') \
         $GENOME.k.gff $MITO_CTG_LIST_FILE \
       > $GENOME.best_unused_proteins.gff.tmp && \
     mv $GENOME.best_unused_proteins.gff.tmp $GENOME.best_unused_proteins.gff && \
